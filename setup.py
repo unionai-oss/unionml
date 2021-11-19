@@ -12,6 +12,5 @@ setup(
         "sklearn",
         "numpy",
         "pandas",
-        "dataclasses_json",
     ]
 )
