@@ -1,6 +1,9 @@
 # Repo-specific ignore
 flyte-package.tgz
+flyte-package
 .kube
+.bash_history
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
