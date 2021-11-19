@@ -61,3 +61,6 @@ class Model:
             train_kwargs,
         )
         return train_wf(model=self._init(**hyperparameters))
+
+    def predict(self):
+        pass

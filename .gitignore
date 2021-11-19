@@ -1,3 +1,7 @@
+# Repo-specific ignore
+flyte-package.tgz
+.kube
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -47,7 +47,3 @@ trained_model, metrics = model.train(
     hyperparameters={"C": 1.0, "max_iter": 1000},
     data=dataset.read(),
 )
-
-
-print(trained_model)
-print(metrics)
