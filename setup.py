@@ -12,5 +12,7 @@ setup(
         "sklearn",
         "numpy",
         "pandas",
+        "fastapi",
+        "pydantic",
     ]
 )

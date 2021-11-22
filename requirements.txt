@@ -2,3 +2,5 @@ flytekit>=0.24.0
 sklearn
 numpy
 pandas
+fastapi
+pydantic
