@@ -15,8 +15,9 @@ from flytekit_learn import Dataset, Model
 breast_cancer_dataset = load_breast_cancer(as_frame=True)
 
 app = FastAPI()
+features_names = list(breast_cancer_dataset.feature_names)
 dataset = Dataset(
-    features=list(breast_cancer_dataset.feature_names),
+    features=features_names,
     targets=["target"],
     test_size=0.2,
     shuffle=True,

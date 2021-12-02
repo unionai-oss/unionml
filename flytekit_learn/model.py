@@ -11,6 +11,7 @@ from pydantic import BaseModel, create_model
 
 from flytekit import task, workflow
 from flytekit.core.workflow import WorkflowBase
+from flytekit.remote import FlyteRemote
 from flytekit.types.pickle import FlytePickle
 
 from flytekit_learn.dataset import Dataset
@@ -38,7 +39,9 @@ def train_workflow(
             "cls_name": init_cls.__name__,
         }
 
-    if not issubclass(type(data), WorkflowBase):
+    if data is None:
+        get_data = dataset()
+    elif not issubclass(type(data), WorkflowBase):
         get_data = dataset(data=data)
     else:
         get_data = data
@@ -60,7 +63,6 @@ def train_workflow(
             "TrainingResults", model=trainer.python_interface.outputs["o0"], metrics=Dict[str, float]
         )
     )
-
     return workflow(wf)
 
 
@@ -98,6 +100,7 @@ class Model:
         self._hyperparameters = hyperparameters
         self._dataset = dataset
         self._latest_model = None
+        self._remote = None
 
     def init(self, fn):
         self._init = task(fn)
@@ -125,7 +128,7 @@ class Model:
         self._evaluator = task(fn)
         return self._evaluator
 
-    def train(self, hyperparameters: Dict[str, Any] = None, *, data: Any, lazy=False, **train_kwargs):
+    def train(self, hyperparameters: Dict[str, Any] = None, *, data: Any = None, lazy=False, **train_kwargs):
         train_wf = train_workflow(
             data,
             self._dataset,
@@ -135,6 +138,7 @@ class Model:
             train_kwargs,
             init_cls=self._init_cls,
         )
+
         if lazy:
             return train_wf
         if hyperparameters is None:
@@ -145,7 +149,7 @@ class Model:
         self._latest_metrics = metrics
         return trained_model, metrics
 
-    def predict(self, trained_model: FlytePickle, features: Any, lazy=False):
+    def predict(self, trained_model: FlytePickle, features: Any = None, lazy=False):
         predict_wf = predict_workflow(
             trained_model,
             self._dataset,
@@ -155,6 +159,16 @@ class Model:
         if lazy:
             return predict_wf
         return predict_wf()
+
+    def remote(self, config_file_path = None, project = None, domain = None):
+        self._remote = FlyteRemote.from_config(
+            config_file_path=config_file_path,
+            default_project=project,
+            default_domain=domain,
+        )
+
+    def local(self):
+        self._remote = None
 
     def serve(self, app):
         app.get = _app_method_wrapper(app.get, self, self._dataset)
@@ -217,6 +231,7 @@ def _app_decorator_wrapper(decorator, model, dataset, app_method):
                 sig.parameters["data"],
             ])
 
-        return decorator(endpoint_fn)
+        decorator(endpoint_fn)
+        return task
 
     return wrapper

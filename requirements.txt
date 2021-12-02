@@ -4,3 +4,4 @@ numpy
 pandas
 fastapi
 pydantic
+typer
