@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 
 
 def dataset_workflow(
+    wf_name,
     reader,
     splitter,
     parser,
@@ -29,11 +30,12 @@ def dataset_workflow(
     wf.__signature__ = signature(wf).replace(
         return_annotation=NamedTuple("Data", train=parser_output, test=parser_output)
     )
-    wf.__name__ = "dataset_workflow"
-    return workflow(wf)
+    wf = workflow(wf)
+    wf._name = wf_name
+    return wf
 
 
-def features_workflow(reader, parser, unpack_features, parser_kwargs):
+def features_workflow(wf_name, reader, parser, unpack_features, parser_kwargs):
 
     def wf(features):
         data = parser(data=features, **parser_kwargs)
@@ -47,12 +49,13 @@ def features_workflow(reader, parser, unpack_features, parser_kwargs):
         ],
         return_annotation=signature(unpack_features.task_function).return_annotation,
     )
-    wf.__name__ = "features_workflow"
-    return workflow(wf)
+    wf = workflow(wf)
+    wf._name = wf_name
+    return wf
 
 
 
-def literal_data_workflow(data, reader, splitter, parser, splitter_kwargs, parser_kwargs):
+def literal_data_workflow(wf_name, data, reader, splitter, parser, splitter_kwargs, parser_kwargs):
 
     input_type = signature(reader.task_function).return_annotation
     if not isinstance(data, input_type):
@@ -68,11 +71,12 @@ def literal_data_workflow(data, reader, splitter, parser, splitter_kwargs, parse
     wf.__signature__ = signature(wf).replace(
         return_annotation=NamedTuple("Data", train=parser_output, test=parser_output)
     )
-    wf.__name__ = "literal_data_workflow"
-    return workflow(wf)
+    wf = workflow(wf)
+    wf._name = wf_name
+    return wf
 
 
-def literal_features_workflow(features, reader, parser, unpack_features, parser_kwargs):
+def literal_features_workflow(wf_name, features, reader, parser, unpack_features, parser_kwargs):
 
     data_type = signature(reader.task_function).return_annotation
     if not isinstance(features, data_type):
@@ -85,20 +89,24 @@ def literal_features_workflow(features, reader, parser, unpack_features, parser_
     wf.__signature__ = signature(wf).replace(
         return_annotation=signature(unpack_features.task_function).return_annotation
     )
-    wf.__name__ = "literal_features_workflow"
-    return workflow(wf)
+    wf = workflow(wf)
+    wf._name = wf_name
+    return wf
 
 
 class Dataset:
     
     def __init__(
         self,
+        name: str = None,
+        *,
         features: Optional[List[str]] = None,
         targets: Optional[List[str]] = None,
         test_size: float = 0.2,
         shuffle: bool = True,
         random_state: int = 12345,
     ):
+        self.name = name
         self._features = features
         self._targets = targets
         self._test_size = test_size
@@ -117,6 +125,22 @@ class Dataset:
         self._reader = task(fn)
         return self._reader
 
+    @property
+    def literal_data_workflow_name(self):
+        return f"{self.name}.literal_data"
+
+    @property
+    def literal_features_workflow_name(self):
+        return f"{self.name}.literal_features"
+
+    @property
+    def data_workflow_name(self):
+        return f"{self.name}.data"
+
+    @property
+    def features_workflow_name(self):
+        return f"{self.name}.features"
+
     def __call__(self, features_only: bool = False, data=None, features=None, **reader_kwargs):
         splitter_kwargs={
             "test_size": self._test_size,
@@ -133,6 +157,7 @@ class Dataset:
 
         if data is not None:
             return literal_data_workflow(
+                self.literal_data_workflow_name,
                 data,
                 self._reader,
                 self._splitter,
@@ -143,11 +168,17 @@ class Dataset:
 
         if features is not None:
             return literal_features_workflow(
-                features, self._reader, self._parser, self._unpack_features, parser_kwargs=parser_kwargs
+                self.literal_features_workflow_name,
+                features,
+                self._reader,
+                self._parser,
+                self._unpack_features,
+                parser_kwargs=parser_kwargs,
             )
 
         if features_only:
             return features_workflow(
+                self.features_workflow_name,
                 self._reader,
                 self._parser,
                 self._unpack_features,
@@ -155,6 +186,7 @@ class Dataset:
             )
         
         return dataset_workflow(
+            self.data_workflow_name,
             self._reader,
             self._splitter,
             self._parser,

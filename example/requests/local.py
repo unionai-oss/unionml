@@ -10,7 +10,7 @@ metrics = requests.post(
     "http://127.0.0.1:8000/train",
     json={"hyperparameters": {"C": 1.0, "max_iter": 1000}},
 )
-print(f"Model: {metrics.json()}")
+print(f"Model: {metrics.text}")
 
 predictions = requests.get(
     "http://127.0.0.1:8000/predict",

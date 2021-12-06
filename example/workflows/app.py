@@ -14,7 +14,12 @@ breast_cancer_dataset = load_breast_cancer(as_frame=True)
 app = FastAPI()
 
 dataset = Dataset(features=list(breast_cancer_dataset.feature_names), targets=["target"])
-model = Model(init=LogisticRegression, hyperparameters={"C": float, "max_iter": int}, dataset=dataset)
+model = Model(
+    name="breast_cancer",
+    init=LogisticRegression,
+    hyperparameters={"C": float, "max_iter": int},
+    dataset=dataset,
+)
 model.remote("sandbox.config", project="flytesnacks", domain="development")
 model.serve(app)
 

@@ -38,10 +38,10 @@ def _deploy_wf(wf, remote, project, domain, version):
 def deploy(
     app: str,
     image: typing.Optional[str] = typer.Option(None, "--image", "-i", help="default image to use"),
-    project: str = typer.Option(..., "--project", "-p", help="project name"),
-    domain: str = typer.Option(..., "--domain", "-d", help="domain name"),
+    project: str = typer.Option(None, "--project", "-p", help="project name"),
+    domain: str = typer.Option(None, "--domain", "-d", help="domain name"),
     name: typing.Optional[str] = typer.Option(None, "--name", "-n", help="model name"),
-    version: str = typer.Option(..., "--version", "-v", help="version"),
+    version: str = typer.Option(None, "--version", "-v", help="version"),
 ):
     """Deploy model to a Flyte backend."""
 
@@ -49,13 +49,14 @@ def deploy(
     os.environ["FLYTE_INTERNAL_IMAGE"] = image
     model = _get_model(app)
 
-    # get training workflow
-    prefix = app.replace(":", ".")
-    train_wf = model.train(lazy=True)
-    train_wf._name = f"{name}.train" if name else f"{prefix}.train"
+    if model.name is None:
+        if name is None:
+            typer.echo("name must be provided in the flytekit_learn.Model constructor or the --name option", err=True)
+        model.name = name
 
+    # get training workflow
+    train_wf = model.train(lazy=True)
     predict_wf = model.predict(lazy=True)
-    predict_wf._name = f"{name}.predict" if name else f"{prefix}.predict"
 
     # register all tasks, workflows, and launchplans needed to execute model endpoints
     args = [project, domain, version]
@@ -74,12 +75,15 @@ def train(
 ):
     typer.echo(f"[fklearn] app: {app} - training model")
     model = _get_model(app)
-    prefix = app.replace(":", ".")
-    train_wf_name = f"{name}.train" if name else f"{prefix}.train"
+
+    if model.name is None:
+        if name is None:
+            typer.echo("name must be provided in the flytekit_learn.Model constructor or the --name option", err=True)
+        model.name = name
 
     hyperparameters = json.loads(hyperparameters)
 
-    train_wf = model._remote.fetch_workflow(project, domain, train_wf_name, version)
+    train_wf = model._remote.fetch_workflow(project, domain, model.train_workflow_name, version)
     typer.echo(f"[fklearn] executing model workflow")
     typer.echo(f"[fklearn] project: {train_wf.id.project}")
     typer.echo(f"[fklearn] domain: {train_wf.id.domain}")
@@ -104,15 +108,17 @@ def predict(
 ):
     typer.echo(f"[fklearn] app: {app} - generating predictions")
     model = _get_model(app)
-    prefix = app.replace(":", ".")
-    train_wf_name = f"{name}.train" if name else f"{prefix}.train"
-    predict_wf_name = f"{name}.predict" if name else f"{prefix}.predict"
+
+    if model.name is None:
+        if name is None:
+            typer.echo("name must be provided in the flytekit_learn.Model constructor or the --name option", err=True)
+        model.name = name
 
     with features.open() as f:
         features = json.load(f)
 
-    train_wf = model._remote.fetch_workflow(project, domain, train_wf_name, version)
-    predict_wf = model._remote.fetch_workflow(project, domain, predict_wf_name, version)
+    train_wf = model._remote.fetch_workflow(project, domain, model.train_workflow_name, version)
+    predict_wf = model._remote.fetch_workflow(project, domain, model.predict_workflow_name, version)
     features = model._dataset(features=features)()
 
     typer.echo(f"[fklearn] getting latest model")

@@ -26,6 +26,7 @@ class Endpoints(Enum):
 
 
 def train_workflow(
+    wf_name,
     data,
     dataset,
     init,
@@ -65,11 +66,13 @@ def train_workflow(
             "TrainingResults", model=trainer.python_interface.outputs["o0"], metrics=Dict[str, float]
         )
     )
-    wf.__name__ = "train_workflow"
-    return workflow(wf)
+    wf = workflow(wf)
+    wf._name = wf_name
+    return wf
 
 
 def predict_workflow(
+    wf_name,
     dataset,
     predictor,
 ):
@@ -86,27 +89,42 @@ def predict_workflow(
         ],
         return_annotation=sig.return_annotation,
     )
-    wf.__name__ = "predict_workflow"
-    return workflow(wf)
+    wf = workflow(wf)
+    wf._name = wf_name
+    return wf
 
 
 class Model:
     
     def __init__(
         self,
+        name: str = None,
+        *,
         init: Union[Type, Callable],
         dataset: Dataset,
         hyperparameters: Optional[Dict[str, Type]] = None
     ):
+        self.name = name
         self._init_cls = init
         self._hyperparameters = hyperparameters
         self._dataset = dataset
         self._latest_model = None
         self._remote = None
 
+        if self._dataset.name is None:
+            self._dataset.name = f"{self.name}.dataset"
+
     def init(self, fn):
         self._init = task(fn)
         return self._init
+
+    @property
+    def train_workflow_name(self):
+        return f"{self.name}.train"
+
+    @property
+    def predict_workflow_name(self):
+        return f"{self.name}.predict"
 
     @classmethod
     def _set_default(cls, fn=None, *, name):
@@ -132,6 +150,7 @@ class Model:
 
     def train(self, hyperparameters: Dict[str, Any] = None, *, data: Any = None, lazy=False, **train_kwargs):
         train_wf = train_workflow(
+            self.train_workflow_name,
             data,
             self._dataset,
             self._init,
@@ -153,6 +172,7 @@ class Model:
 
     def predict(self, model: FlytePickle = None, features: Any = None, lazy=False):
         predict_wf = predict_workflow(
+            self.predict_workflow_name,
             self._dataset,
             self._predictor,
         )
@@ -207,35 +227,32 @@ def _app_decorator_wrapper(decorator, model, app_method):
 
         def _train_endpoint(
             remote: bool = False,
-            app: Optional[str] = None,
-            hyperparameters: Dict = Body(...),
+            model_name: Optional[str] = None,
+            hyperparameters: Dict = Body(..., embed=True),
         ):
             if issubclass(type(hyperparameters), BaseModel):
                 hyperparameters = hyperparameters.dict()
 
             if remote:
                 # TODO: make the model name a property of the Model object
-                if app is None:
-                    raise HTTPException(status_code=500, detail="app needs to be specified when remote=True")
-                train_wf = model._remote.fetch_workflow(name=f"{app.replace(':', '.')}.train")
-                execution = model._remote.execute(
-                    train_wf, inputs={"hyperparameters": hyperparameters}, wait=True
+                train_wf = model._remote.fetch_workflow(
+                    name=f"{model_name}.train" if model_name else model.train_workflow_name
                 )
-                _trained_model = str(execution.outputs["model"])
+                execution = model._remote.execute(train_wf, inputs={"hyperparameters": hyperparameters}, wait=True)
+                trained_model = execution.outputs["model"]
                 metrics = execution.outputs["metrics"]
             else:
-                trained_model, metrics = model.train(hyperparameters=hyperparameters, data=data)
+                trained_model, metrics = model.train(hyperparameters=hyperparameters)
                 model._latest_model = trained_model
                 model._metrics = metrics
-                _trained_model = str(trained_model)
             return {
-                "trained_model": _trained_model,
+                "trained_model": str(trained_model),
                 "metrics": metrics,
             }
 
         def _predict_endpoint(
             remote: bool = False,
-            app: Optional[str] = None,
+            model_name: Optional[str] = None,
             model_version: str = "latest",
             features: List[Dict[str, Any]] = Body(..., embed=True)
         ):
@@ -243,12 +260,15 @@ def _app_decorator_wrapper(decorator, model, app_method):
 
             if remote:
                 # TODO: make the model name a property of the Model object
-                prefix = app.replace(":", ".")
-                train_wf_name = f"{prefix}.train"
-                predict_wf_name = f"{prefix}.predict"
                 version = None if model_version == "latest" else model_version
-                train_wf = model._remote.fetch_workflow(name=train_wf_name, version=version)
-                predict_wf = model._remote.fetch_workflow(name=predict_wf_name, version=version)
+                train_wf = model._remote.fetch_workflow(
+                    name=f"{model_name}.train" if model_name else model.train_workflow_name,
+                    version=version,
+                )
+                predict_wf = model._remote.fetch_workflow(
+                    name=f"{model_name}.predict" if model_name else model.predict_workflow_name,
+                    version=version,
+                )
 
                 [latest_training_execution, *_], _ = model._remote.client.list_executions_paginated(
                     train_wf.id.project,
