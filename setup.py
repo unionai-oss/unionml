@@ -8,8 +8,7 @@ setup(
     author_email="info@union.ai",
     packages=find_packages(exclude=["tests*"]),
     install_requires=[
-        "flytekit",
-        # "flytekit>=0.24.0",
+        "flytekit>=0.24.0",
         "sklearn",
         "numpy",
         "pandas",

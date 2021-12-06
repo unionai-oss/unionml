@@ -2,16 +2,18 @@
 
 import importlib
 from enum import Enum
-from fastapi import HTTPException
+from fastapi import Body, HTTPException
 from functools import partial, wraps
 from inspect import signature, Parameter
-from typing import Any, Callable, Dict, List, Optional, NamedTuple, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, NamedTuple, Type, Union
 
 from pydantic import BaseModel, create_model
 
 from flytekit import task, workflow
 from flytekit.core.workflow import WorkflowBase
-from flytekit.remote import FlyteRemote
+from flytekit.models import filters
+from flytekit.models.admin.common import Sort
+from flytekit.remote import FlyteRemote, FlyteWorkflowExecution
 from flytekit.types.pickle import FlytePickle
 
 from flytekit_learn.dataset import Dataset
@@ -41,12 +43,12 @@ def train_workflow(
 
     if data is None:
         get_data = dataset()
-    elif not issubclass(type(data), WorkflowBase):
-        get_data = dataset(data=data)
-    else:
+    elif issubclass(type(data), WorkflowBase):
         get_data = data
+    else:
+        get_data = dataset(data=data)
 
-    def wf(hyperparameters: dict):
+    def wf(hyperparameters):
         train_data, test_data = get_data()
         trained_model = trainer(
             model=init(hyperparameters=hyperparameters, **init_kwargs), data=train_data, **train_kwargs
@@ -63,28 +65,28 @@ def train_workflow(
             "TrainingResults", model=trainer.python_interface.outputs["o0"], metrics=Dict[str, float]
         )
     )
+    wf.__name__ = "train_workflow"
     return workflow(wf)
 
 
 def predict_workflow(
-    trained_model,
     dataset,
-    features,
     predictor,
 ):
-    if not issubclass(type(features), WorkflowBase):
-        get_features = dataset(features=features)
-    else:
-        get_features = features
+    get_features = dataset(features_only=True)
 
-    def wf():
-        data = get_features()
-        return predictor(model=trained_model, features=data)
+    def wf(model, features):
+        return predictor(model=model, features=get_features(features=features))
 
+    sig = signature(predictor.task_function)
     wf.__signature__ = signature(wf).replace(
-        return_annotation=signature(predictor.task_function).return_annotation
+        parameters=[
+            Parameter("model", annotation=sig.parameters["model"].annotation, kind=Parameter.KEYWORD_ONLY),
+            Parameter("features", annotation=sig.parameters["features"].annotation, kind=Parameter.KEYWORD_ONLY),
+        ],
+        return_annotation=sig.return_annotation,
     )
-
+    wf.__name__ = "predict_workflow"
     return workflow(wf)
 
 
@@ -149,16 +151,14 @@ class Model:
         self._latest_metrics = metrics
         return trained_model, metrics
 
-    def predict(self, trained_model: FlytePickle, features: Any = None, lazy=False):
+    def predict(self, model: FlytePickle = None, features: Any = None, lazy=False):
         predict_wf = predict_workflow(
-            trained_model,
             self._dataset,
-            features,
             self._predictor,
         )
         if lazy:
             return predict_wf
-        return predict_wf()
+        return predict_wf(model=model, features=features)
 
     def remote(self, config_file_path = None, project = None, domain = None):
         self._remote = FlyteRemote.from_config(
@@ -171,9 +171,14 @@ class Model:
         self._remote = None
 
     def serve(self, app):
-        app.get = _app_method_wrapper(app.get, self, self._dataset)
-        app.post = _app_method_wrapper(app.post, self, self._dataset)
-        app.put = _app_method_wrapper(app.put, self, self._dataset)
+
+        @app.get("/")
+        def main():
+            return "flytekit learn: the easiest way to build and deploy models."
+        
+        app.get = _app_method_wrapper(app.get, self)
+        app.post = _app_method_wrapper(app.post, self)
+        app.put = _app_method_wrapper(app.put, self)
 
 
 @Model._set_default(name="_init")
@@ -183,16 +188,16 @@ def _default_init_model(init_cls: dict, hyperparameters: dict) -> FlytePickle:
     return cls(**hyperparameters)
 
 
-def _app_method_wrapper(app_method, model, dataset):
+def _app_method_wrapper(app_method, model):
 
     @wraps(app_method)
     def wrapper(*args, **kwargs):
-        return _app_decorator_wrapper(app_method(*args, **kwargs), model, dataset, app_method)
+        return _app_decorator_wrapper(app_method(*args, **kwargs), model, app_method)
 
     return wrapper
 
 
-def _app_decorator_wrapper(decorator, model, dataset, app_method):
+def _app_decorator_wrapper(decorator, model, app_method):
 
     @wraps(decorator)
     def wrapper(task):
@@ -200,21 +205,76 @@ def _app_decorator_wrapper(decorator, model, dataset, app_method):
         if app_method.__name__ not in {"get", "post", "put"}:
             raise ValueError(f"flytekit-learn only supports 'get' and 'post' methods: found {app_method.__name__}")
 
-        def _train_endpoint(hyperparameters: Dict, data: List[Dict[str, Any]]):
+        def _train_endpoint(
+            remote: bool = False,
+            app: Optional[str] = None,
+            hyperparameters: Dict = Body(...),
+        ):
             if issubclass(type(hyperparameters), BaseModel):
                 hyperparameters = hyperparameters.dict()
-            trained_model, metrics = model.train(hyperparameters=hyperparameters, data=data)
-            model._latest_model = trained_model
-            model._metrics = metrics
-            return {"training_score": metrics}
 
-        def _predict_endpoint(kwargs: dict):
-            if model._latest_model is None:
-                raise HTTPException(status_code=500, detail="trained model not found")
-            features_type = model._predictor.python_interface.inputs["features"]
-            data = features_type(kwargs["features"])
-            features, _ = dataset._parser.task_function(data, dataset._features, dataset._targets)
-            return task(model=model._latest_model, features=features)
+            if remote:
+                # TODO: make the model name a property of the Model object
+                if app is None:
+                    raise HTTPException(status_code=500, detail="app needs to be specified when remote=True")
+                train_wf = model._remote.fetch_workflow(name=f"{app.replace(':', '.')}.train")
+                execution = model._remote.execute(
+                    train_wf, inputs={"hyperparameters": hyperparameters}, wait=True
+                )
+                _trained_model = str(execution.outputs["model"])
+                metrics = execution.outputs["metrics"]
+            else:
+                trained_model, metrics = model.train(hyperparameters=hyperparameters, data=data)
+                model._latest_model = trained_model
+                model._metrics = metrics
+                _trained_model = str(trained_model)
+            return {
+                "trained_model": _trained_model,
+                "metrics": metrics,
+            }
+
+        def _predict_endpoint(
+            remote: bool = False,
+            app: Optional[str] = None,
+            model_version: str = "latest",
+            features: List[Dict[str, Any]] = Body(..., embed=True)
+        ):
+            features = model._dataset(features=features)()
+
+            if remote:
+                # TODO: make the model name a property of the Model object
+                prefix = app.replace(":", ".")
+                train_wf_name = f"{prefix}.train"
+                predict_wf_name = f"{prefix}.predict"
+                version = None if model_version == "latest" else model_version
+                train_wf = model._remote.fetch_workflow(name=train_wf_name, version=version)
+                predict_wf = model._remote.fetch_workflow(name=predict_wf_name, version=version)
+
+                [latest_training_execution, *_], _ = model._remote.client.list_executions_paginated(
+                    train_wf.id.project,
+                    train_wf.id.domain,
+                    limit=1,
+                    filters=[
+                        filters.Equal("launch_plan.name", train_wf.id.name),
+                        filters.Equal("phase", "SUCCEEDED"),
+                    ],
+                    sort_by=Sort("created_at", Sort.Direction.DESCENDING),
+                )
+                latest_training_execution = FlyteWorkflowExecution.promote_from_model(
+                    latest_training_execution
+                )
+                model._remote.sync(latest_training_execution)
+                latest_model = latest_training_execution.outputs["model"]
+                predictions = model._remote.execute(
+                    predict_wf, inputs={"model": latest_model, "features": features}, wait=True
+                )
+                predictions = predictions.outputs["o0"]
+            else:
+                if model._latest_model is None:
+                    raise HTTPException(status_code=500, detail="trained model not found")
+                
+                predictions = model.predict(model=model._latest_model, features=features)
+            return predictions
 
         endpoint_fn = {
             Endpoints.PREDICTOR: _predict_endpoint,
@@ -227,8 +287,10 @@ def _app_decorator_wrapper(decorator, model, dataset, app_method):
             )
             sig = signature(_train_endpoint)
             _train_endpoint.__signature__ = sig.replace(parameters=[
-                sig.parameters["hyperparameters"].replace(annotation=HyperparameterModel),
-                sig.parameters["data"],
+                sig.parameters[p].replace(annotation=HyperparameterModel)
+                if p == "hyperparameters"
+                else sig.parameters[p]
+                for p in sig.parameters
             ])
 
         decorator(endpoint_fn)
