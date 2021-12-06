@@ -4,7 +4,16 @@ The easiest way to build and deploy models
 
 # Local
 
-...
+```bash
+flytectl sandbox start --source .
+flytectl sandbox exec -- docker build . --tag "flytekit-learn:v0"
+```
+
+Run training and prediction locally
+
+```bash
+python 
+```
 
 # Remote
 
