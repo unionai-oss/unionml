@@ -226,14 +226,14 @@ def _app_decorator_wrapper(decorator, model, app_method):
             raise ValueError(f"flytekit-learn only supports 'get' and 'post' methods: found {app_method.__name__}")
 
         def _train_endpoint(
-            remote: bool = False,
+            local: bool = False,
             model_name: Optional[str] = None,
             hyperparameters: Dict = Body(..., embed=True),
         ):
             if issubclass(type(hyperparameters), BaseModel):
                 hyperparameters = hyperparameters.dict()
 
-            if remote:
+            if not local:
                 # TODO: make the model name a property of the Model object
                 train_wf = model._remote.fetch_workflow(
                     name=f"{model_name}.train" if model_name else model.train_workflow_name
@@ -251,25 +251,20 @@ def _app_decorator_wrapper(decorator, model, app_method):
             }
 
         def _predict_endpoint(
-            remote: bool = False,
+            local: bool = False,
             model_name: Optional[str] = None,
             model_version: str = "latest",
+            model_source: str = "remote",
             features: List[Dict[str, Any]] = Body(..., embed=True)
         ):
             features = model._dataset(features=features)()
 
-            if remote:
-                # TODO: make the model name a property of the Model object
-                version = None if model_version == "latest" else model_version
+            version = None if model_version == "latest" else model_version
+            if model_source == "remote":
                 train_wf = model._remote.fetch_workflow(
                     name=f"{model_name}.train" if model_name else model.train_workflow_name,
                     version=version,
                 )
-                predict_wf = model._remote.fetch_workflow(
-                    name=f"{model_name}.predict" if model_name else model.predict_workflow_name,
-                    version=version,
-                )
-
                 [latest_training_execution, *_], _ = model._remote.client.list_executions_paginated(
                     train_wf.id.project,
                     train_wf.id.domain,
@@ -285,15 +280,22 @@ def _app_decorator_wrapper(decorator, model, app_method):
                 )
                 model._remote.sync(latest_training_execution)
                 latest_model = latest_training_execution.outputs["model"]
-                predictions = model._remote.execute(
-                    predict_wf, inputs={"model": latest_model, "features": features}, wait=True
-                )
-                predictions = predictions.outputs["o0"]
             else:
                 if model._latest_model is None:
                     raise HTTPException(status_code=500, detail="trained model not found")
-                
-                predictions = model.predict(model=model._latest_model, features=features)
+                latest_model = model._latest_model
+
+            if not local:
+                # TODO: make the model name a property of the Model object
+                predict_wf = model._remote.fetch_workflow(
+                    name=f"{model_name}.predict" if model_name else model.predict_workflow_name,
+                    version=version,
+                )
+                predictions = model._remote.execute(
+                    predict_wf, inputs={"model": latest_model, "features": features}, wait=True
+                ).outputs["o0"]
+            else:
+                predictions = model.predict(model=latest_model, features=features)
             return predictions
 
         endpoint_fn = {

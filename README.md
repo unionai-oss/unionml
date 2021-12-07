@@ -45,7 +45,7 @@ flytectl sandbox exec -- docker build . --tag "flytekit-learn:v0"
 Deploy the model to Flyte backend
 
 ```bash
-fklearn deploy example.workflows.app:model -i "flytekit-learn:v0"
+fklearn deploy example.workflows.app:model -i "flytekit-learn:v0" -v 0
 ```
 
 Train model on a Flyte backend

@@ -1,7 +1,6 @@
 from typing import List
 
 import pandas as pd
-from fastapi import FastAPI
 from sklearn.linear_model import LogisticRegression
 from sklearn.datasets import load_breast_cancer
 from sklearn.metrics import accuracy_score
@@ -22,27 +21,18 @@ model = Model(
     dataset=dataset,
 )
 
-# attach Flyte remote backend
-model.remote("sandbox.config", project="flytesnacks", domain="development")
-
-# serve the model with FastAPI
-app = FastAPI()
-model.serve(app)
-
 
 @dataset.reader
 def reader() -> pd.DataFrame:
     return load_breast_cancer(as_frame=True).frame
 
 
-@app.post("/train")
 @model.trainer
 def trainer(model: LogisticRegression, data: List[pd.DataFrame]) -> LogisticRegression:
     features, target = data
     return model.fit(features, target.squeeze())
 
 
-@app.get("/predict")
 @model.predictor
 def predictor(model: LogisticRegression, features: pd.DataFrame) -> List[float]:
     """Generate predictions from a model."""

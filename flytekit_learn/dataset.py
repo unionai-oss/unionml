@@ -107,7 +107,7 @@ class Dataset:
         random_state: int = 12345,
     ):
         self.name = name
-        self._features = features
+        self._features = [] if features is None else features
         self._targets = targets
         self._test_size = test_size
         self._shuffle = shuffle
@@ -207,6 +207,8 @@ def _default_splitter(
 def _default_parser(data: pd.DataFrame, features: List[str], targets: List[str]) -> List[pd.DataFrame]:
     if not isinstance(data, pd.DataFrame):
         data = pd.DataFrame(data)
+    if not features:
+        features = [col for col in data if col not in targets]
     try:
         targets = data[targets]
     except KeyError:
