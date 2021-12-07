@@ -51,10 +51,16 @@ fklearn deploy example.workflows.app:model -i "flytekit-learn:v0" -v 0
 Train model on a Flyte backend
 
 ```bash
-fklearn train example.workflows.app:model -h '{"C": 1.0, "max_iter": 1000}'
+fklearn train example.workflows.app:model -i '{"hyperparameters": {"C": 1.0, "max_iter": 1000}, "sample_frac": 1.0, "random_state": 123}'
 ```
 
-Generate predictions:
+Generate predictions from reader:
+
+```bash
+fklearn predict example.workflows.app:model -i '{"sample_frac": 1.0, "random_state": 123}'
+```
+
+Generate predictions from with feature data:
 
 ```bash
 fklearn predict example.workflows.app:model -f example/data/sample_breast_cancer_data.json

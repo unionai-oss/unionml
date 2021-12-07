@@ -31,8 +31,8 @@ model.serve(app)
 
 
 @dataset.reader
-def reader() -> pd.DataFrame:
-    return load_breast_cancer(as_frame=True).frame
+def reader(sample_frac: float = 1.0, random_state: int = 123) -> pd.DataFrame:
+    return load_breast_cancer(as_frame=True).frame.sample(frac=sample_frac, random_state=random_state)
 
 
 @app.post("/train")
@@ -64,8 +64,13 @@ if __name__ == "__main__":
     print("Running flytekit-learn locally")
     breast_cancer_dataset = load_breast_cancer(as_frame=True)
     hyperparameters = {"C": 1.0, "max_iter": 1000}
-    trained_model, metrics = model.train(hyperparameters=hyperparameters)
+    trained_model, metrics = model.train(hyperparameters, sample_frac=1.0, random_state=123)
     print(trained_model, metrics)
 
+    print("Predicting from reader")
+    predictions = model.predict(trained_model, sample_frac=0.01, random_state=321)
+    print(predictions)
+
+    print("Predicting from features")
     predictions = model.predict(trained_model, features=breast_cancer_dataset.frame.sample(5, random_state=42))
     print(predictions)

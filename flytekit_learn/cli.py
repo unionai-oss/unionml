@@ -57,17 +57,19 @@ def deploy(
     # get training workflow
     train_wf = model.train(lazy=True)
     predict_wf = model.predict(lazy=True)
+    predict_from_features_wf = model.predict(lazy=True, features=True)
 
     # register all tasks, workflows, and launchplans needed to execute model endpoints
     args = [project, domain, version]
     _deploy_wf(train_wf, model._remote, *args)
     _deploy_wf(predict_wf, model._remote, *args)
+    _deploy_wf(predict_from_features_wf, model._remote, *args)
 
 
 @app.command()
 def train(
     app: str,
-    hyperparameters: str = typer.Option(None, "--hyperparameters", "-h", help="hyperparameters"),
+    inputs: str = typer.Option(None, "--inputs", "-i", help="inputs to pass into training workflow"),
     project: str = typer.Option(None, "--project", "-p", help="project name"),
     domain: str = typer.Option(None, "--domain", "-d", help="domain name"),
     name: typing.Optional[str] = typer.Option(None, "--name", "-n", help="model name"),
@@ -81,17 +83,16 @@ def train(
             typer.echo("name must be provided in the flytekit_learn.Model constructor or the --name option", err=True)
         model.name = name
 
-    hyperparameters = json.loads(hyperparameters)
-
+    inputs = json.loads(inputs)
     train_wf = model._remote.fetch_workflow(project, domain, model.train_workflow_name, version)
     typer.echo(f"[fklearn] executing model workflow")
     typer.echo(f"[fklearn] project: {train_wf.id.project}")
     typer.echo(f"[fklearn] domain: {train_wf.id.domain}")
     typer.echo(f"[fklearn] name: {train_wf.id.name}")
     typer.echo(f"[fklearn] version: {train_wf.id.version}")
-    typer.echo(f"[fklearn] hyperparameters: {hyperparameters}")
+    typer.echo(f"[fklearn] inputs: {inputs}")
 
-    execution = model._remote.execute(train_wf, inputs={"hyperparameters": hyperparameters}, wait=True)
+    execution = model._remote.execute(train_wf, inputs=inputs, wait=True)
     typer.echo(f"[fklearn] training completed with outputs:")
     for k, v in execution.outputs.items():
         typer.echo(f"[fklearn] {k}: {v}")
@@ -100,6 +101,7 @@ def train(
 @app.command()
 def predict(
     app: str,
+    inputs: str = typer.Option(None, "--inputs", "-i", help="inputs"),
     features: Path = typer.Option(None, "--features", "-f", help="hyperparameters"),
     project: str = typer.Option(None, "--project", "-p", help="project name"),
     domain: str = typer.Option(None, "--domain", "-d", help="domain name"),
@@ -114,13 +116,7 @@ def predict(
             typer.echo("name must be provided in the flytekit_learn.Model constructor or the --name option", err=True)
         model.name = name
 
-    with features.open() as f:
-        features = json.load(f)
-
     train_wf = model._remote.fetch_workflow(project, domain, model.train_workflow_name, version)
-    predict_wf = model._remote.fetch_workflow(project, domain, model.predict_workflow_name, version)
-    features = model._dataset(features=features)()
-
     typer.echo(f"[fklearn] getting latest model")
     [latest_training_execution, *_], _ = model._remote.client.list_executions_paginated(
         train_wf.id.project,
@@ -134,11 +130,20 @@ def predict(
     )
     latest_training_execution = FlyteWorkflowExecution.promote_from_model(latest_training_execution)
     model._remote.sync(latest_training_execution)
-    trained_model = latest_training_execution.outputs["model"]
+    trained_model = latest_training_execution.outputs["trained_model"]
 
-    predictions = model._remote.execute(
-        predict_wf, inputs={"model": trained_model, "features": features}, wait=True
-    )
+    workflow_inputs = {"model": trained_model}
+    if inputs:
+        workflow_inputs.update(json.loads(inputs))
+        predict_wf = model._remote.fetch_workflow(project, domain, model.predict_workflow_name, version)
+    elif features:
+        with features.open() as f:
+            features = json.load(f)
+        features = model._dataset(features=features)()
+        workflow_inputs["features"] = features
+        predict_wf = model._remote.fetch_workflow(project, domain, model.predict_from_features_workflow_name, version)
+
+    predictions = model._remote.execute(predict_wf, inputs=workflow_inputs, wait=True)
     typer.echo(f"[fklearn predictions: {predictions.outputs['o0']}")
 
 

@@ -1,5 +1,4 @@
-git+https://github.com/flyteorg/flytekit.git@pickle-remote
-# flytekit>=0.24.0
+git+https://github.com/flyteorg/flytekit.git@task-decorator-task-resolver
 sklearn
 numpy
 pandas
