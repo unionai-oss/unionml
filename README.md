@@ -57,7 +57,7 @@ fklearn train example.workflows.app:model -i '{"hyperparameters": {"C": 1.0, "ma
 Generate predictions from reader:
 
 ```bash
-fklearn predict example.workflows.app:model -i '{"sample_frac": 1.0, "random_state": 123}'
+fklearn predict example.workflows.app:model -i '{"sample_frac": 0.01, "random_state": 123}'
 ```
 
 Generate predictions from with feature data:
