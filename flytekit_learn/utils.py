@@ -17,7 +17,9 @@ def inner_task(
     """A flytekit task defined within a Dataset or Model class.
     
     This wrapper does the following:
-    - makes sure the wrapper function has the same signature as the origin function.
+    - makes sure the wrapper function:
+      - has the same signature as the original function
+      - assumes the signature specified by the ``input_parameters`` and ``return_annotation`` arguments.
     - renames the wrapped function to ``task_name``.
     - assigns an ``fklearn_obj`` to the function object.
     - converts the wrapper function into a flytekit task, using the flytekit-learn task resolver.
