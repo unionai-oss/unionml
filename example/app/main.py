@@ -1,6 +1,8 @@
 import os
+import math
 from typing import List
 
+import numpy as np
 import pandas as pd
 from fastapi import FastAPI
 from sklearn.linear_model import LogisticRegression
@@ -34,6 +36,21 @@ model.serve(app)
 @dataset.reader
 def reader(sample_frac: float = 1.0, random_state: int = 123) -> pd.DataFrame:
     return load_breast_cancer(as_frame=True).frame.sample(frac=sample_frac, random_state=random_state)
+
+
+# NOTE: it probably makes more sense to create a special Labeller class embedded within a Dataset
+# object, which exposes various decorator endpoints to achieve different things, such as:
+# - yielding a batch of data (this could already be done by Dataset.iterator)
+# - creating a labelling session
+# - submitting labels
+@app.post("/label/{session_id}")
+@dataset.labeller
+def labeller(session_id: int, batch_size: int, state: dict = None, **reader_kwargs):
+    data = reader(**reader_kwargs)
+    n_batches = math.ceil(data.shape[0] / batch_size)
+    for batch in np.array_split(data, n_batches):
+        labelled_batch = yield batch.to_dict(orient="records")
+        print(f"labelled batch: {labelled_batch}")
 
 
 @app.post("/train")

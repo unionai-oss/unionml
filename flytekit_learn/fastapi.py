@@ -18,6 +18,10 @@ class Endpoints(Enum):
     TRAINER = 1
     PREDICTOR = 2
     EVALUATOR = 3
+    LABELLER = 4
+
+
+APP_LABELLER_CACHE = {}
 
 
 def app_wrapper(model, app):
@@ -52,7 +56,7 @@ def _app_method_wrapper(app_method, model):
 def _app_decorator_wrapper(decorator, model, app_method):
 
     @wraps(decorator)
-    def wrapper(task):
+    def wrapper(fn):
 
         if app_method.__name__ not in {"get", "post", "put"}:
             raise ValueError(f"flytekit-learn only supports 'get' and 'post' methods: found {app_method.__name__}")
@@ -141,10 +145,57 @@ def _app_decorator_wrapper(decorator, model, app_method):
                 predictions = model.predict(**workflow_inputs)
             return predictions
 
+        def _labeller_endpoint(
+            session_id: str,
+            batch_size: int = 3,
+            submit: bool = False,
+            reader_inputs: Optional[Dict] = Body(None),
+            submission: Optional[List[Dict[str, Any]]] = Body(None),
+        ):
+            if session_id not in APP_LABELLER_CACHE:
+                generator = model._dataset._labeller(session_id, batch_size, **reader_inputs)
+                awaiting_submission = False
+                APP_LABELLER_CACHE[session_id] = {
+                    "generator": generator,
+                    "awaiting_submission": awaiting_submission,
+                    "session_complete": False,
+                }
+            else:
+                generator = APP_LABELLER_CACHE[session_id]["generator"]
+                awaiting_submission = APP_LABELLER_CACHE[session_id]["awaiting_submission"]
+
+            if submit:
+                if not awaiting_submission:
+                    raise HTTPException(status_code=400, detail="Labels already submitted for current batch")
+                generator.send(submission)
+                APP_LABELLER_CACHE[session_id]["awaiting_submission"] = False
+                return {
+                    "success": True,
+                    "session_complete": False,
+                }
+
+            if awaiting_submission:
+                raise HTTPException(status_code=400, detail="Awaiting labels from current batch")
+
+            try:
+                batch = next(generator)
+                session_complete = False
+                APP_LABELLER_CACHE[session_id]["awaiting_submission"] = True
+            except StopIteration:
+                batch = None
+                session_complete = True
+                APP_LABELLER_CACHE[session_id]["session_complete"] = True
+
+            return {
+                "batch": batch,
+                "session_complete": session_complete,
+            }
+
         endpoint_fn = {
             Endpoints.PREDICTOR: _predict_endpoint,
             Endpoints.TRAINER: _train_endpoint,
-        }[task.__app_method__]
+            Endpoints.LABELLER: _labeller_endpoint,
+        }[fn.__app_method__]
 
         if endpoint_fn is _train_endpoint and model._hyperparameters:
             HyperparameterModel = create_model(
@@ -159,6 +210,6 @@ def _app_decorator_wrapper(decorator, model, app_method):
             ])
 
         decorator(endpoint_fn)
-        return task
+        return fn
 
     return wrapper

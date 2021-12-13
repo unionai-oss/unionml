@@ -8,6 +8,7 @@ import pandas as pd
 from flytekit.core.tracker import TrackedInstance
 from sklearn.model_selection import train_test_split
 
+from flytekit_learn.fastapi import Endpoints
 from flytekit_learn.utils import inner_task
 
 
@@ -22,7 +23,6 @@ class Dataset(TrackedInstance):
         test_size: float = 0.2,
         shuffle: bool = True,
         random_state: int = 12345,
-        **dataset_task_kwargs,
     ):
         super().__init__()
         self.name = name
@@ -31,8 +31,9 @@ class Dataset(TrackedInstance):
         self._test_size = test_size
         self._shuffle = shuffle
         self._random_state = random_state
-        self._dataset_task_kwargs = dataset_task_kwargs
 
+        self._reader = None
+        self._labeller = None
         self._dataset_task = None
 
     @classmethod
@@ -43,8 +44,14 @@ class Dataset(TrackedInstance):
         setattr(cls, name, fn)
         return getattr(cls, name)
 
-    def reader(self, fn, **task_kwargs):
+    def reader(self, fn, **reader_task_kwargs):
         self._reader = fn
+        self._reader_task_kwargs = reader_task_kwargs
+        return fn
+
+    def labeller(self, fn):
+        self._labeller = fn
+        self._labeller.__app_method__ = Endpoints.LABELLER
         return fn
 
     @property
@@ -72,7 +79,7 @@ class Dataset(TrackedInstance):
             fklearn_obj=self,
             input_parameters=signature(self._reader).parameters,
             return_annotation=NamedTuple("Dataset", train_data=parser_output, test_data=parser_output),
-            **self._dataset_task_kwargs,
+            **self._reader_task_kwargs,
         )
         def dataset_task(*args, **kwargs):
             data = self._reader(*args, **kwargs)
