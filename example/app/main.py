@@ -1,3 +1,4 @@
+import os
 from typing import List
 
 import pandas as pd
@@ -23,7 +24,7 @@ model = Model(
 )
 
 # attach Flyte remote backend
-model.remote("sandbox.config", project="flytesnacks", domain="development")
+model.remote(os.environ.get("FLYTE_CONFIG", "config/sandbox.config"), project="flytesnacks", domain="development")
 
 # serve the model with FastAPI
 app = FastAPI()
