@@ -139,7 +139,7 @@ def predict(
     elif features:
         with features.open() as f:
             features = json.load(f)
-        features = model._dataset(features=features)()
+        features = model._dataset.get_features(features)
         workflow_inputs["features"] = features
         predict_wf = model._remote.fetch_workflow(project, domain, model.predict_from_features_workflow_name, version)
 

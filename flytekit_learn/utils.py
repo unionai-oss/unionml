@@ -19,7 +19,8 @@ def inner_task(
     This wrapper does the following:
     - makes sure the wrapper function:
       - has the same signature as the original function
-      - assumes the signature specified by the ``input_parameters`` and ``return_annotation`` arguments.
+      - OR it takes on the signature specified by the ``input_parameters`` and ``return_annotation`` arguments
+        if they are provided
     - renames the wrapped function to ``task_name``.
     - assigns an ``fklearn_obj`` to the function object.
     - converts the wrapper function into a flytekit task, using the flytekit-learn task resolver.

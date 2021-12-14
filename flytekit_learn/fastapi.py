@@ -124,7 +124,7 @@ def _app_decorator_wrapper(decorator, model, app_method):
                     version=version,
                 )
             elif features:
-                features = model._dataset(features=features)()
+                features = model._dataset.get_features(features)
                 workflow_inputs["features"] = features
                 predict_wf = model._remote.fetch_workflow(
                     name=(
