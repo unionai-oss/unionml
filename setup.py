@@ -12,5 +12,11 @@ setup(
         "sklearn",
         "numpy",
         "pandas",
-    ]
+        "fastapi",
+        "pydantic",
+        "typer",
+    ],
+    entry_points = {
+        "console_scripts": ["fklearn = flytekit_learn.cli:app"]
+    },
 )

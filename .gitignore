@@ -1,3 +1,11 @@
+# Repo-specific ignore
+flyte-package.tgz
+flyte-package
+.kube
+.bash_history
+.DS_Store
+.vscode
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

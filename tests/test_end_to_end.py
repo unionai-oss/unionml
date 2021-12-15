@@ -26,7 +26,7 @@ def reader() -> pd.DataFrame:
 
 
 @model.trainer
-def trainer(model: LogisticRegression, data: Tuple[pd.DataFrame, pd.DataFrame], **kwargs) -> LogisticRegression:
+def trainer(model: LogisticRegression, data: List[pd.DataFrame]) -> LogisticRegression:
     features, target = data
     return model.fit(features, target.squeeze())
 
@@ -37,7 +37,7 @@ def predictor(model: LogisticRegression, features: pd.DataFrame) -> List[float]:
 
 
 @model.evaluator
-def evaluator(model: LogisticRegression, data: Tuple[pd.DataFrame, pd.DataFrame]) -> float:
+def evaluator(model: LogisticRegression, data: List[pd.DataFrame]) -> float:
     features, target = data
     predictions = predictor(model, features)
     return accuracy_score(target, predictions)

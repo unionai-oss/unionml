@@ -1,4 +1,7 @@
-flytekit>=0.24.0
+flytekit==0.25.0
 sklearn
 numpy
 pandas
+fastapi
+pydantic
+typer
