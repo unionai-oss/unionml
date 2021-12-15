@@ -30,3 +30,4 @@ COPY . /root
 # when registering tasks, workflows, and launch plans
 ARG tag
 ENV FLYTE_INTERNAL_IMAGE $tag
+ENV FLYTE_CONFIG=config/remote.config
