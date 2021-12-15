@@ -2,15 +2,13 @@
 
 The easiest way to build and deploy models
 
-# Local
-
-Run training and prediction locally
+Run the app locally:
 
 ```bash
 python example/workflows/app.py
 ```
 
-Run FastAPI app:
+Start the FastAPI server:
 
 ```bash
 uvicorn example.app.main:app --reload
@@ -19,33 +17,23 @@ uvicorn example.app.main:app --reload
 In a different shell session, make calls to the API that run locally
 
 ```bash
-python example/requests/local.py
+python example/requests/local.py  # using a python script via the requests library
+source example/requests/local.sh  # or a shell script via curl
 ```
 
-Or using `curl`:
+# Sandbox Cluster
 
-```bash
-source example/requests/local.sh
-```
-
-# Sandbox
-
-Start the sandbox cluster
+Setup:
 
 ```bash
 flytectl sandbox start --source .
+flytectl sandbox exec -- docker build . --tag "flytekit-learn:v0"  # build app container on sandbox
 ```
 
-Build the app image in the sandbox container
+Deploy the model:
 
 ```bash
-flytectl sandbox exec -- docker build . --tag "flytekit-learn:v0"
-```
-
-Deploy the model to Flyte backend
-
-```bash
-fklearn deploy example.app.main:model -i "flytekit-learn:v0" -v 0
+fklearn deploy example.app.main:model -i "flytekit-learn:v0" -v 0  # deploy flytekit-learn model
 ```
 
 Train model on a Flyte backend
@@ -54,49 +42,37 @@ Train model on a Flyte backend
 fklearn train example.app.main:model -i '{"hyperparameters": {"C": 1.0, "max_iter": 1000}, "sample_frac": 1.0, "random_state": 123}'
 ```
 
-Generate predictions from reader:
+Generate predictions:
 
 ```bash
-fklearn predict example.app.main:model -i '{"sample_frac": 0.01, "random_state": 123}'
-```
-
-Generate predictions from with feature data:
-
-```bash
-fklearn predict example.app.main:model -f example/data/sample_breast_cancer_data.json
+fklearn predict example.app.main:model -i '{"sample_frac": 0.01, "random_state": 123}'  # from the reader
+fklearn predict example.app.main:model -f example/data/sample_breast_cancer_data.json  # or with json data
 ```
 
 Call the Flyte backend via the FastAPI app:
 
 ```bash
-python example/requests/remote.py
+python example/requests/remote.py  # using a python script via the requests library
+source example/requests/remote.sh  # or a shell script via curl
 ```
 
-Or using `curl`:
+# Remote Cluster
+
+Setup:
 
 ```bash
-source example/requests/remote.sh
+export FLYTE_CONFIG=config/remote.config  # point to the remote cluster
+export VERSION=v1
+./docker_build_and_tag.sh  # build and push your docker image
 ```
 
-# Remote
-
-## Build and Push Docker Image
+Start the FastAPI server:
 
 ```bash
-export FLYTE_CONFIG=config/remote.config
-./docker_build_and_tag.sh
-```
-
-## Start FastAPI Server Locally
-
-```bash
-export FLYTE_CONFIG=config/remote.config
 uvicorn app.workflows.app:app --reload
 ```
 
-**Note:** Make sure to replace the `client_secret` entry in `config/remote.config`
-
-Deploy the model to remote Flyte backend
+Deploy the model:
 
 ```bash
 fklearn deploy example.app.main:model -i "ghcr.io/unionai-oss/flytekit-learn:$VERSION" -v $VERSION
@@ -121,13 +97,6 @@ fklearn train example.app.main:model -i '{"hyperparameters": {"C": 1.0, "max_ite
 Generate predictions from reader:
 
 ```bash
-fklearn predict example.app.main:model -i '{"sample_frac": 0.01, "random_state": 123}'
+fklearn predict example.app.main:model -i '{"sample_frac": 0.01, "random_state": 123}'  # from the reader
+fklearn predict example.app.main:model -f example/data/sample_breast_cancer_data.json  # or with json data
 ```
-
-Generate predictions from with feature data:
-
-```bash
-fklearn predict example.app.main:model -f example/data/sample_breast_cancer_data.json
-```
-
-Call the Flyte backend via the FastAPI app:
