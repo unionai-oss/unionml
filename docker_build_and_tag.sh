@@ -3,10 +3,10 @@
 set -e
 
 # SET the REGISTRY here, where the docker container should be pushed
-REGISTRY=""
+REGISTRY="ghcr.io/unionai-oss"
 
 # SET the appname here
-APP_NAME="flyte"
+APP_NAME="flytekit-learn"
 
 while getopts a:r:v:h flag
 do
@@ -33,14 +33,18 @@ if [ -z "${VERSION}" ]; then
 fi
 
 TAG=${APP_NAME}:${VERSION}
+LATEST_TAG=${APP_NAME}:latest
 if [ -z "${REGISTRY}" ]; then
   echo "No registry set, creating tag ${TAG}"
 else
  TAG="${REGISTRY}/${TAG}"
- echo "Registry set: creating tag ${TAG}"
+ LATEST_TAG="${REGISTRY}/${LATEST_TAG}"
+ echo "Registry set: creating tags ${TAG}, ${LATEST_TAG}"
 fi
 
 # Should be run in the folder that has Dockerfile
-docker build --tag ${TAG} .
+docker build --tag ${TAG} --tag ${LATEST_TAG} .
+docker push ${TAG}
+docker push ${LATEST_TAG}
 
-echo "Docker image built with tag ${TAG}. You can use this image to run pyflyte package."
+echo "Docker image built with tag ${TAG} and ${LATEST_TAG}. You can use this image to run pyflyte package."

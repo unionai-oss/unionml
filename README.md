@@ -80,16 +80,10 @@ source example/requests/remote.sh
 
 # Remote
 
-## Build Docker Image
+## Build and Push Docker Image
 
 ```bash
-docker build -t ghcr.io/unionai-oss/flytekit-learn:latest .
-```
-
-## Push
-
-```bash
-docker push ghcr.io/unionai-oss/flytekit-learn:latest
+./docker_build_and_tag.sh
 ```
 
 ## Start FastAPI Server Locally
@@ -104,7 +98,7 @@ uvicorn app.workflows.app:app --reload
 Deploy the model to remote Flyte backend
 
 ```bash
-fklearn deploy example.app.main:model -i "ghcr.io/unionai-oss/flytekit-learn:latest" -v 0
+fklearn deploy example.app.main:model -i "ghcr.io/unionai-oss/flytekit-learn:$VERSION" -v $VERSION
 ```
 
 Train model on a Flyte backend
