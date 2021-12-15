@@ -83,6 +83,7 @@ source example/requests/remote.sh
 ## Build and Push Docker Image
 
 ```bash
+export FLYTE_CONFIG=config/remote.config
 ./docker_build_and_tag.sh
 ```
 
@@ -99,6 +100,16 @@ Deploy the model to remote Flyte backend
 
 ```bash
 fklearn deploy example.app.main:model -i "ghcr.io/unionai-oss/flytekit-learn:$VERSION" -v $VERSION
+```
+
+To run CLI commands or FastAPI endpoint calls against the remote Flyte backend, you'll need
+to have the correct credentials in your `~/.aws/credentials` file, or you can export the following aws
+credentials to you environment:
+
+```
+export AWS_ACCESS_KEY_ID="<REPLACE_WITH_KEY_ID>"
+export AWS_SECRET_ACCESS_KEY="<REPLACE_WITH_SECRET_KEY>"
+export AWS_SESSION_TOKEN="<REPLACE_WITH_SESSION_TOKEN>"
 ```
 
 Train model on a Flyte backend
