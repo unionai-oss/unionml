@@ -3,7 +3,7 @@ from typing import List
 
 from flytekit.core.base_task import TaskResolverMixin
 from flytekit.core.context_manager import SerializationSettings
-from flytekit.core.python_auto_container import DefaultTaskResolver, PythonAutoContainerTask
+from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.tracker import TrackedInstance
 
 

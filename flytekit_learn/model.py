@@ -222,7 +222,6 @@ class Model(TrackedInstance):
         return trained_model, metrics
 
     def predict(self, model: FlytePickle = None, features: Any = None, lazy=False, **reader_kwargs):
-        # TODO: make a workflow constructor that predicts with feature literals
         if features is None:
             predict_wf = self.predict_workflow()
         else:
