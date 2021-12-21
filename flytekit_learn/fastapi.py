@@ -120,7 +120,7 @@ def _app_decorator_wrapper(decorator, model, app_method):
 
             if inputs:
                 workflow_inputs.update(inputs)
-            elif features:
+            elif features is not None:
                 features = model._dataset.get_features(features)
                 workflow_inputs["features"] = features
 
@@ -130,7 +130,7 @@ def _app_decorator_wrapper(decorator, model, app_method):
                         name=f"{model_name}.predict_workflow_name" if model_name else model.predict_workflow_name,
                         version=version,
                     )
-                elif features:
+                elif features is not None:
                     predict_wf = model._remote.fetch_workflow(
                         name=(
                             f"{model_name}.predict_from_features_workflow_name"
