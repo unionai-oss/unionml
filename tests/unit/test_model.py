@@ -31,7 +31,7 @@ def model_def(mock_data) -> Model:
     )
 
     @dataset.reader
-    def reader(sample_frac: float, random_state: int):
+    def reader(sample_frac: float, random_state: int) -> pd.DataFrame:
         return mock_data.sample(frac=sample_frac, random_state=random_state)
 
     return Model(
@@ -44,8 +44,7 @@ def model_def(mock_data) -> Model:
 
 @pytest.fixture(scope="function")
 def trainer():
-    def _trainer(model: LogisticRegression, data: typing.List[pd.DataFrame]) -> LogisticRegression:
-        features, target = data
+    def _trainer(model: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> LogisticRegression:
         return model.fit(features, target.squeeze())
     return _trainer
 
@@ -59,8 +58,7 @@ def predictor():
 
 @pytest.fixture(scope="function")
 def evaluator():
-    def _evaluator(model: LogisticRegression, data: typing.List[pd.DataFrame]) -> float:
-        features, target = data
+    def _evaluator(model: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> float:
         predictions = model.predict(features)
         return accuracy_score(target, predictions)
     return _evaluator
@@ -82,20 +80,18 @@ def test_model_decorators(model, trainer, predictor, evaluator):
 
 def test_model_train_task(model, mock_data):
     train_task = model.train_task()
-    parser_ret_type = signature(model._dataset._parser).return_annotation
+    reader_ret_type = signature(model._dataset._reader).return_annotation
     eval_ret_type = signature(model._evaluator).return_annotation
 
     assert isinstance(train_task, PythonFunctionTask)
     assert train_task.python_interface.inputs["hyperparameters"] == dict
-    assert train_task.python_interface.inputs["train_data"] == parser_ret_type
-    assert train_task.python_interface.inputs["test_data"] == parser_ret_type
+    assert train_task.python_interface.inputs["data"] == reader_ret_type
     assert train_task.python_interface.outputs["trained_model"].__module__ == "flytekit.types.pickle.pickle"
     assert train_task.python_interface.outputs["metrics"] == typing.Dict[str, eval_ret_type]
 
     outputs = train_task(
         hyperparameters={"C": 1.0, "max_iter": 1000},
-        train_data=[mock_data[["x"]], mock_data[["y"]]],
-        test_data=[mock_data[["x"]], mock_data[["y"]]],
+        data=mock_data,
     )
 
     assert outputs.__class__.__name__ == "TrainingResults"

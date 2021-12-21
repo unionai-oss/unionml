@@ -67,20 +67,16 @@ class Dataset(TrackedInstance):
         if self._dataset_task:
             return self._dataset_task
 
-        parser_output = signature(self._parser).return_annotation
+        reader_sig = signature(self._reader)
 
         @inner_task(
             fklearn_obj=self,
-            input_parameters=signature(self._reader).parameters,
-            return_annotation=NamedTuple("Dataset", train_data=parser_output, test_data=parser_output),
+            input_parameters=reader_sig.parameters,
+            return_annotation=NamedTuple("ReaderOutput", data=reader_sig.return_annotation),
             **self._reader_task_kwargs,
         )
         def dataset_task(*args, **kwargs):
-            data = self._reader(*args, **kwargs)
-            train_split, test_split = self._splitter(data=data, **self.splitter_kwargs)
-            train_data = self._parser(train_split, **self.parser_kwargs)
-            test_data = self._parser(test_split, **self.parser_kwargs)
-            return train_data, test_data
+            return self._reader(*args, **kwargs)
 
         self._dataset_task = dataset_task
         return dataset_task

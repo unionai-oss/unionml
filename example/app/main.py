@@ -38,8 +38,7 @@ def reader(sample_frac: float = 1.0, random_state: int = 123) -> pd.DataFrame:
 
 @app.post("/train")
 @model.trainer
-def trainer(model: LogisticRegression, data: List[pd.DataFrame]) -> LogisticRegression:
-    features, target = data
+def trainer(model: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> LogisticRegression:
     return model.fit(features, target.squeeze())
 
 
@@ -51,10 +50,9 @@ def predictor(model: LogisticRegression, features: pd.DataFrame) -> List[float]:
 
 
 @model.evaluator
-def evaluator(model: LogisticRegression, data: List[pd.DataFrame]) -> float:
-    features, target = data
+def evaluator(model: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> float:
     predictions = model.predict(features)
-    return accuracy_score(target, predictions)
+    return accuracy_score(target.squeeze(), predictions)
 
 
 if __name__ == "__main__":

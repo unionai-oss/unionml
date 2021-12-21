@@ -37,11 +37,10 @@ def test_dataset_reader(dataset, reader):
 def test_dataset_task(dataset, reader):
     dataset.reader(reader)
     dataset_task = dataset.dataset_task()
-    parser_ret_type = signature(dataset._parser).return_annotation
+    reader_ret_type = signature(dataset._reader).return_annotation
     assert isinstance(dataset_task, PythonFunctionTask)
     assert dataset_task.python_interface.inputs == {"value": float, "n_samples": int}
-    assert dataset_task.python_interface.outputs["train_data"] == parser_ret_type
-    assert dataset_task.python_interface.outputs["test_data"] == parser_ret_type
+    assert dataset_task.python_interface.outputs["data"] == reader_ret_type
 
 
 def test_dataset_get_features():

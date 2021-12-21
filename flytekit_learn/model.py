@@ -3,7 +3,7 @@
 import importlib
 from collections import OrderedDict
 from functools import partial, wraps
-from inspect import signature
+from inspect import signature, Parameter
 from typing import Any, Callable, Dict, Optional, NamedTuple, Type, Union
 
 from flytekit import Workflow
@@ -133,7 +133,7 @@ class Model(TrackedInstance):
             return self._train_task
 
         *_, hyperparameters_param = signature(self._init).parameters.values()
-        *_, data_param = signature(self._trainer).parameters.values()
+        reader_ret_type = signature(self._dataset._reader).return_annotation
 
         init_kwargs = {}
         if self._init_cls:
@@ -146,7 +146,10 @@ class Model(TrackedInstance):
             fklearn_obj=self,
             input_parameters=OrderedDict([
                 (p.name, p) for p in
-                [hyperparameters_param, data_param.replace(name="train_data"), data_param.replace(name="test_data")]
+                [
+                    hyperparameters_param,
+                    Parameter("data", kind=Parameter.KEYWORD_ONLY, annotation=reader_ret_type)
+                ]
             ]),
             return_annotation=NamedTuple(
                 "TrainingResults",
@@ -155,13 +158,14 @@ class Model(TrackedInstance):
             ),
             **({} if self._train_task_kwargs is None else self._train_task_kwargs),
         )
-        def train_task(hyperparameters, train_data, test_data):
-            trained_model = self._trainer(
-                model=self._init(hyperparameters=hyperparameters, **init_kwargs), data=train_data
-            )
+        def train_task(hyperparameters, data):
+            train_split, test_split = self._dataset._splitter(data=data, **self._dataset.splitter_kwargs)
+            train_data = self._dataset._parser(train_split, **self._dataset.parser_kwargs)
+            test_data = self._dataset._parser(test_split, **self._dataset.parser_kwargs)
+            trained_model = self._trainer(self._init(hyperparameters=hyperparameters, **init_kwargs), *train_data)
             metrics = {
-                "train": self._evaluator(model=trained_model, data=train_data),
-                "test": self._evaluator(model=trained_model, data=test_data),
+                "train": self._evaluator(trained_model, *train_data),
+                "test": self._evaluator(trained_model, *test_data),
             }
             return trained_model, metrics
 
