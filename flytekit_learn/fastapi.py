@@ -117,25 +117,28 @@ def _app_decorator_wrapper(decorator, model, app_method):
                 latest_model = model._latest_model
 
             workflow_inputs = {"model": latest_model}
+
             if inputs:
                 workflow_inputs.update(inputs)
-                predict_wf = model._remote.fetch_workflow(
-                    name=f"{model_name}.predict_workflow_name" if model_name else model.predict_workflow_name,
-                    version=version,
-                )
             elif features:
                 features = model._dataset.get_features(features)
                 workflow_inputs["features"] = features
-                predict_wf = model._remote.fetch_workflow(
-                    name=(
-                        f"{model_name}.predict_from_features_workflow_name"
-                        if model_name
-                        else model.predict_from_features_workflow_name
-                    ),
-                    version=version,
-                )
 
             if not local:
+                if inputs:
+                    predict_wf = model._remote.fetch_workflow(
+                        name=f"{model_name}.predict_workflow_name" if model_name else model.predict_workflow_name,
+                        version=version,
+                    )
+                elif features:
+                    predict_wf = model._remote.fetch_workflow(
+                        name=(
+                            f"{model_name}.predict_from_features_workflow_name"
+                            if model_name
+                            else model.predict_from_features_workflow_name
+                        ),
+                        version=version,
+                    )
                 predictions = model._remote.execute(predict_wf, inputs=workflow_inputs, wait=True).outputs["o0"]
             else:
                 predictions = model.predict(**workflow_inputs)

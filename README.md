@@ -5,7 +5,7 @@ The easiest way to build and deploy models
 Run the app locally:
 
 ```bash
-python example/workflows/app.py
+python example/app/main.py
 ```
 
 Start the FastAPI server:
