@@ -1,8 +1,8 @@
 """Dataset class for defining data source, splitting, parsing, and iteration."""
 
 from functools import partial
-from inspect import signature
-from typing import List, NamedTuple, Optional, Tuple
+from inspect import signature, Parameter
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type
 
 import pandas as pd
 from flytekit.core.tracker import TrackedInstance
@@ -32,6 +32,8 @@ class Dataset(TrackedInstance):
         self._random_state = random_state
 
         self._reader = None
+        self._reader_input_types = None
+        self._reader_return_type = None
         self._labeller = None
         self._dataset_task = None
 
@@ -69,6 +71,7 @@ class Dataset(TrackedInstance):
 
         reader_sig = signature(self._reader)
 
+        # TODO: make sure return type is not None
         @inner_task(
             fklearn_obj=self,
             input_parameters=reader_sig.parameters,
@@ -100,6 +103,34 @@ class Dataset(TrackedInstance):
     def get_features(self, data):
         parsed_data = self._parser(data, self._features, self._targets)
         return self._unpack_features(parsed_data)
+
+    @property
+    def reader_input_types(self) -> List[Parameter]:
+        if self._reader_input_types is None:
+            return list(signature(self._reader).parameters)
+        return self._reader_input_types
+
+    @property
+    def reader_return_type(self) -> Dict[str, Type]:
+        if self._reader_return_type is None:
+            return {"data": signature(self._reader).return_annotation}
+        return self._reader_return_type
+
+    @classmethod
+    def from_sqlite_task(
+        cls,
+        task,
+        *args,
+        **kwargs,
+    ):
+        dataset = cls(*args, **kwargs)
+        dataset._dataset_task = task
+        dataset._reader_return_type = task.python_interface.outputs
+        dataset._reader_input_types = [
+            Parameter(k, Parameter.KEYWORD_ONLY, annotation=v)
+            for k, v in task.python_interface.inputs.items()
+        ]
+        return dataset
 
 
 @Dataset._set_default(name="_splitter")

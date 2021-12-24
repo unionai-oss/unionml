@@ -129,12 +129,11 @@ def test_model_predict_task(model, mock_data):
     assert predict_task.python_interface.inputs["model"].__module__ == "flytekit.types.pickle.pickle"
     assert predict_task.python_interface.outputs["o0"] == signature(model._predictor).return_annotation
 
-    predictions = predict_task(
-        model=LogisticRegression().fit(mock_data[["x"]], mock_data["y"]),
-        sample_frac=1.0,
-        random_state=123,
-    )
+    trained_model = LogisticRegression().fit(mock_data[["x"]], mock_data["y"])
+    predictions = predict_task(model=trained_model,data=mock_data[["x"]])
+    alt_predictions = model.predict(trained_model, features=mock_data[["x"]])
     assert all(isinstance(x, float) for x in predictions)
+    assert predictions == alt_predictions
 
 
 def test_model_predict_from_features_task(model, mock_data):

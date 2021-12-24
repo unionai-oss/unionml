@@ -105,13 +105,16 @@ class Model(TrackedInstance):
         return wf
 
     def predict_workflow(self):
+        dataset_task = self._dataset.dataset_task()
         predict_task = self.predict_task()
 
         wf = Workflow(name=self.predict_workflow_name)
-        for arg, type in predict_task.python_interface.inputs.items():
+        wf.add_workflow_input("model", predict_task.python_interface.inputs["model"])
+        for arg, type in dataset_task.python_interface.inputs.items():
             wf.add_workflow_input(arg, type)
 
-        predict_node = wf.add_entity(predict_task, **{k: wf.inputs[k] for k in wf.inputs})
+        dataset_node = wf.add_entity(dataset_task, **{k: wf.inputs[k] for k in dataset_task.python_interface.inputs})
+        predict_node = wf.add_entity(predict_task, **{"model": wf.inputs["model"], **dataset_node.outputs})
         for output_name, promise in predict_node.outputs.items():
             wf.add_workflow_output(output_name, promise)
         return wf
@@ -133,7 +136,6 @@ class Model(TrackedInstance):
             return self._train_task
 
         *_, hyperparameters_param = signature(self._init).parameters.values()
-        reader_ret_type = signature(self._dataset._reader).return_annotation
 
         init_kwargs = {}
         if self._init_cls:
@@ -142,13 +144,17 @@ class Model(TrackedInstance):
                 "cls_name": self._init_cls.__name__,
             }
 
+        # assume that reader_return_type is a dict with only a single entry
+        [(data_arg_name, data_arg_type)] = self._dataset.reader_return_type.items()
+
+        # TODO: make sure return type is not None
         @inner_task(
             fklearn_obj=self,
             input_parameters=OrderedDict([
                 (p.name, p) for p in
                 [
                     hyperparameters_param,
-                    Parameter("data", kind=Parameter.KEYWORD_ONLY, annotation=reader_ret_type)
+                    Parameter(data_arg_name, kind=Parameter.KEYWORD_ONLY, annotation=data_arg_type)
                 ]
             ]),
             return_annotation=NamedTuple(
@@ -158,7 +164,9 @@ class Model(TrackedInstance):
             ),
             **({} if self._train_task_kwargs is None else self._train_task_kwargs),
         )
-        def train_task(hyperparameters, data):
+        def train_task(**kwargs):
+            hyperparameters = kwargs["hyperparameters"]
+            data = kwargs[data_arg_name]
             train_split, test_split = self._dataset._splitter(data=data, **self._dataset.splitter_kwargs)
             train_data = self._dataset._parser(train_split, **self._dataset.parser_kwargs)
             test_data = self._dataset._parser(test_split, **self._dataset.parser_kwargs)
@@ -179,17 +187,18 @@ class Model(TrackedInstance):
         predictor_sig = signature(self._predictor)
         model_param, *_ = predictor_sig.parameters.values()
 
+        # assume that reader_return_type is a dict with only a single entry
+        [(data_arg_name, data_arg_type)] = self._dataset.reader_return_type.items()
+        data_param = Parameter(data_arg_name, kind=Parameter.KEYWORD_ONLY, annotation=data_arg_type)
+
+        # TODO: make sure return type is not None
         @inner_task(
             fklearn_obj=self,
-            input_parameters=OrderedDict([
-                (p.name, p) for p in
-                [model_param, *signature(self._dataset._reader).parameters.values()]
-            ]),
+            input_parameters=OrderedDict([(p.name, p) for p in [model_param, data_param]]),
             return_annotation=predictor_sig.return_annotation,
         )
         def predict_task(model, **kwargs):
-            data = self._dataset._reader(**kwargs)
-            parsed_data = self._dataset._parser(data, **self._dataset.parser_kwargs)
+            parsed_data = self._dataset._parser(kwargs[data_arg_name], **self._dataset.parser_kwargs)
             return self._predictor(model, self._dataset._unpack_features(parsed_data))
 
         self._predict_task = predict_task
