@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import Any, Dict, List
 
 import pandas as pd
 from fastapi import FastAPI
@@ -28,7 +28,7 @@ model.remote(os.environ.get("FLYTE_CONFIG", "config/sandbox.config"), project="f
 
 # serve the model with FastAPI
 app = FastAPI()
-model.serve(app)
+model.serve(app, route_prefix="/prefix")
 
 
 @dataset.reader

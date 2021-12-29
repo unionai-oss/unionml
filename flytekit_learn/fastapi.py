@@ -50,6 +50,24 @@ def _app_method_wrapper(app_method, model):
 
 
 def _app_decorator_wrapper(decorator, model, app_method):
+    """
+    TODO: explore FastAPI dependencies to implement/customize FastAPI endpoints:
+    https://fastapi.tiangolo.com/tutorial/dependencies/classes-as-dependencies/
+
+    The use case for this is to make it easy for users to implement custom API endpoints.
+
+    @app.post("/train")
+    def train(model_train_params: TrainParams(model) = Depends()):
+        model_train_params.train_workflow  # workflow for training the model
+        model_train_params.remote  # access to flyte remote
+        model_train_params.inputs  # inputs needed for executing training, either reader kwargs, or trainer feature/target args
+
+    @app.post("/predict")
+    def predict(model_predict_params: PredictParams(model) = Depends()):
+        model_predict_params.predict_workflow  # workflow for generating predictions
+        model_predict_params.remote  # access to flyte remote
+        model_predict_params.inputs  # inputs needed for executing training, either reader kwargs, or predictor feature args
+    """
 
     @wraps(decorator)
     def wrapper(task):
@@ -58,8 +76,8 @@ def _app_decorator_wrapper(decorator, model, app_method):
             raise ValueError(f"flytekit-learn only supports 'get' and 'post' methods: found {app_method.__name__}")
 
         def _train_endpoint(
-            local: bool = False,
-            model_name: Optional[str] = None,
+            local: bool = False,  # TODO remove this, instead do model.serve(app, debug=True)
+            model_name: Optional[str] = None,  # TODO remove this
             inputs: Dict = Body(...),
         ):
             if issubclass(type(inputs), BaseModel):
@@ -83,10 +101,10 @@ def _app_decorator_wrapper(decorator, model, app_method):
             }
 
         def _predict_endpoint(
-            local: bool = False,
-            model_name: Optional[str] = None,
+            local: bool = False,  # TODO remove this, instead do model.serve(app, debug=True)
+            model_name: Optional[str] = None,  # TODO remove this
             model_version: str = "latest",
-            model_source: str = "remote",
+            model_source: str = "remote",  # TODO remove this, model source should be flyte backend if debug=False
             inputs: Optional[Dict] = Body(None),
             features: Optional[List[Dict[str, Any]]] = Body(None)
         ):
