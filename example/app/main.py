@@ -28,7 +28,7 @@ model.remote(os.environ.get("FLYTE_CONFIG", "config/sandbox.config"), project="f
 
 # serve the model with FastAPI
 app = FastAPI()
-model.serve(app, route_prefix="/prefix")
+model.serve(app)
 
 
 @dataset.reader
@@ -36,13 +36,11 @@ def reader(sample_frac: float = 1.0, random_state: int = 123) -> pd.DataFrame:
     return load_breast_cancer(as_frame=True).frame.sample(frac=sample_frac, random_state=random_state)
 
 
-@app.post("/train")
 @model.trainer
 def trainer(model: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> LogisticRegression:
     return model.fit(features, target.squeeze())
 
 
-@app.get("/predict")
 @model.predictor
 def predictor(model: LogisticRegression, features: pd.DataFrame) -> List[float]:
     """Generate predictions from a model."""

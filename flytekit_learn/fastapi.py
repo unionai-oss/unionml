@@ -5,7 +5,7 @@ from functools import wraps
 from inspect import signature
 from typing import Any, Dict, List, Optional
 
-from fastapi import Body, HTTPException
+from fastapi import Body, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, create_model
 
@@ -14,13 +14,51 @@ from flytekit.models.admin.common import Sort
 from flytekit.remote import FlyteWorkflowExecution
 
 
-class Endpoints(Enum):
-    TRAINER = 1
-    PREDICTOR = 2
-    EVALUATOR = 3
+class TrainParams:
+
+    __slots__ = ("model", "remote", "local", "wait", "inputs")
+
+    def __init__(self, model):
+        self.model = model
+
+    def __call__(
+        self,
+        local: bool = False,
+        wait: bool = False,
+        inputs: Optional[Dict] = Body(None),
+    ) -> "TrainParams":
+        self.remote = self.model._remote
+        self.local = local
+        self.wait = wait
+        self.inputs = inputs
+        return self
 
 
-def app_wrapper(model, app):
+class PredictParams:
+
+    __slots__ = ("model", "remote", "local", "model_version", "model_source", "inputs", "features")
+
+    def __init__(self, model):
+        self.model = model
+
+    def __call__(
+        self,
+        local: bool = False,  # TODO remove this, instead do model.serve(app, debug=True)
+        model_version: str = "latest",
+        model_source: str = "remote",  # TODO remove this, model source should be flyte backend if debug=False
+        inputs: Optional[Dict] = Body(None),
+        features: Optional[List[Dict[str, Any]]] = Body(None),
+    ) -> "PredictParams":
+        self.remote = self.model._remote
+        self.local = local
+        self.model_version = model_version
+        self.model_source = model_source
+        self.inputs = inputs
+        self.features = features
+        return self
+
+
+def app_wrapper(model, app, default_endpoints, train_endpoint, predict_endpoint):
     @app.get("/", response_class=HTMLResponse)
     def root():
         return """
@@ -34,152 +72,74 @@ def app_wrapper(model, app):
                 </body>
             </html>
         """
-    
-    app.get = _app_method_wrapper(app.get, model)
-    app.post = _app_method_wrapper(app.post, model)
-    app.put = _app_method_wrapper(app.put, model)
 
+    if not default_endpoints:
+        return
 
-def _app_method_wrapper(app_method, model):
-
-    @wraps(app_method)
-    def wrapper(*args, **kwargs):
-        return _app_decorator_wrapper(app_method(*args, **kwargs), model, app_method)
-
-    return wrapper
-
-
-def _app_decorator_wrapper(decorator, model, app_method):
-    """
-    TODO: explore FastAPI dependencies to implement/customize FastAPI endpoints:
-    https://fastapi.tiangolo.com/tutorial/dependencies/classes-as-dependencies/
-
-    The use case for this is to make it easy for users to implement custom API endpoints.
-
-    @app.post("/train")
-    def train(model_train_params: TrainParams(model) = Depends()):
-        model_train_params.train_workflow  # workflow for training the model
-        model_train_params.remote  # access to flyte remote
-        model_train_params.inputs  # inputs needed for executing training, either reader kwargs, or trainer feature/target args
-
-    @app.post("/predict")
-    def predict(model_predict_params: PredictParams(model) = Depends()):
-        model_predict_params.predict_workflow  # workflow for generating predictions
-        model_predict_params.remote  # access to flyte remote
-        model_predict_params.inputs  # inputs needed for executing training, either reader kwargs, or predictor feature args
-    """
-
-    @wraps(decorator)
-    def wrapper(task):
-
-        if app_method.__name__ not in {"get", "post", "put"}:
-            raise ValueError(f"flytekit-learn only supports 'get' and 'post' methods: found {app_method.__name__}")
-
-        def _train_endpoint(
-            local: bool = False,  # TODO remove this, instead do model.serve(app, debug=True)
-            model_name: Optional[str] = None,  # TODO remove this
-            inputs: Dict = Body(...),
-        ):
-            if issubclass(type(inputs), BaseModel):
-                inputs = inputs.dict()
-
-            if not local:
-                # TODO: make the model name a property of the Model object
-                train_wf = model._remote.fetch_workflow(
-                    name=f"{model_name}.train" if model_name else model.train_workflow_name
-                )
-                execution = model._remote.execute(train_wf, inputs=inputs, wait=True)
+    @app.post(train_endpoint)
+    def train(params: TrainParams = Depends(TrainParams(model))):
+        inputs = params.inputs.dict() if issubclass(type(params.inputs), BaseModel) else params.inputs
+        if params.local:
+            trained_model, metrics = model.train(**inputs)
+            model._latest_model = trained_model
+            model._metrics = metrics
+            trained_model, flyte_execution_id = str(trained_model), None
+        else:
+            train_wf = params.remote.fetch_workflow(name=params.model.train_workflow_name)
+            execution = params.remote.execute(train_wf, inputs=inputs, wait=params.wait)
+            flyte_execution_id = {
+                "project": execution.id.project,
+                "domain": execution.id.domain,
+                "name": execution.id.name
+            }
+            trained_model, metrics = None, None
+            if params.wait:
                 trained_model = execution.outputs["trained_model"]
                 metrics = execution.outputs["metrics"]
-            else:
-                trained_model, metrics = model.train(**inputs)
-                model._latest_model = trained_model
-                model._metrics = metrics
-            return {
-                "trained_model": str(trained_model),
-                "metrics": metrics,
-            }
+        return {
+            "trained_model": trained_model,
+            "metrics": metrics,
+            "flyte_execution_id": flyte_execution_id
+        }
 
-        def _predict_endpoint(
-            local: bool = False,  # TODO remove this, instead do model.serve(app, debug=True)
-            model_name: Optional[str] = None,  # TODO remove this
-            model_version: str = "latest",
-            model_source: str = "remote",  # TODO remove this, model source should be flyte backend if debug=False
-            inputs: Optional[Dict] = Body(None),
-            features: Optional[List[Dict[str, Any]]] = Body(None)
-        ):
-            version = None if model_version == "latest" else model_version
-            if model_source == "remote":
-                train_wf = model._remote.fetch_workflow(
-                    name=f"{model_name}.train" if model_name else model.train_workflow_name,
-                    version=version,
-                )
-                [latest_training_execution, *_], _ = model._remote.client.list_executions_paginated(
-                    train_wf.id.project,
-                    train_wf.id.domain,
-                    limit=1,
-                    filters=[
-                        filters.Equal("launch_plan.name", train_wf.id.name),
-                        filters.Equal("phase", "SUCCEEDED"),
-                    ],
-                    sort_by=Sort("created_at", Sort.Direction.DESCENDING),
-                )
-                latest_training_execution = FlyteWorkflowExecution.promote_from_model(
-                    latest_training_execution
-                )
-                model._remote.sync(latest_training_execution)
-                latest_model = latest_training_execution.outputs["trained_model"]
-            else:
-                if model._latest_model is None:
-                    raise HTTPException(status_code=500, detail="trained model not found")
-                latest_model = model._latest_model
+    @app.get(predict_endpoint)
+    def predict(params: PredictParams = Depends(PredictParams(model))):
+        inputs, features = params.inputs, params.features
+        if inputs is None and features is None:
+            raise HTTPException(status_code=500, detail="inputs or features must be supplied.")
 
-            workflow_inputs = {"model": latest_model}
+        version = None if params.model_version == "latest" else params.model_version
+        if params.model_source == "remote":
+            latest_model = _get_latest_trained_model(model, params.remote, version)
+        elif model._latest_model:
+            latest_model = model._latest_model
+        else:
+            raise HTTPException(status_code=500, detail="trained model not found")
 
-            if inputs:
-                workflow_inputs.update(inputs)
-            elif features is not None:
-                features = model._dataset.get_features(features)
-                workflow_inputs["features"] = features
+        workflow_inputs = {"model": latest_model}
+        workflow_inputs.update(inputs if inputs else {"features": model._dataset.get_features(features)})
+        if params.local:
+            return model.predict(**workflow_inputs)
 
-            if not local:
-                if inputs:
-                    predict_wf = model._remote.fetch_workflow(
-                        name=f"{model_name}.predict_workflow_name" if model_name else model.predict_workflow_name,
-                        version=version,
-                    )
-                elif features is not None:
-                    predict_wf = model._remote.fetch_workflow(
-                        name=(
-                            f"{model_name}.predict_from_features_workflow_name"
-                            if model_name
-                            else model.predict_from_features_workflow_name
-                        ),
-                        version=version,
-                    )
-                predictions = model._remote.execute(predict_wf, inputs=workflow_inputs, wait=True).outputs["o0"]
-            else:
-                predictions = model.predict(**workflow_inputs)
-            return predictions
+        predict_wf = params.remote.fetch_workflow(
+            name=model.predict_workflow_name if inputs else model.predict_from_features_workflow_name,
+            version=version,
+        )
+        return params.remote.execute(predict_wf, inputs=workflow_inputs, wait=True).outputs["o0"]
 
-        endpoint_fn = {
-            Endpoints.PREDICTOR: _predict_endpoint,
-            Endpoints.TRAINER: _train_endpoint,
-        }[task.__app_method__]
 
-        if endpoint_fn is _train_endpoint and model._hyperparameters:
-            HyperparameterModel = create_model(
-                "HyperparameterModel", **{k: (v, ...) for k, v in model._hyperparameters.items()}
-            )
-            sig = signature(_train_endpoint)
-            _train_endpoint.__signature__ = sig.replace(parameters=[
-                sig.parameters[p].replace(annotation=HyperparameterModel)
-                if p == "hyperparameters"
-                else sig.parameters[p]
-                for p in sig.parameters
-            ])
-
-        decorator(endpoint_fn)
-        return task
-
-    return wrapper
+def _get_latest_trained_model(model, remote, version):
+    train_workflow = remote.fetch_workflow(name=model.train_workflow_name, version=version)
+    [latest_training_execution, *_], _ = remote.client.list_executions_paginated(
+        train_workflow.id.project,
+        train_workflow.id.domain,
+        limit=1,
+        filters=[
+            filters.Equal("launch_plan.name", train_workflow.id.name),
+            filters.Equal("phase", "SUCCEEDED"),
+        ],
+        sort_by=Sort("created_at", Sort.Direction.DESCENDING),
+    )
+    latest_training_execution = FlyteWorkflowExecution.promote_from_model(latest_training_execution)
+    remote.sync(latest_training_execution)
+    return latest_training_execution.outputs["trained_model"]

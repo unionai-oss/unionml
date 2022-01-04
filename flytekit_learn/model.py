@@ -12,7 +12,7 @@ from flytekit.remote import FlyteRemote
 from flytekit.types.pickle import FlytePickle
 
 from flytekit_learn.dataset import Dataset
-from flytekit_learn.fastapi import app_wrapper, Endpoints
+from flytekit_learn.fastapi import app_wrapper
 from flytekit_learn.utils import inner_task
 
 
@@ -71,7 +71,6 @@ class Model(TrackedInstance):
         if fn is None:
             return partial(self.trainer, **train_task_kwargs)
         self._trainer = fn
-        self._trainer.__app_method__ = Endpoints.TRAINER
         self._train_task_kwargs = train_task_kwargs
         return self._trainer
 
@@ -79,10 +78,9 @@ class Model(TrackedInstance):
         if fn is None:
             return partial(self.trainer, **predict_task_kwargs)
         self._predictor = fn
-        self._predictor.__app_method__ = Endpoints.PREDICTOR
         self._predict_task_kwargs = predict_task_kwargs
         return self._predictor
-    
+
     def evaluator(self, fn):
         self._evaluator = fn
         return self._evaluator
@@ -256,8 +254,14 @@ class Model(TrackedInstance):
     def local(self):
         self._remote = None
 
-    def serve(self, app):
-        app_wrapper(self, app)
+    def serve(
+        self,
+        app,
+        default_endpoints: bool = True,
+        train_endpoint: str = "/train",
+        predict_endpoint: str = "/predict"
+    ):
+        app_wrapper(self, app, default_endpoints, train_endpoint=train_endpoint, predict_endpoint=predict_endpoint)
 
 
 @Model._set_default(name="_init")
