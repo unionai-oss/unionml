@@ -58,7 +58,7 @@ class PredictParams:
         return self
 
 
-def app_wrapper(model, app, default_endpoints, train_endpoint, predict_endpoint):
+def app_wrapper(model, app, default_endpoints: bool, train_endpoint: str, predict_endpoint: str):
     @app.get("/", response_class=HTMLResponse)
     def root():
         return """
