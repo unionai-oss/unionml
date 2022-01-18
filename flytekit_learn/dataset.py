@@ -12,12 +12,6 @@ from sklearn.model_selection import train_test_split
 from flytekit_learn.utils import inner_task
 
 
-try:
-    from flytekitplugins.sqlalchemy import SQLAlchemyTask
-except ImportError:
-    SQLAlchemyTask = None
-
-
 class Dataset(TrackedInstance):
     
     def __init__(
@@ -151,7 +145,7 @@ class Dataset(TrackedInstance):
     @classmethod
     def from_sqlalchemy_task(
         cls: "Dataset",
-        task: SQLAlchemyTask,
+        task: "flytekitplugins.sqlalchemy.SQLAlchemyTask",  # type: ignore
         *args,
         **kwargs,
     ) -> "Dataset":
