@@ -162,7 +162,7 @@ def test_model_predict_from_features_task(model, mock_data):
     assert isinstance(predict_from_features_task, PythonFunctionTask)
     assert predict_from_features_task.python_interface.inputs["model"].__module__ == "flytekit.types.pickle.pickle"
     assert predict_from_features_task.python_interface.inputs["features"] == signature(
-        model._dataset._unpack_features
+        model._dataset._feature_getter
     ).return_annotation
     assert predict_from_features_task.python_interface.outputs["o0"] == signature(model._predictor).return_annotation
 
