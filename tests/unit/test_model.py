@@ -4,7 +4,6 @@ from inspect import signature
 
 import pandas as pd
 from flytekit.core.python_function_task import PythonFunctionTask
-from flytekit.types.pickle import FlytePickle
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
@@ -19,8 +18,11 @@ def mock_data() -> pd.DataFrame:
     })
 
 
-@pytest.fixture(scope="function")
-def model_def(mock_data) -> Model:
+@pytest.fixture(
+    scope="function",
+    params=[{"custom_init": True}, {"custom_init": False}]
+)
+def model_def(request, mock_data) -> Model:
 
     dataset = Dataset(
         features=["x"],
@@ -34,12 +36,20 @@ def model_def(mock_data) -> Model:
     def reader(sample_frac: float, random_state: int) -> pd.DataFrame:
         return mock_data.sample(frac=sample_frac, random_state=random_state)
 
-    return Model(
+    model = Model(
         name="test_model",
-        init=LogisticRegression,
+        init=None if request.param["custom_init"] else LogisticRegression,
         hyperparameters={"C": float, "max_iter": int},
         dataset=dataset,
     )
+
+    if request.param["custom_init"]:
+        # define custom init function
+        @model.init
+        def init_fn(hyperparameters: dict) -> LogisticRegression:
+            return LogisticRegression(**hyperparameters)
+
+    return model
 
 
 @pytest.fixture(scope="function")
@@ -100,7 +110,17 @@ def test_model_train_task(model, mock_data):
     assert isinstance(outputs.metrics["test"], eval_ret_type)
 
 
-def test_model_train(model):
+@pytest.mark.parametrize("custom_init", [True, False])
+def test_model_train(model, custom_init):
+    if custom_init:
+        # disable default model initialization
+        model._init_cls = None
+
+        # define custom init function
+        @model.init
+        def init(hyperparameters: dict) -> LogisticRegression:
+            return LogisticRegression(**hyperparameters)
+
     trained_model, metrics = model.train(
         hyperparameters={"C": 1.0, "max_iter": 1000},
         sample_frac=1.0,

@@ -21,8 +21,8 @@ class Model(TrackedInstance):
     def __init__(
         self,
         name: str = None,
+        init: Union[Type, Callable] = None,
         *,
-        init: Union[Type, Callable],
         dataset: Dataset,
         hyperparameters: Optional[Dict[str, Type]] = None,
     ):
@@ -225,7 +225,7 @@ class Model(TrackedInstance):
         if lazy:
             return train_wf
         if hyperparameters is None:
-            raise ValueError("hyperparameters need to be provided when eager=True")
+            raise ValueError("hyperparameters need to be provided when lazy=False")
 
         trained_model, metrics = train_wf(hyperparameters=hyperparameters, **reader_kwargs)
         self._latest_model = trained_model
