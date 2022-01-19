@@ -51,6 +51,22 @@ class Dataset(TrackedInstance):
         self._reader_task_kwargs = reader_task_kwargs
         return fn
 
+    def splitter(self, fn):
+        # TODO: make sure function signature matches expected signature:
+        # - splitter(data, test_size, shuffle, random_state)
+        self._splitter = fn
+        return fn
+
+    def parser(self, fn):
+        # TODO: make sure function signature matches expected signature:
+        # - parser(data, features, targets)
+        self._parser = fn
+        return fn
+
+    def feature_getter(self, fn):
+        self._feature_getter = fn
+        return fn
+
     @property
     def splitter_kwargs(self):
         return {
@@ -101,9 +117,19 @@ class Dataset(TrackedInstance):
     def features_workflow_name(self):
         return f"{self.name}.features"
 
+    def get_data(self, raw_data):
+        train_split, test_split = self._splitter(data=raw_data, **self.splitter_kwargs)
+        # TODO: make this more generic so as to include a validation split
+        train_data = self._parser(train_split, **self.parser_kwargs)
+        test_data = self._parser(test_split, **self.parser_kwargs)
+        return {
+            "train": train_data,
+            "test": test_data,
+        }
+
     def get_features(self, data):
         parsed_data = self._parser(data, self._features, self._targets)
-        return self._unpack_features(parsed_data)
+        return self._feature_getter(parsed_data)
 
     @property
     def reader_input_types(self) -> List[Parameter]:
@@ -160,7 +186,9 @@ def _default_splitter(
 
 
 @Dataset._set_default(name="_parser")
-def _default_parser(self, data: pd.DataFrame, features: List[str], targets: List[str]) -> List[pd.DataFrame]:
+def _default_parser(
+    self, data: pd.DataFrame, features: List[str], targets: List[str]
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     if not isinstance(data, pd.DataFrame):
         data = pd.DataFrame(data)
     if not features:
@@ -169,9 +197,9 @@ def _default_parser(self, data: pd.DataFrame, features: List[str], targets: List
         targets = data[targets]
     except KeyError:
         targets = pd.DataFrame()
-    return [data[features], targets]
+    return data[features], targets
 
 
-@Dataset._set_default(name="_unpack_features")
-def _default_unpack_features(self, data: List[pd.DataFrame]) -> pd.DataFrame:
+@Dataset._set_default(name="_feature_getter")
+def _default_feature_getter(self, data: Tuple[pd.DataFrame, pd.DataFrame]) -> pd.DataFrame:
     return data[0]

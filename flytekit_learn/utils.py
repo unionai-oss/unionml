@@ -48,6 +48,6 @@ def inner_task(
         return_annotation=fn_sig.return_annotation if return_annotation is None else return_annotation,
     )
     wrapper.__fklearn_object__ = fklearn_obj
-    output_task = task(wrapper, task_resolver=task_resolver)
+    output_task = task(wrapper, task_resolver=task_resolver, **task_kwargs)
     output_task._name = f"{fklearn_obj.name}.{wrapper.__name__}"
     return output_task

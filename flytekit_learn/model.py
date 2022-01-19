@@ -47,6 +47,7 @@ class Model(TrackedInstance):
     def train_workflow_name(self):
         return f"{self.name}.train"
 
+
     @property
     def predict_workflow_name(self):
         return f"{self.name}.predict"
@@ -164,14 +165,14 @@ class Model(TrackedInstance):
         )
         def train_task(**kwargs):
             hyperparameters = kwargs["hyperparameters"]
-            data = kwargs[data_arg_name]
-            train_split, test_split = self._dataset._splitter(data=data, **self._dataset.splitter_kwargs)
-            train_data = self._dataset._parser(train_split, **self._dataset.parser_kwargs)
-            test_data = self._dataset._parser(test_split, **self._dataset.parser_kwargs)
-            trained_model = self._trainer(self._init(hyperparameters=hyperparameters, **init_kwargs), *train_data)
+            raw_data = kwargs[data_arg_name]
+            training_data = self._dataset.get_data(raw_data)
+            trained_model = self._trainer(
+                self._init(hyperparameters=hyperparameters, **init_kwargs), *training_data["train"]
+            )
             metrics = {
-                "train": self._evaluator(trained_model, *train_data),
-                "test": self._evaluator(trained_model, *test_data),
+                split_key: self._evaluator(trained_model, *training_data[split_key])
+                for split_key in ["train", "test"]
             }
             return trained_model, metrics
 
@@ -194,10 +195,11 @@ class Model(TrackedInstance):
             fklearn_obj=self,
             input_parameters=OrderedDict([(p.name, p) for p in [model_param, data_param]]),
             return_annotation=predictor_sig.return_annotation,
+            **self._predict_task_kwargs,
         )
         def predict_task(model, **kwargs):
             parsed_data = self._dataset._parser(kwargs[data_arg_name], **self._dataset.parser_kwargs)
-            return self._predictor(model, self._dataset._unpack_features(parsed_data))
+            return self._predictor(model, self._dataset._feature_getter(parsed_data))
 
         self._predict_task = predict_task
         return predict_task
@@ -212,10 +214,11 @@ class Model(TrackedInstance):
             fklearn_obj=self,
             input_parameters=predictor_sig.parameters,
             return_annotation=predictor_sig.return_annotation,
+            **self._predict_task_kwargs,
         )
         def predict_from_features_task(model, features):
             parsed_data = self._dataset._parser(features, **self._dataset.parser_kwargs)
-            return self._predictor(model, self._dataset._unpack_features(parsed_data))
+            return self._predictor(model, self._dataset._feature_getter(parsed_data))
 
         self._predict_from_features_task = predict_from_features_task
         return predict_from_features_task
@@ -250,9 +253,6 @@ class Model(TrackedInstance):
             default_project=project,
             default_domain=domain,
         )
-
-    def local(self):
-        self._remote = None
 
     def serve(
         self,
