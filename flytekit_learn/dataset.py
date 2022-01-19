@@ -6,6 +6,7 @@ from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type
 
 import pandas as pd
 from flytekit.core.tracker import TrackedInstance
+from flytekit.extras.sqlite3.task import SQLite3Task
 from sklearn.model_selection import train_test_split
 
 from flytekit_learn.utils import inner_task
@@ -117,12 +118,12 @@ class Dataset(TrackedInstance):
         return self._reader_return_type
 
     @classmethod
-    def from_sqlite_task(
-        cls,
+    def _from_flytekit_task(
+        cls: "Dataset",
         task,
         *args,
         **kwargs,
-    ):
+    ) -> "Dataset":
         dataset = cls(*args, **kwargs)
         dataset._dataset_task = task
         dataset._reader_return_type = task.python_interface.outputs
@@ -131,6 +132,24 @@ class Dataset(TrackedInstance):
             for k, v in task.python_interface.inputs.items()
         ]
         return dataset
+
+    @classmethod
+    def from_sqlite_task(
+        cls: "Dataset",
+        task: SQLite3Task,
+        *args,
+        **kwargs,
+    ) -> "Dataset":
+        return cls._from_flytekit_task(task, *args, **kwargs)
+
+    @classmethod
+    def from_sqlalchemy_task(
+        cls: "Dataset",
+        task: "flytekitplugins.sqlalchemy.SQLAlchemyTask",  # type: ignore
+        *args,
+        **kwargs,
+    ) -> "Dataset":
+        return cls._from_flytekit_task(task, *args, **kwargs)
 
 
 @Dataset._set_default(name="_splitter")

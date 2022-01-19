@@ -5,6 +5,7 @@ import typing
 import pandas as pd
 from flytekit import kwtypes
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
+from flytekitplugins.sqlalchemy import SQLAlchemyConfig, SQLAlchemyTask
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
 
@@ -25,16 +26,23 @@ def mock_sqlite_db(tmp_path):
         yield file
 
 
-def test_sqlite_dataset_reader(mock_sqlite_db):
+@pytest.mark.parametrize(
+    "task_cls,task_config_cls,uri_fn", [
+        [SQLite3Task, SQLite3Config, lambda fp: fp.as_uri()],
+        # convert filepath to sqlite db absolute path
+        [SQLAlchemyTask, SQLAlchemyConfig, lambda fp: fp.as_uri().replace("file:///", "sqlite:////")],
+    ]
+)
+def test_sqlite_dataset_reader(mock_sqlite_db, task_cls, task_config_cls, uri_fn):
 
-    sqlite_task = SQLite3Task(
+    sqlite_task = task_cls(
         name="test_sqlite_db",
         query_template="""
         SELECT x1, x2, x3, y FROM mock_table LIMIT {{.inputs.limit}}
         """,
         inputs=kwtypes(limit=int),
         output_schema_type=pd.DataFrame,
-        task_config=SQLite3Config(uri=mock_sqlite_db.as_uri())
+        task_config=task_config_cls(uri=uri_fn(mock_sqlite_db))
     )
 
     limit = 50
