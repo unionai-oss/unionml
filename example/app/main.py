@@ -1,14 +1,13 @@
 import os
-from typing import Any, Dict, List
+from typing import List
 
 import pandas as pd
 from fastapi import FastAPI
-from sklearn.linear_model import LogisticRegression
 from sklearn.datasets import load_breast_cancer
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
 from flytekit_learn import Dataset, Model
-
 
 dataset = Dataset(
     targets=["target"],
@@ -24,7 +23,11 @@ model = Model(
 )
 
 # attach Flyte remote backend
-model.remote(os.environ.get("FLYTE_CONFIG", "config/sandbox.config"), project="flytesnacks", domain="development")
+model.remote(
+    os.environ.get("FLYTE_CONFIG", "config/sandbox.config"),
+    project="flytesnacks",
+    domain="development",
+)
 
 # serve the model with FastAPI
 app = FastAPI()

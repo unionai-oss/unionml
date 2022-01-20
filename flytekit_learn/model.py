@@ -2,9 +2,9 @@
 
 import importlib
 from collections import OrderedDict
-from functools import partial, wraps
-from inspect import signature, Parameter
-from typing import Any, Callable, Dict, Optional, NamedTuple, Type, Union
+from functools import partial
+from inspect import Parameter, signature
+from typing import Any, Callable, Dict, NamedTuple, Optional, Type, Union
 
 from flytekit import Workflow
 from flytekit.core.tracker import TrackedInstance
@@ -17,7 +17,6 @@ from flytekit_learn.utils import inner_task
 
 
 class Model(TrackedInstance):
-    
     def __init__(
         self,
         name: str = None,
@@ -46,7 +45,6 @@ class Model(TrackedInstance):
     @property
     def train_workflow_name(self):
         return f"{self.name}.train"
-
 
     @property
     def predict_workflow_name(self):
@@ -90,15 +88,24 @@ class Model(TrackedInstance):
         dataset_task = self._dataset.dataset_task()
         train_task = self.train_task()
 
-        [hyperparam_arg, hyperparam_type], *_ = train_task.python_interface.inputs.items()
+        [
+            hyperparam_arg,
+            hyperparam_type,
+        ], *_ = train_task.python_interface.inputs.items()
 
         wf = Workflow(name=self.train_workflow_name)
         wf.add_workflow_input(hyperparam_arg, hyperparam_type)
         for arg, type in dataset_task.python_interface.inputs.items():
             wf.add_workflow_input(arg, type)
 
-        dataset_node = wf.add_entity(dataset_task, **{k: wf.inputs[k] for k in dataset_task.python_interface.inputs})
-        train_node = wf.add_entity(train_task, **{hyperparam_arg: wf.inputs[hyperparam_arg], **dataset_node.outputs})
+        dataset_node = wf.add_entity(
+            dataset_task,
+            **{k: wf.inputs[k] for k in dataset_task.python_interface.inputs},
+        )
+        train_node = wf.add_entity(
+            train_task,
+            **{hyperparam_arg: wf.inputs[hyperparam_arg], **dataset_node.outputs},
+        )
         wf.add_workflow_output("trained_model", train_node.outputs["trained_model"])
         wf.add_workflow_output("metrics", train_node.outputs["metrics"])
         return wf
@@ -112,7 +119,10 @@ class Model(TrackedInstance):
         for arg, type in dataset_task.python_interface.inputs.items():
             wf.add_workflow_input(arg, type)
 
-        dataset_node = wf.add_entity(dataset_task, **{k: wf.inputs[k] for k in dataset_task.python_interface.inputs})
+        dataset_node = wf.add_entity(
+            dataset_task,
+            **{k: wf.inputs[k] for k in dataset_task.python_interface.inputs},
+        )
         predict_node = wf.add_entity(predict_task, **{"model": wf.inputs["model"], **dataset_node.outputs})
         for output_name, promise in predict_node.outputs.items():
             wf.add_workflow_output(output_name, promise)
@@ -138,7 +148,7 @@ class Model(TrackedInstance):
 
         init_kwargs = {}
         if self._init_cls:
-            init_kwargs["init_cls"]= {
+            init_kwargs["init_cls"] = {
                 "module": self._init_cls.__module__,
                 "cls_name": self._init_cls.__name__,
             }
@@ -149,17 +159,23 @@ class Model(TrackedInstance):
         # TODO: make sure return type is not None
         @inner_task(
             fklearn_obj=self,
-            input_parameters=OrderedDict([
-                (p.name, p) for p in
+            input_parameters=OrderedDict(
                 [
-                    hyperparameters_param,
-                    Parameter(data_arg_name, kind=Parameter.KEYWORD_ONLY, annotation=data_arg_type)
+                    (p.name, p)
+                    for p in [
+                        hyperparameters_param,
+                        Parameter(
+                            data_arg_name,
+                            kind=Parameter.KEYWORD_ONLY,
+                            annotation=data_arg_type,
+                        ),
+                    ]
                 ]
-            ]),
+            ),
             return_annotation=NamedTuple(
                 "TrainingResults",
                 trained_model=signature(self._trainer).return_annotation,
-                metrics=Dict[str, signature(self._evaluator).return_annotation]
+                metrics=Dict[str, signature(self._evaluator).return_annotation],
             ),
             **({} if self._train_task_kwargs is None else self._train_task_kwargs),
         )
@@ -168,11 +184,11 @@ class Model(TrackedInstance):
             raw_data = kwargs[data_arg_name]
             training_data = self._dataset.get_data(raw_data)
             trained_model = self._trainer(
-                self._init(hyperparameters=hyperparameters, **init_kwargs), *training_data["train"]
+                self._init(hyperparameters=hyperparameters, **init_kwargs),
+                *training_data["train"],
             )
             metrics = {
-                split_key: self._evaluator(trained_model, *training_data[split_key])
-                for split_key in ["train", "test"]
+                split_key: self._evaluator(trained_model, *training_data[split_key]) for split_key in ["train", "test"]
             }
             return trained_model, metrics
 
@@ -223,7 +239,14 @@ class Model(TrackedInstance):
         self._predict_from_features_task = predict_from_features_task
         return predict_from_features_task
 
-    def train(self, hyperparameters: Dict[str, Any] = None, *, data: Any = None, lazy=False, **reader_kwargs):
+    def train(
+        self,
+        hyperparameters: Dict[str, Any] = None,
+        *,
+        data: Any = None,
+        lazy=False,
+        **reader_kwargs,
+    ):
         train_wf = self.train_workflow()
         if lazy:
             return train_wf
@@ -235,7 +258,13 @@ class Model(TrackedInstance):
         self._latest_metrics = metrics
         return trained_model, metrics
 
-    def predict(self, model: FlytePickle = None, features: Any = None, lazy=False, **reader_kwargs):
+    def predict(
+        self,
+        model: FlytePickle = None,
+        features: Any = None,
+        lazy=False,
+        **reader_kwargs,
+    ):
         if features is None:
             predict_wf = self.predict_workflow()
         else:
@@ -247,7 +276,7 @@ class Model(TrackedInstance):
             return predict_wf(model=model, **reader_kwargs)
         return predict_wf(model=model, features=features)
 
-    def remote(self, config_file_path = None, project = None, domain = None):
+    def remote(self, config_file_path=None, project=None, domain=None):
         self._remote = FlyteRemote.from_config(
             config_file_path=config_file_path,
             default_project=project,
@@ -259,9 +288,15 @@ class Model(TrackedInstance):
         app,
         default_endpoints: bool = True,
         train_endpoint: str = "/train",
-        predict_endpoint: str = "/predict"
+        predict_endpoint: str = "/predict",
     ):
-        app_wrapper(self, app, default_endpoints, train_endpoint=train_endpoint, predict_endpoint=predict_endpoint)
+        app_wrapper(
+            self,
+            app,
+            default_endpoints,
+            train_endpoint=train_endpoint,
+            predict_endpoint=predict_endpoint,
+        )
 
 
 @Model._set_default(name="_init")

@@ -16,9 +16,8 @@ class TaskResolver(TrackedInstance, TaskResolverMixin):
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         _, app_module, _, fklearn_obj, _, task_name, *_ = loader_args
 
-        app_module = importlib.import_module(app_module)
-        fklearn_obj = getattr(app_module, fklearn_obj)
-        task_method = getattr(fklearn_obj, task_name)
+        _fklearn_obj = getattr(importlib.import_module(app_module), fklearn_obj)
+        task_method = getattr(_fklearn_obj, task_name)
         return task_method()
 
     def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:

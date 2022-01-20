@@ -1,17 +1,13 @@
 """Utilities for the FastAPI integration."""
 
-from enum import Enum
-from functools import wraps
-from inspect import signature
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from fastapi import Body, Depends, HTTPException
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, create_model
-
 from flytekit.models import filters
 from flytekit.models.admin.common import Sort
 from flytekit.remote import FlyteWorkflowExecution
+from pydantic import BaseModel
 
 
 class TrainParams:
@@ -25,7 +21,7 @@ class TrainParams:
         self,
         local: bool = False,
         wait: bool = False,
-        inputs: Optional[Dict] = Body(None),
+        inputs: Optional[Union[Dict, BaseModel]] = Body(None),
     ) -> "TrainParams":
         self.remote = self.model._remote
         self.local = local
@@ -36,7 +32,15 @@ class TrainParams:
 
 class PredictParams:
 
-    __slots__ = ("model", "remote", "local", "model_version", "model_source", "inputs", "features")
+    __slots__ = (
+        "model",
+        "remote",
+        "local",
+        "model_version",
+        "model_source",
+        "inputs",
+        "features",
+    )
 
     def __init__(self, model):
         self.model = model
@@ -46,7 +50,7 @@ class PredictParams:
         local: bool = False,  # TODO remove this, instead do model.serve(app, debug=True)
         model_version: str = "latest",
         model_source: str = "remote",  # TODO remove this, model source should be flyte backend if debug=False
-        inputs: Optional[Dict] = Body(None),
+        inputs: Optional[Union[Dict, BaseModel]] = Body(None),
         features: Optional[List[Dict[str, Any]]] = Body(None),
     ) -> "PredictParams":
         self.remote = self.model._remote
@@ -78,7 +82,15 @@ def app_wrapper(model, app, default_endpoints: bool, train_endpoint: str, predic
 
     @app.post(train_endpoint)
     def train(params: TrainParams = Depends(TrainParams(model))):
-        inputs = params.inputs.dict() if issubclass(type(params.inputs), BaseModel) else params.inputs
+        if params.inputs is None:
+            inputs = {}
+        if params.inputs and isinstance(params.inputs, BaseModel):
+            inputs = params.inputs.dict()
+        elif isinstance(params.inputs, dict):
+            inputs = params.inputs
+        else:
+            raise ValueError(f"Type of inputs {type(params.inputs)} not understood.")
+
         if params.local:
             trained_model, metrics = model.train(**inputs)
             model._latest_model = trained_model
@@ -90,7 +102,7 @@ def app_wrapper(model, app, default_endpoints: bool, train_endpoint: str, predic
             flyte_execution_id = {
                 "project": execution.id.project,
                 "domain": execution.id.domain,
-                "name": execution.id.name
+                "name": execution.id.name,
             }
             trained_model, metrics = None, None
             if params.wait:
@@ -99,7 +111,7 @@ def app_wrapper(model, app, default_endpoints: bool, train_endpoint: str, predic
         return {
             "trained_model": trained_model,
             "metrics": metrics,
-            "flyte_execution_id": flyte_execution_id
+            "flyte_execution_id": flyte_execution_id,
         }
 
     @app.get(predict_endpoint)

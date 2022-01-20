@@ -1,2 +1,5 @@
+black
+flake8
+pre_commit
 pytest
 flytekitplugins-sqlalchemy

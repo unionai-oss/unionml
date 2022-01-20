@@ -43,8 +43,8 @@ else
 fi
 
 # Should be run in the folder that has Dockerfile
-docker build --tag ${TAG} --tag ${LATEST_TAG} .
-docker push ${TAG}
-docker push ${LATEST_TAG}
+docker build --tag "${TAG}" --tag "${LATEST_TAG}" .
+docker push "${TAG}"
+docker push "${LATEST_TAG}"
 
 echo "Docker image built with tag ${TAG} and ${LATEST_TAG}. You can use this image to run pyflyte package."

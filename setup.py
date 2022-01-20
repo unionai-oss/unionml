@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
     name="flytekit-learn",
@@ -16,7 +16,5 @@ setup(
         "pydantic",
         "typer",
     ],
-    entry_points = {
-        "console_scripts": ["fklearn = flytekit_learn.cli:app"]
-    },
+    entry_points={"console_scripts": ["fklearn = flytekit_learn.cli:app"]},
 )

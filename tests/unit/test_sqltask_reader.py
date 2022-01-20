@@ -1,25 +1,27 @@
-import pytest
 import sqlite3
 import typing
 
 import pandas as pd
+import pytest
 from flytekit import kwtypes
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekitplugins.sqlalchemy import SQLAlchemyConfig, SQLAlchemyTask
-from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
 
 from flytekit_learn import Dataset, Model
 
 
 @pytest.fixture
 def mock_sqlite_db(tmp_path):
-    df = pd.DataFrame({
-        "x1": [1.0, 2.0, 3.0] * 10,
-        "x2": [1.0, 2.0, 3.0] * 10,
-        "x3": [1.0, 2.0, 3.0] * 10,
-        "y": [1, 0, 1] * 10,
-    })
+    df = pd.DataFrame(
+        {
+            "x1": [1.0, 2.0, 3.0] * 10,
+            "x2": [1.0, 2.0, 3.0] * 10,
+            "x3": [1.0, 2.0, 3.0] * 10,
+            "y": [1, 0, 1] * 10,
+        }
+    )
     file = tmp_path / "test_dataset.sqlite"
     with sqlite3.connect(file) as conn:
         df.to_sql("mock_table", conn, index=False)
@@ -27,11 +29,16 @@ def mock_sqlite_db(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "task_cls,task_config_cls,uri_fn", [
+    "task_cls,task_config_cls,uri_fn",
+    [
         [SQLite3Task, SQLite3Config, lambda fp: fp.as_uri()],
         # convert filepath to sqlite db absolute path
-        [SQLAlchemyTask, SQLAlchemyConfig, lambda fp: fp.as_uri().replace("file:///", "sqlite:////")],
-    ]
+        [
+            SQLAlchemyTask,
+            SQLAlchemyConfig,
+            lambda fp: fp.as_uri().replace("file:///", "sqlite:////"),
+        ],
+    ],
 )
 def test_sqlite_dataset_reader(mock_sqlite_db, task_cls, task_config_cls, uri_fn):
 
@@ -42,7 +49,7 @@ def test_sqlite_dataset_reader(mock_sqlite_db, task_cls, task_config_cls, uri_fn
         """,
         inputs=kwtypes(limit=int),
         output_schema_type=pd.DataFrame,
-        task_config=task_config_cls(uri=uri_fn(mock_sqlite_db))
+        task_config=task_config_cls(uri=uri_fn(mock_sqlite_db)),
     )
 
     limit = 50
@@ -68,7 +75,7 @@ def test_sqlite_dataset_reader(mock_sqlite_db, task_cls, task_config_cls, uri_fn
     @model.trainer
     def trainer(model: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> LogisticRegression:
         return model.fit(features, target.squeeze())
-    
+
     @model.predictor
     def predictor(model: LogisticRegression, features: pd.DataFrame) -> typing.List[float]:
         return [float(x) for x in model.predict(features)]
@@ -82,7 +89,7 @@ def test_sqlite_dataset_reader(mock_sqlite_db, task_cls, task_config_cls, uri_fn
     assert isinstance(trained_model, LogisticRegression)
 
     predictions = model.predict(trained_model, limit=5)
-    features = pd.read_sql(f"SELECT x1, x2, x3 FROM mock_table LIMIT 5", conn)
+    features = pd.read_sql("SELECT x1, x2, x3 FROM mock_table LIMIT 5", conn)
     alt_predictions = model.predict(trained_model, features=features)
     assert all(isinstance(x, float) for x in predictions)
     assert predictions == alt_predictions
