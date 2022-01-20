@@ -66,14 +66,14 @@ class Model(TrackedInstance):
         self._init = fn
         return self._init
 
-    def trainer(self, fn=None, /, **train_task_kwargs):
+    def trainer(self, fn=None, **train_task_kwargs):
         if fn is None:
             return partial(self.trainer, **train_task_kwargs)
         self._trainer = fn
         self._train_task_kwargs = train_task_kwargs
         return self._trainer
 
-    def predictor(self, fn=None, /, **predict_task_kwargs):
+    def predictor(self, fn=None, **predict_task_kwargs):
         if fn is None:
             return partial(self.trainer, **predict_task_kwargs)
         self._predictor = fn

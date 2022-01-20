@@ -1,5 +1,6 @@
 black
 flake8
+flytekitplugins-sqlalchemy
 pre_commit
 pytest
-flytekitplugins-sqlalchemy
+types-requests
