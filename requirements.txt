@@ -1,5 +1,4 @@
 flytekit==0.25.0
-flytekitplugins-sqlalchemy
 sklearn
 numpy
 pandas

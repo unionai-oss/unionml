@@ -1,2 +1,6 @@
-pytest
+black
+flake8
 flytekitplugins-sqlalchemy
+pre_commit
+pytest
+types-requests

@@ -2,9 +2,8 @@ import random
 import typing
 from inspect import signature
 
-import pytest
-
 import pandas as pd
+import pytest
 from flytekit.core.python_function_task import PythonFunctionTask
 
 from flytekit_learn import Dataset
@@ -25,6 +24,7 @@ def dataset():
 def simple_reader():
     def _reader(value: float, n_samples: int) -> typing.List[float]:
         return [value for _ in range(n_samples)]
+
     return _reader
 
 
@@ -35,6 +35,7 @@ N_SAMPLES = 100
 def dict_dataset_reader():
     def _reader() -> typing.List[typing.Dict[str, int]]:
         return [{"x": i, "y": i * 2} for i in range(1, N_SAMPLES + 1)]
+
     return _reader
 
 

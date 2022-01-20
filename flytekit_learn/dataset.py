@@ -1,8 +1,8 @@
 """Dataset class for defining data source, splitting, parsing, and iteration."""
 
 from functools import partial
-from inspect import signature, Parameter
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type
+from inspect import Parameter, signature
+from typing import Dict, List, NamedTuple, Optional, Tuple, Type
 
 import pandas as pd
 from flytekit.core.tracker import TrackedInstance
@@ -13,7 +13,6 @@ from flytekit_learn.utils import inner_task
 
 
 class Dataset(TrackedInstance):
-    
     def __init__(
         self,
         name: str = None,
@@ -33,8 +32,8 @@ class Dataset(TrackedInstance):
         self._random_state = random_state
 
         self._reader = None
-        self._reader_input_types = None
-        self._reader_return_type = None
+        self._reader_input_types: Optional[List[Parameter]] = None
+        self._reader_return_type: Optional[Dict[str, Type]] = None
         self._labeller = None
         self._dataset_task = None
 
@@ -132,20 +131,20 @@ class Dataset(TrackedInstance):
         return self._feature_getter(parsed_data)
 
     @property
-    def reader_input_types(self) -> List[Parameter]:
-        if self._reader_input_types is None:
-            return list(signature(self._reader).parameters)
+    def reader_input_types(self) -> Optional[List[Parameter]]:
+        if self._reader and self._reader_input_types is None:
+            return [p for p in signature(self._reader).parameters]
         return self._reader_input_types
 
     @property
-    def reader_return_type(self) -> Dict[str, Type]:
-        if self._reader_return_type is None:
+    def reader_return_type(self) -> Optional[Dict[str, Type]]:
+        if self._reader and self._reader_return_type is None:
             return {"data": signature(self._reader).return_annotation}
         return self._reader_return_type
 
     @classmethod
     def _from_flytekit_task(
-        cls: "Dataset",
+        cls,
         task,
         *args,
         **kwargs,
@@ -154,14 +153,13 @@ class Dataset(TrackedInstance):
         dataset._dataset_task = task
         dataset._reader_return_type = task.python_interface.outputs
         dataset._reader_input_types = [
-            Parameter(k, Parameter.KEYWORD_ONLY, annotation=v)
-            for k, v in task.python_interface.inputs.items()
+            Parameter(k, Parameter.KEYWORD_ONLY, annotation=v) for k, v in task.python_interface.inputs.items()
         ]
         return dataset
 
     @classmethod
     def from_sqlite_task(
-        cls: "Dataset",
+        cls,
         task: SQLite3Task,
         *args,
         **kwargs,
@@ -170,7 +168,7 @@ class Dataset(TrackedInstance):
 
     @classmethod
     def from_sqlalchemy_task(
-        cls: "Dataset",
+        cls,
         task: "flytekitplugins.sqlalchemy.SQLAlchemyTask",  # type: ignore
         *args,
         **kwargs,
@@ -180,7 +178,11 @@ class Dataset(TrackedInstance):
 
 @Dataset._set_default(name="_splitter")
 def _default_splitter(
-    self, data: pd.DataFrame, test_size: float, shuffle: bool, random_state: int,
+    self,
+    data: pd.DataFrame,
+    test_size: float,
+    shuffle: bool,
+    random_state: int,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     return train_test_split(data, test_size=test_size, random_state=random_state, shuffle=shuffle)
 

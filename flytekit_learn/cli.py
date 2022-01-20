@@ -5,17 +5,13 @@ import json
 import os
 import typing
 from dataclasses import asdict
-from inspect import signature
 from pathlib import Path
 
 import typer
-
-import flytekit_learn
 from flytekit import LaunchPlan
 from flytekit.models import filters
 from flytekit.models.admin.common import Sort
-from flytekit.remote import FlyteRemote, FlyteWorkflowExecution
-
+from flytekit.remote import FlyteWorkflowExecution
 
 app = typer.Typer()
 
@@ -46,12 +42,15 @@ def deploy(
     """Deploy model to a Flyte backend."""
 
     typer.echo(f"[fklearn] deploying {app}")
-    os.environ["FLYTE_INTERNAL_IMAGE"] = image
+    os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
     model = _get_model(app)
 
     if model.name is None:
         if name is None:
-            typer.echo("name must be provided in the flytekit_learn.Model constructor or the --name option", err=True)
+            typer.echo(
+                "name must be provided in the flytekit_learn.Model constructor or the --name option",
+                err=True,
+            )
         model.name = name
 
     # get training workflow
@@ -80,12 +79,15 @@ def train(
 
     if model.name is None:
         if name is None:
-            typer.echo("name must be provided in the flytekit_learn.Model constructor or the --name option", err=True)
+            typer.echo(
+                "name must be provided in the flytekit_learn.Model constructor or the --name option",
+                err=True,
+            )
         model.name = name
 
     inputs = json.loads(inputs)
     train_wf = model._remote.fetch_workflow(project, domain, model.train_workflow_name, version)
-    typer.echo(f"[fklearn] executing model workflow")
+    typer.echo("[fklearn] executing model workflow")
     typer.echo(f"[fklearn] project: {train_wf.id.project}")
     typer.echo(f"[fklearn] domain: {train_wf.id.domain}")
     typer.echo(f"[fklearn] name: {train_wf.id.name}")
@@ -93,7 +95,7 @@ def train(
     typer.echo(f"[fklearn] inputs: {inputs}")
 
     execution = model._remote.execute(train_wf, inputs=inputs, wait=True)
-    typer.echo(f"[fklearn] training completed with outputs:")
+    typer.echo("[fklearn] training completed with outputs:")
     for k, v in execution.outputs.items():
         typer.echo(f"[fklearn] {k}: {v}")
 
@@ -113,11 +115,14 @@ def predict(
 
     if model.name is None:
         if name is None:
-            typer.echo("name must be provided in the flytekit_learn.Model constructor or the --name option", err=True)
+            typer.echo(
+                "name must be provided in the flytekit_learn.Model constructor or the --name option",
+                err=True,
+            )
         model.name = name
 
     train_wf = model._remote.fetch_workflow(project, domain, model.train_workflow_name, version)
-    typer.echo(f"[fklearn] getting latest model")
+    typer.echo("[fklearn] getting latest model")
     [latest_training_execution, *_], _ = model._remote.client.list_executions_paginated(
         train_wf.id.project,
         train_wf.id.domain,

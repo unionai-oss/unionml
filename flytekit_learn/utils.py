@@ -1,5 +1,5 @@
 from functools import partial, wraps
-from inspect import signature, Parameter
+from inspect import Parameter, signature
 
 from flytekit import task
 
@@ -15,7 +15,7 @@ def inner_task(
     **task_kwargs,
 ):
     """A flytekit task defined within a Dataset or Model class.
-    
+
     This wrapper does the following:
     - makes sure the wrapper function:
       - has the same signature as the original function
@@ -33,7 +33,7 @@ def inner_task(
             input_parameters=input_parameters,
             return_annotation=return_annotation,
             **task_kwargs,
-        ) 
+        )
 
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -42,8 +42,8 @@ def inner_task(
     fn_sig = signature(fn)
     wrapper.__signature__ = signature(wrapper).replace(
         parameters=[
-            p.replace(kind=Parameter.KEYWORD_ONLY) for p in
-            (fn_sig.parameters if input_parameters is None else input_parameters).values()
+            p.replace(kind=Parameter.KEYWORD_ONLY)
+            for p in (fn_sig.parameters if input_parameters is None else input_parameters).values()
         ],
         return_annotation=fn_sig.return_annotation if return_annotation is None else return_annotation,
     )

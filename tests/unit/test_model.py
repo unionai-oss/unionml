@@ -1,27 +1,26 @@
 import typing
-import pytest
 from inspect import signature
 
 import pandas as pd
+import pytest
 from flytekit.core.python_function_task import PythonFunctionTask
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
-from flytekit_learn import Model, Dataset
+from flytekit_learn import Dataset, Model
 
 
 @pytest.fixture(scope="function")
 def mock_data() -> pd.DataFrame:
-    return pd.DataFrame({
-        "x": [1, 2, 3, 4] * 25,
-        "y": [0, 1, 0, 1] * 25,
-    })
+    return pd.DataFrame(
+        {
+            "x": [1, 2, 3, 4] * 25,
+            "y": [0, 1, 0, 1] * 25,
+        }
+    )
 
 
-@pytest.fixture(
-    scope="function",
-    params=[{"custom_init": True}, {"custom_init": False}]
-)
+@pytest.fixture(scope="function", params=[{"custom_init": True}, {"custom_init": False}])
 def model_def(request, mock_data) -> Model:
 
     dataset = Dataset(
@@ -56,6 +55,7 @@ def model_def(request, mock_data) -> Model:
 def trainer():
     def _trainer(model: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> LogisticRegression:
         return model.fit(features, target.squeeze())
+
     return _trainer
 
 
@@ -63,6 +63,7 @@ def trainer():
 def predictor():
     def _predictor(model: LogisticRegression, features: pd.DataFrame) -> typing.List[float]:
         return [float(x) for x in model.predict(features)]
+
     return _predictor
 
 
@@ -71,6 +72,7 @@ def evaluator():
     def _evaluator(model: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> float:
         predictions = model.predict(features)
         return accuracy_score(target, predictions)
+
     return _evaluator
 
 
@@ -144,13 +146,13 @@ def test_model_train_from_data(model):
 
 def test_model_predict_task(model, mock_data):
     predict_task = model.predict_task()
-    
+
     assert isinstance(predict_task, PythonFunctionTask)
     assert predict_task.python_interface.inputs["model"].__module__ == "flytekit.types.pickle.pickle"
     assert predict_task.python_interface.outputs["o0"] == signature(model._predictor).return_annotation
 
     trained_model = LogisticRegression().fit(mock_data[["x"]], mock_data["y"])
-    predictions = predict_task(model=trained_model,data=mock_data[["x"]])
+    predictions = predict_task(model=trained_model, data=mock_data[["x"]])
     alt_predictions = model.predict(trained_model, features=mock_data[["x"]])
     assert all(isinstance(x, float) for x in predictions)
     assert predictions == alt_predictions
@@ -161,13 +163,14 @@ def test_model_predict_from_features_task(model, mock_data):
 
     assert isinstance(predict_from_features_task, PythonFunctionTask)
     assert predict_from_features_task.python_interface.inputs["model"].__module__ == "flytekit.types.pickle.pickle"
-    assert predict_from_features_task.python_interface.inputs["features"] == signature(
-        model._dataset._feature_getter
-    ).return_annotation
+    assert (
+        predict_from_features_task.python_interface.inputs["features"]
+        == signature(model._dataset._feature_getter).return_annotation
+    )
     assert predict_from_features_task.python_interface.outputs["o0"] == signature(model._predictor).return_annotation
 
     predictions = predict_from_features_task(
         model=LogisticRegression().fit(mock_data[["x"]], mock_data["y"]),
-        features=mock_data[["x"]]
+        features=mock_data[["x"]],
     )
     assert all(isinstance(x, float) for x in predictions)
