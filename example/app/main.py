@@ -2,7 +2,9 @@ import os
 from typing import List
 
 import pandas as pd
+import uvicorn
 from fastapi import FastAPI
+from gradio import networking
 from sklearn.datasets import load_breast_cancer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
@@ -57,20 +59,12 @@ def evaluator(model: LogisticRegression, features: pd.DataFrame, target: pd.Data
 
 
 if __name__ == "__main__":
-    import warnings
+    local_port = 8000
 
-    warnings.simplefilter("ignore")
+    # Setup ssh tunnel used to route connections from gradio.app to localhost on the specific
+    # local port
+    share_url = networking.setup_tunnel(local_server_port=local_port, endpoint=None)
+    print(f'\n\nAfter uvicorn server starts, use {share_url} to run your flytekit-learn.\n\n')
 
-    print("Running flytekit-learn locally")
-    breast_cancer_dataset = load_breast_cancer(as_frame=True)
-    hyperparameters = {"C": 1.0, "max_iter": 1000}
-    trained_model, metrics = model.train(hyperparameters, sample_frac=1.0, random_state=123)
-    print(trained_model, metrics)
-
-    print("Predicting from reader")
-    predictions = model.predict(trained_model, sample_frac=0.01, random_state=321)
-    print(predictions)
-
-    print("Predicting from features")
-    predictions = model.predict(trained_model, features=breast_cancer_dataset.frame.sample(5, random_state=42))
-    print(predictions)
+    # Start uvicorn server
+    uvicorn.run("example.app.main:app", host="127.0.0.1", port=local_port, log_level="info")

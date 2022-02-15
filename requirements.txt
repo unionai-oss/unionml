@@ -5,3 +5,4 @@ pandas
 fastapi
 pydantic
 typer
+gradio
