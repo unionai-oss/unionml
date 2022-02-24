@@ -1,0 +1,27 @@
+.sidebar-logo {
+  width: 80px;
+}
+
+.sidebar-brand-text {
+  display: none;
+}
+
+.sphinx-tabs-tab {
+  color: var(--color-link)
+}
+
+.sphinx-tabs-tab[aria-selected="true"] {
+    background: var(--color-background-primary);
+    border: 1px solid var(--color-sidebar-background-border);
+    border-bottom: 1px solid var(--color-background-primary);
+}
+
+.sphinx-tabs-panel {
+    background: var(--color-background-primary);
+    border: 1px solid var(--color-sidebar-background-border);
+    border-top: 0;
+}
+
+[role="tablist"] {
+    border-bottom: 1px solid var(--color-sidebar-background-border);
+}

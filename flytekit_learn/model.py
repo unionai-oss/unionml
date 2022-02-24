@@ -132,8 +132,9 @@ class Model(TrackedInstance):
         predict_task = self.predict_from_features_task()
 
         wf = Workflow(name=self.predict_from_features_workflow_name)
-        for arg, type in predict_task.python_interface.inputs.items():
-            wf.add_workflow_input(arg, type)
+        for i, (arg, type) in enumerate(predict_task.python_interface.inputs.items()):
+            # assume that the first argument is the model object
+            wf.add_workflow_input("model" if i == 0 else arg, type)
 
         predict_node = wf.add_entity(predict_task, **{k: wf.inputs[k] for k in wf.inputs})
         for output_name, promise in predict_node.outputs.items():
@@ -228,7 +229,13 @@ class Model(TrackedInstance):
 
         @inner_task(
             fklearn_obj=self,
-            input_parameters=predictor_sig.parameters,
+            input_parameters=OrderedDict(
+                [
+                    # assume that the first argument of the predictor represents the model object
+                    (name, p.replace(name="model") if i == 0 else p)
+                    for i, (name, p) in enumerate(predictor_sig.parameters.items())
+                ]
+            ),
             return_annotation=predictor_sig.return_annotation,
             **self._predict_task_kwargs,
         )
