@@ -40,6 +40,8 @@ def inner_task(
         return fn(*args, **kwargs)
 
     fn_sig = signature(fn)
+
+    # update signature and type annotations of wrapped function
     wrapper.__signature__ = signature(wrapper).replace(
         parameters=[
             p.replace(kind=Parameter.KEYWORD_ONLY)
@@ -47,6 +49,9 @@ def inner_task(
         ],
         return_annotation=fn_sig.return_annotation if return_annotation is None else return_annotation,
     )
+    wrapper.__annotations__.update({k: v.annotation for k, v in input_parameters.items()})
+    wrapper.__annotations__["return"] = return_annotation
+
     wrapper.__fklearn_object__ = fklearn_obj
     output_task = task(wrapper, task_resolver=task_resolver, **task_kwargs)
     output_task._name = f"{fklearn_obj.name}.{wrapper.__name__}"
