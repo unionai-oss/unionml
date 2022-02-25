@@ -232,7 +232,7 @@ class Model(TrackedInstance):
             input_parameters=OrderedDict(
                 [
                     # assume that the first argument of the predictor represents the model object
-                    (name, p.replace(name="model") if i == 0 else p)
+                    ("model", p.replace(name="model")) if i == 0 else (name, p)
                     for i, (name, p) in enumerate(predictor_sig.parameters.items())
                 ]
             ),

@@ -9,8 +9,6 @@ hidden: true
 dataset
 model
 local_app
-flyte_sandbox
-deploying
 ```
 
 `flytekit-learn` is an opinionated machine learning framework that makes going from
