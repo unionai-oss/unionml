@@ -149,7 +149,7 @@ def predict(
         predict_wf = model._remote.fetch_workflow(project, domain, model.predict_from_features_workflow_name, version)
 
     predictions = model._remote.execute(predict_wf, inputs=workflow_inputs, wait=True)
-    typer.echo(f"[fklearn predictions: {predictions.outputs['o0']}")
+    typer.echo(f"[fklearn] predictions: {predictions.outputs['o0']}")
 
 
 @app.command()
