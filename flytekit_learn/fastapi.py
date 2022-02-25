@@ -37,7 +37,6 @@ class PredictParams:
         "remote",
         "local",
         "model_version",
-        "model_source",
         "inputs",
         "features",
     )
@@ -49,14 +48,12 @@ class PredictParams:
         self,
         local: bool = False,  # TODO remove this, instead do model.serve(app, debug=True)
         model_version: str = "latest",
-        model_source: str = "remote",  # TODO remove this, model source should be flyte backend if debug=False
         inputs: Optional[Union[Dict, BaseModel]] = Body(None),
         features: Optional[List[Dict[str, Any]]] = Body(None),
     ) -> "PredictParams":
         self.remote = self.model._remote
         self.local = local
         self.model_version = model_version
-        self.model_source = model_source
         self.inputs = inputs
         self.features = features
         return self
@@ -121,7 +118,7 @@ def app_wrapper(model, app, default_endpoints: bool, train_endpoint: str, predic
             raise HTTPException(status_code=500, detail="inputs or features must be supplied.")
 
         version = None if params.model_version == "latest" else params.model_version
-        if params.model_source == "remote":
+        if not params.local:
             latest_model = _get_latest_trained_model(model, params.remote, version)
         elif model._latest_model:
             latest_model = model._latest_model
