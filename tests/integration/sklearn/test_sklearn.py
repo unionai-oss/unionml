@@ -45,6 +45,8 @@ def test_module(capfd):
         r"\[6\.0, 9\.0, 3\.0, 7\.0, 2\.0\]",
     ]
 
+    assert cap.out.strip() != ""
+
     for patt, line in zip(expected_patterns, cap.out.strip().split("\n")):
         assert re.match(patt, line)
 
