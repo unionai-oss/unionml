@@ -13,10 +13,11 @@ The easiest way to build machine learning services.
 hidden: true
 ---
 User Guide <user_guide>
+Deployment Guide <deploying>
 Contributing <contributing>
 ```
 
-`flytekit-learn` is a machine learning framework for building end-to-end services.
+`flytekit-learn` is a framework for building end-to-end machine learning services.
 
 It's built on top of [flyte](https://docs.flyte.org/en/latest/) and
 [flytekit](https://docs.flyte.org/projects/flytekit/en/latest/) to provide a high-level
@@ -73,7 +74,7 @@ core components for model training and prediction:
 
       ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
       ---
-      lines: 15-33
+      lines: 14-32
       ---
       ```
 
@@ -83,7 +84,7 @@ core components for model training and prediction:
 
       ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
       ---
-      lines: 15-33
+      lines: 14-32
       ---
       ```
 
@@ -101,7 +102,7 @@ Invoke `model.train` to train a model and `model.predict` to generate prediction
 
       ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
       ---
-      lines: 36-44
+      lines: 34-39
       ---
       ```
 
@@ -111,7 +112,7 @@ Invoke `model.train` to train a model and `model.predict` to generate prediction
 
       ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
       ---
-      lines: 36-44
+      lines: 34-39
       ---
       ```
 

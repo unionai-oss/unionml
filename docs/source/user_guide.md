@@ -9,8 +9,6 @@ hidden: true
 dataset
 model
 local_app
-flyte_sandbox
-deploying
 ```
 
 `flytekit-learn` is an opinionated machine learning framework that makes going from
@@ -19,7 +17,7 @@ asks the question:
 
 > Is it possible to define a standard set of functions/methods for machine learning that can be
 > reused in many different contexts, from model training to batch, streaming,
-> or even event-based prediction?
+> or event-based prediction?
 
 ## `flytekit-learn` Apps
 
