@@ -4,3 +4,4 @@ flytekitplugins-sqlalchemy
 pre_commit
 pytest
 types-requests
+uvicorn

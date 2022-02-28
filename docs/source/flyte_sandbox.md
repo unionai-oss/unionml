@@ -117,9 +117,6 @@ Create a file called `flyte.config`, then add the following configuration settin
 [sdk]
 workflow_packages=app.main  # module name of the app
 
-[auth]
-raw_output_data_prefix=s3://my-s3-bucket/raw_output
-
 [platform]
 url=localhost:30081
 insecure=true
