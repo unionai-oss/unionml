@@ -1,3 +1,4 @@
+import re
 import subprocess
 import sys
 import time
@@ -28,33 +29,39 @@ def _wait_to_exist():
             time.sleep(3.0)
 
 
-def test_module():
+def test_module(capfd):
     module_path = Path(__file__)
-    output = subprocess.run(
+    subprocess.run(
         [
             sys.executable,
             str(module_path.parent / "quickstart.py"),
         ],
-        capture_output=True,
+        text=True,
     )
-    expected_output = (
-        "LogisticRegression(max_iter=1000.0) {'train': 1.0, 'test': 0.9722222222222222} [6.0, 9.0, 3.0, 7.0, 2.0]"
-    )
-    assert output.stdout.decode().strip() == expected_output
+    cap = capfd.readouterr()
+    expected_patterns = [
+        r"LogisticRegression\(max_iter=1000.0\)",
+        r"\{'train': 1.0, 'test': [0-9.]+\}",
+        r"\[6\.0, 9\.0, 3\.0, 7\.0, 2\.0\]",
+    ]
+
+    for patt, line in zip(expected_patterns, cap.out.strip().split("\n")):
+        assert re.match(patt, line)
 
 
-def test_fastapi_app(app):
+def test_fastapi_app(app, capfd):
     module_path = Path(__file__)
-    output = subprocess.run(
+    subprocess.run(
         [
             sys.executable,
             str(module_path.parent / "api_requests.py"),
         ],
-        capture_output=True,
+        text=True,
     )
-    output_lines = output.stdout.decode().strip().split("\n")
-    expected = [
-        '{"trained_model":"LogisticRegression(max_iter=1000.0)","metrics":{"train":1.0,"test":0.9722222222222222},"flyte_execution_id":null}',  # noqa
-        "[6.0,9.0,3.0,7.0,2.0]",
+    cap = capfd.readouterr()
+    expected_patterns = [
+        r'\{"trained_model":"LogisticRegression\(max_iter=1000.0\)","metrics":\{"train":1.0,"test":[0-9.]+\},"flyte_execution_id":null\}',  # noqa
+        r"\[6\.0,9\.0,3\.0,7\.0,2\.0\]",
     ]
-    assert output_lines == expected
+    for patt, line in zip(expected_patterns, cap.out.strip().split("\n")):
+        assert re.match(patt, line)

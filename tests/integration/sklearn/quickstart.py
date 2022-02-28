@@ -35,4 +35,4 @@ if __name__ == "__main__":
     trained_model, metrics = model.train(hyperparameters={"C": 1.0, "max_iter": 1000})
 
     predictions = model.predict(trained_model, features=load_digits(as_frame=True).frame.sample(5, random_state=42))
-    print(trained_model, metrics, predictions)
+    print(trained_model, metrics, predictions, sep="\n")
