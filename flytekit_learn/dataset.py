@@ -15,7 +15,7 @@ from flytekit_learn.utils import inner_task
 class Dataset(TrackedInstance):
     def __init__(
         self,
-        name: str = None,
+        name: str = "dataset",
         *,
         features: Optional[List[str]] = None,
         targets: Optional[List[str]] = None,

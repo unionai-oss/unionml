@@ -7,22 +7,82 @@ import typing
 from dataclasses import asdict
 from pathlib import Path
 
+import docker
+import git
 import typer
 from flytekit import LaunchPlan
 from flytekit.models import filters
 from flytekit.models.admin.common import Sort
-from flytekit.remote import FlyteWorkflowExecution
+from flytekit.models.project import Project
+from flytekit.remote import FlyteRemote, FlyteWorkflowExecution
+
+from flytekit_learn import Model
 
 app = typer.Typer()
 
 
-def _get_model(app: str):
+IMAGE_PREFIX = "flytekit-learn"
+
+
+def _get_model(app: str, reload: bool = False):
     module_name, model_var = app.split(":")
-    return getattr(importlib.import_module(module_name), model_var)
+    module = importlib.import_module(module_name)
+    if reload:
+        importlib.reload(module)
+    return getattr(module, model_var)
 
 
-def _deploy_wf(wf, remote, project, domain, version):
+def _create_project(remote: FlyteRemote, project: typing.Optional[str]):
+    project = project or remote.default_project
+    projects, _ = remote.client.list_projects_paginated(filters=[filters.Equal("project.name", project)])
+    if not projects:
+        typer.echo(f"Creating project {project}")
+        remote.client.register_project(Project(id=project, name=project, description=project))
+        return
+
+    typer.echo(f"Using existing project {project}")
+
+
+def _get_version():
+    repo = git.Repo(".", search_parent_directories=True)
+    if repo.is_dirty():
+        typer.echo("Please commit git changes before building.", err=True)
+        raise typer.Exit(code=1)
+    commit = repo.rev_parse("HEAD")
+    return commit.hexsha
+
+
+def _get_image_fqn(model: Model, version: str):
+    return f"{model.registry}/{IMAGE_PREFIX}-{model.name.replace('_', '-')}:{version}"
+
+
+def _docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Image:
+    client = docker.from_env()
+
+    # TODO: handle sandbox case, which doesn't need to deal with container registries
+    typer.echo(f"Building image: {image_fqn}")
+    image, build_logs = client.images.build(
+        path=".",
+        dockerfile=model.dockerfile,
+        tag=image_fqn,
+        buildargs={
+            "image": image_fqn,
+            "config": str(model.config_file_path),
+        },
+        rm=True,
+    )
+    for line in build_logs:
+        typer.echo(line)
+
+    for line in client.api.push(image.tags[0], stream=True, decode=True):
+        typer.echo(line)
+
+    return image
+
+
+def _deploy_wf(wf, remote: FlyteRemote, project: str, domain: str, version: str):
     """Register all tasks, workflows, and launchplans needed to execute the workflow."""
+    typer.echo(f"Deploying workflow {wf.name}")
     lp = LaunchPlan.get_or_create(wf)
     identifiers = asdict(remote._resolve_identifier_kwargs(wf, project, domain, wf.name, version))
     remote._register_entity_if_not_exists(wf, identifiers)
@@ -33,36 +93,31 @@ def _deploy_wf(wf, remote, project, domain, version):
 @app.command()
 def deploy(
     app: str,
-    image: typing.Optional[str] = typer.Option(None, "--image", "-i", help="default image to use"),
     project: str = typer.Option(None, "--project", "-p", help="project name"),
     domain: str = typer.Option(None, "--domain", "-d", help="domain name"),
-    name: typing.Optional[str] = typer.Option(None, "--name", "-n", help="model name"),
-    version: str = typer.Option(None, "--version", "-v", help="version"),
 ):
     """Deploy model to a Flyte backend."""
 
     typer.echo(f"[fklearn] deploying {app}")
-    os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
     model = _get_model(app)
 
-    if model.name is None:
-        if name is None:
-            typer.echo(
-                "name must be provided in the flytekit_learn.Model constructor or the --name option",
-                err=True,
-            )
-        model.name = name
-
-    # get training workflow
-    train_wf = model.train(lazy=True)
-    predict_wf = model.predict(lazy=True)
-    predict_from_features_wf = model.predict(lazy=True, features=True)
-
     # register all tasks, workflows, and launchplans needed to execute model endpoints
+    version = _get_version()
+    image = _get_image_fqn(model, version)
     args = [project, domain, version]
-    _deploy_wf(train_wf, model._remote, *args)
-    _deploy_wf(predict_wf, model._remote, *args)
-    _deploy_wf(predict_from_features_wf, model._remote, *args)
+
+    os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
+    model = _get_model(app, reload=True)
+
+    _create_project(model._remote, project)
+    _docker_build_push(model, image)
+
+    for wf in [
+        model.train(lazy=True),
+        model.predict(lazy=True),
+        model.predict(lazy=True, features=True),
+    ]:
+        _deploy_wf(wf, model._remote, *args)
 
 
 @app.command()
@@ -71,21 +126,12 @@ def train(
     inputs: str = typer.Option(None, "--inputs", "-i", help="inputs to pass into training workflow"),
     project: str = typer.Option(None, "--project", "-p", help="project name"),
     domain: str = typer.Option(None, "--domain", "-d", help="domain name"),
-    name: typing.Optional[str] = typer.Option(None, "--name", "-n", help="model name"),
     version: str = typer.Option(None, "--version", "-v", help="version"),
 ):
     typer.echo(f"[fklearn] app: {app} - training model")
     model = _get_model(app)
-
-    if model.name is None:
-        if name is None:
-            typer.echo(
-                "name must be provided in the flytekit_learn.Model constructor or the --name option",
-                err=True,
-            )
-        model.name = name
-
     inputs = json.loads(inputs)
+    version = version or _get_version()
     train_wf = model._remote.fetch_workflow(project, domain, model.train_workflow_name, version)
     typer.echo("[fklearn] executing model workflow")
     typer.echo(f"[fklearn] project: {train_wf.id.project}")
@@ -107,21 +153,13 @@ def predict(
     features: Path = typer.Option(None, "--features", "-f", help="hyperparameters"),
     project: str = typer.Option(None, "--project", "-p", help="project name"),
     domain: str = typer.Option(None, "--domain", "-d", help="domain name"),
-    name: typing.Optional[str] = typer.Option(None, "--name", "-n", help="model name"),
     version: str = typer.Option(None, "--version", "-v", help="version"),
 ):
     typer.echo(f"[fklearn] app: {app} - generating predictions")
     model = _get_model(app)
-
-    if model.name is None:
-        if name is None:
-            typer.echo(
-                "name must be provided in the flytekit_learn.Model constructor or the --name option",
-                err=True,
-            )
-        model.name = name
-
+    version = version or _get_version()
     train_wf = model._remote.fetch_workflow(project, domain, model.train_workflow_name, version)
+
     typer.echo("[fklearn] getting latest model")
     [latest_training_execution, *_], _ = model._remote.client.list_executions_paginated(
         train_wf.id.project,
