@@ -115,7 +115,7 @@ Create a file called `flyte.config`, then add the following configuration settin
 
 ```{code-block} ini
 [sdk]
-workflow_packages=app.main  # module name of the app
+workflow_packages=app.main
 
 [platform]
 url=localhost:30081
