@@ -22,6 +22,7 @@ app = typer.Typer()
 
 
 IMAGE_PREFIX = "flytekit-learn"
+FLYTE_SANDBOX_CONTAINER_NAME = "flyte-sandbox"
 
 
 def _get_model(app: str, reload: bool = False):
@@ -54,6 +55,38 @@ def _get_version():
 
 def _get_image_fqn(model: Model, version: str):
     return f"{model.registry}/{IMAGE_PREFIX}-{model.name.replace('_', '-')}:{version}"
+
+
+def _sandbox_docker_build(image_fqn: str):
+    typer.echo("Using Flyte Sandbox")
+    client = docker.from_env()
+
+    sandbox_container = None
+    for container in client.containers.list():
+        if container.name == FLYTE_SANDBOX_CONTAINER_NAME:
+            sandbox_container = container
+
+    if sandbox_container is None:
+        typer.echo(
+            "Cannot find Flyte Sandbox. Make sure to install flytectl and create a sandbox with "
+            "`flytectl sandbox start --source .`",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Building image: {image_fqn}")
+    _, build_logs = sandbox_container.exec_run(
+        [
+            "docker",
+            "build",
+            "/root",
+            "--tag",
+            image_fqn,
+        ],
+        stream=True,
+    )
+    for line in build_logs:
+        typer.echo(line.decode())
 
 
 def _docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Image:
@@ -110,7 +143,11 @@ def deploy(
     model = _get_model(app, reload=True)
 
     _create_project(model._remote, project)
-    _docker_build_push(model, image)
+    if model._remote._flyte_admin_url.startswith("localhost"):
+        # assume that a localhost flyte_admin_url means that we want to use Flyte sandbox
+        _sandbox_docker_build(image)
+    else:
+        _docker_build_push(model, image)
 
     for wf in [
         model.train(lazy=True),
