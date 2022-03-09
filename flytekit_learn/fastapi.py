@@ -111,7 +111,7 @@ def app_wrapper(model, app, default_endpoints: bool, train_endpoint: str, predic
             "flyte_execution_id": flyte_execution_id,
         }
 
-    @app.get(predict_endpoint)
+    @app.post(predict_endpoint)
     def predict(params: PredictParams = Depends(PredictParams(model))):
         inputs, features = params.inputs, params.features
         if inputs is None and features is None:

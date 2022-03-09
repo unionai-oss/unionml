@@ -15,13 +15,13 @@ metrics = requests.post(
 )
 print(f"Model: {metrics.text}")
 
-predictions = requests.get(
+predictions = requests.post(
     "http://127.0.0.1:8000/predict?local=True",
     json={"inputs": {"sample_frac": 0.01, "random_state": 43}},
 )
 print(f"Predictions from dataset reader: {predictions.text}")
 
-predictions = requests.get(
+predictions = requests.post(
     "http://127.0.0.1:8000/predict?local=True",
     json={"features": features.sample(10, random_state=42).to_dict(orient="records")},
 )
