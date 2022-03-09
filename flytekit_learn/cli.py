@@ -57,7 +57,7 @@ def _get_image_fqn(model: Model, version: str):
     return f"{model.registry}/{IMAGE_PREFIX}-{model.name.replace('_', '-')}:{version}"
 
 
-def _sandbox_docker_build(image_fqn: str):
+def _sandbox_docker_build(model: Model, image_fqn: str):
     typer.echo("Using Flyte Sandbox")
     client = docker.from_env()
 
@@ -76,13 +76,7 @@ def _sandbox_docker_build(image_fqn: str):
 
     typer.echo(f"Building image: {image_fqn}")
     _, build_logs = sandbox_container.exec_run(
-        [
-            "docker",
-            "build",
-            "/root",
-            "--tag",
-            image_fqn,
-        ],
+        ["docker", "build", "/root", "--tag", image_fqn, "--build-arg", f"config={str(model.config_file_path)}"],
         stream=True,
     )
     for line in build_logs:
@@ -92,7 +86,6 @@ def _sandbox_docker_build(image_fqn: str):
 def _docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Image:
     client = docker.from_env()
 
-    # TODO: handle sandbox case, which doesn't need to deal with container registries
     typer.echo(f"Building image: {image_fqn}")
     image, build_logs = client.images.build(
         path=".",
@@ -139,13 +132,16 @@ def deploy(
     image = _get_image_fqn(model, version)
     args = [project, domain, version]
 
+    # model needs to be reloaded after setting this environment variable so that the workflow's
+    # default image is set correctly. This can be simplified after flytekit config improvements
+    # are merged: https://github.com/flyteorg/flytekit/pull/857
     os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
     model = _get_model(app, reload=True)
 
     _create_project(model._remote, project)
     if model._remote._flyte_admin_url.startswith("localhost"):
         # assume that a localhost flyte_admin_url means that we want to use Flyte sandbox
-        _sandbox_docker_build(image)
+        _sandbox_docker_build(model, image)
     else:
         _docker_build_push(model, image)
 
