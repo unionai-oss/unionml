@@ -57,4 +57,5 @@ def evaluator(model: LogisticRegression, features: pd.DataFrame, target: pd.Data
     predictions = model.predict(features)
     return accuracy_score(target.squeeze(), predictions)
 
+
 lambda_handler = Mangum(app)
