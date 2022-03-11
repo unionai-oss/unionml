@@ -70,10 +70,14 @@ if __name__ == "__main__":
     trained_model, metrics = model.train(hyperparameters, sample_frac=1.0, random_state=123)
     print(trained_model, metrics)
 
-    print("Predicting from reader")
-    predictions = model.predict(trained_model, sample_frac=0.01, random_state=321)
-    print(predictions)
+    import joblib
 
-    print("Predicting from features")
-    predictions = model.predict(trained_model, features=breast_cancer_dataset.frame.sample(5, random_state=42))
-    print(predictions)
+    joblib.dump(trained_model, "./model.joblib")
+
+    # print("Predicting from reader")
+    # predictions = model.predict(trained_model, sample_frac=0.01, random_state=321)
+    # print(predictions)
+
+    # print("Predicting from features")
+    # predictions = model.predict(trained_model, features=breast_cancer_dataset.frame.sample(5, random_state=42))
+    # print(predictions)
