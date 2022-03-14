@@ -14,7 +14,7 @@ setup(
         "pandas",
         "fastapi",
         "pydantic",
-        "typer",
+        "singledispatchmethod ; python_version < '3.8" "typer",
     ],
     entry_points={"console_scripts": ["fklearn = flytekit_learn.cli:app"]},
 )
