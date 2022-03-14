@@ -19,7 +19,7 @@ from flytekit_learn.utils import inner_task
 class Model(TrackedInstance):
     def __init__(
         self,
-        name: str = None,
+        name: str = "model",
         init: Union[Type, Callable] = None,
         *,
         dataset: Dataset,
@@ -31,7 +31,12 @@ class Model(TrackedInstance):
         self._hyperparameters = hyperparameters
         self._dataset = dataset
         self._latest_model = None
+
+        # properties needed for deployment
         self._remote = None
+        self._config_file_path: Optional[str] = None
+        self._registry: Optional[str] = None
+        self._dockerfile: Optional[str] = None
 
         if self._dataset.name is None:
             self._dataset.name = f"{self.name}.dataset"
@@ -41,6 +46,18 @@ class Model(TrackedInstance):
         self._predict_from_features_task = None
         self._train_task_kwargs = None
         self._predict_task_kwargs = None
+
+    @property
+    def config_file_path(self) -> Optional[str]:
+        return self._config_file_path
+
+    @property
+    def registry(self) -> Optional[str]:
+        return self._registry
+
+    @property
+    def dockerfile(self) -> Optional[str]:
+        return self._dockerfile
 
     @property
     def train_workflow_name(self):
@@ -283,7 +300,17 @@ class Model(TrackedInstance):
             return predict_wf(model=model, **reader_kwargs)
         return predict_wf(model=model, features=features)
 
-    def remote(self, config_file_path=None, project=None, domain=None):
+    def remote(
+        self,
+        registry: Optional[str] = None,
+        dockerfile: str = "Dockerfile",
+        config_file_path: Optional[str] = None,
+        project: Optional[str] = None,
+        domain: Optional[str] = None,
+    ):
+        self._config_file_path = config_file_path
+        self._registry = registry
+        self._dockerfile = dockerfile
         self._remote = FlyteRemote.from_config(
             config_file_path=config_file_path,
             default_project=project,

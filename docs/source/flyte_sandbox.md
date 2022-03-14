@@ -115,7 +115,7 @@ Create a file called `flyte.config`, then add the following configuration settin
 
 ```{code-block} ini
 [sdk]
-workflow_packages=app.main  # module name of the app
+workflow_packages=app.main
 
 [platform]
 url=localhost:30081
@@ -172,7 +172,7 @@ To deploy run:
 prompts: $
 ---
 
-fklearn deploy app.main:model -i "flytekit-learn:v0" -v 0  # deploy flytekit-learn model
+fklearn deploy app.main:model
 ```
 
 ```{note}
@@ -188,7 +188,11 @@ the Flyte sandbox cluster:
 
 Train a model given some hyperparameters:
 
-```{code-block} bash
+```{prompt} bash
+---
+prompts: $
+---
+
 fklearn train app.main:model -i '{"hyperparameters": {"C": 1.0, "max_iter": 1000}, "sample_frac": 1.0, "random_state": 123}'
 ```
 
@@ -196,6 +200,10 @@ fklearn train app.main:model -i '{"hyperparameters": {"C": 1.0, "max_iter": 1000
 
 Generate predictions with json data:
 
-```{code-block} bash
+```{prompt} bash
+---
+prompts: $
+---
+
 fklearn predict app.main:model -f <path-to-json-file>
 ```

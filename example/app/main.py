@@ -10,13 +10,14 @@ from sklearn.metrics import accuracy_score
 from flytekit_learn import Dataset, Model
 
 dataset = Dataset(
+    name="breast_cancer_data",
     targets=["target"],
     test_size=0.2,
     shuffle=True,
     random_state=123,
 )
 model = Model(
-    name="breast_cancer",
+    name="breast_cancer_classifier",
     init=LogisticRegression,
     hyperparameters={"C": float, "max_iter": int},
     dataset=dataset,
@@ -24,8 +25,10 @@ model = Model(
 
 # attach Flyte remote backend
 model.remote(
-    os.environ.get("FLYTE_CONFIG", "config/sandbox.config"),
-    project="flytesnacks",
+    registry="ghcr.io/unionai-oss",
+    dockerfile="Dockerfile",
+    config_file_path=os.environ.get("FLYTE_CONFIG", "config/sandbox.config"),
+    project="flytekit-learn",
     domain="development",
 )
 

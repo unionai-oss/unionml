@@ -102,7 +102,7 @@ Invoke `model.train` to train a model and `model.predict` to generate prediction
 
       ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
       ---
-      lines: 34-39
+      lines: 34-38
       ---
       ```
 
@@ -112,7 +112,7 @@ Invoke `model.train` to train a model and `model.predict` to generate prediction
 
       ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
       ---
-      lines: 34-39
+      lines: 34-38
       ---
       ```
 

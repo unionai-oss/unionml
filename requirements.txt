@@ -1,4 +1,6 @@
+docker
 flytekit>=0.30.3
+gitpython
 sklearn
 numpy
 pandas
