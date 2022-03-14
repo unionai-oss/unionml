@@ -1,4 +1,4 @@
-flytekit==0.25.0
+flytekit>=0.31.0
 sklearn
 numpy
 pandas
