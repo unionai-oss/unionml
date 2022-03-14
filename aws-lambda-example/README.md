@@ -36,7 +36,38 @@ The first command will build a docker image from a Dockerfile and then copy the 
 * **Allow SAM CLI IAM role creation**: Many AWS SAM templates, including this example, create AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modifies IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command.
 * **Save arguments to samconfig.toml**: If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.
 
-You can find your API Gateway Endpoint URL in the output values displayed after deployment.
+You can find your API Gateway Endpoint URL in the output values displayed after deployment. You can hit that endpoint to exercise your flytekit-learn app, for example, let's say that this is the output of `sam deploy`:
+
+``` asciidoc
+...
+CloudFormation outputs from deployed stack
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Outputs
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Key                 ULearnFunctionIamRole
+Description         Implicit IAM Role created for ulearn function
+Value               arn:aws:iam::*******:role/ulearn-example-ULearnFunctionRole-*******
+
+Key                 ULearnFunction
+Description         ulearn Lambda Function ARN
+Value               arn:aws:lambda:us-east-2:*******:function:ulearn-example-ULearnFunction-*******
+
+Key                 ULearnApi
+Description         API Gateway endpoint URL for Prod stage for ULearn function
+Value               https://abcdefghij.execute-api.us-east-2.amazonaws.com/Prod/ulearn/
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Successfully created/updated stack - ulearn-example in us-east-2
+```
+
+You'll be able to use curl to hit the API Gateway running your flytekit-learn app. For example, in order to hit the `predict` endpoint you can run:
+
+``` bash
+ulearn-aws-lambda-example$ curl -v -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"inputs": {"sample_frac": 0.01, "random_state": 43}}' \
+    "https://abcdefghij.execute-api.us-east-2.amazonaws.com/Prod/predict?local=True&model_source=local"
+```
 
 ## Use the SAM CLI to build and test locally
 
