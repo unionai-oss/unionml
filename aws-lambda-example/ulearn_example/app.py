@@ -23,7 +23,6 @@ model = Model(
     dataset=dataset,
 )
 
-
 # attach Flyte remote backend
 model.remote(
     os.environ.get("FLYTE_CONFIG", "config/sandbox.config"),
@@ -34,6 +33,9 @@ model.remote(
 # serve the model with FastAPI
 app = FastAPI()
 model.serve(app)
+
+# Mangum offers an adapter for running ASGI applications in AWS Lambda to handle API Gateway.
+lambda_handler = Mangum(app)
 
 
 @dataset.reader
@@ -56,6 +58,3 @@ def predictor(model: LogisticRegression, features: pd.DataFrame) -> List[float]:
 def evaluator(model: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> float:
     predictions = model.predict(features)
     return accuracy_score(target.squeeze(), predictions)
-
-
-lambda_handler = Mangum(app)
