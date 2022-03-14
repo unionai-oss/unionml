@@ -1,11 +1,14 @@
 """Model class for defining training, evaluation, and prediction."""
 
-import importlib
+import inspect
+import os
 from collections import OrderedDict
-from functools import partial
+from functools import partial, singledispatchmethod
 from inspect import Parameter, signature
-from typing import Any, Callable, Dict, NamedTuple, Optional, Type, Union
+from typing import IO, Any, Callable, Dict, List, NamedTuple, Optional, Type, Union
 
+import joblib
+import sklearn
 from flytekit import Workflow
 from flytekit.core.tracker import TrackedInstance
 from flytekit.remote import FlyteRemote
@@ -27,10 +30,14 @@ class Model(TrackedInstance):
     ):
         super().__init__()
         self.name = name
-        self._init_cls = init
+        self._init_callable = init
         self._hyperparameters = hyperparameters
         self._dataset = dataset
         self._latest_model = None
+
+        self._model_type = (
+            init if inspect.isclass(init) else signature(init).return_annotation if init is not None else init
+        )
 
         # properties needed for deployment
         self._remote = None
@@ -41,9 +48,12 @@ class Model(TrackedInstance):
         if self._dataset.name is None:
             self._dataset.name = f"{self.name}.dataset"
 
+        # fklearn-compiled tasks
         self._train_task = None
         self._predict_task = None
         self._predict_from_features_task = None
+
+        # user-provided task kwargs
         self._train_task_kwargs = None
         self._predict_task_kwargs = None
 
@@ -101,6 +111,14 @@ class Model(TrackedInstance):
         self._evaluator = fn
         return self._evaluator
 
+    def saver(self, fn):
+        self._saver = fn
+        return self._saver
+
+    def loader(self, fn):
+        self._loader = fn
+        return self._loader
+
     def train_workflow(self):
         dataset_task = self._dataset.dataset_task()
         train_task = self.train_task()
@@ -132,7 +150,8 @@ class Model(TrackedInstance):
         predict_task = self.predict_task()
 
         wf = Workflow(name=self.predict_workflow_name)
-        wf.add_workflow_input("model", predict_task.python_interface.inputs["model"])
+        model_arg_name, *_ = predict_task.python_interface.inputs.keys()
+        wf.add_workflow_input("model", predict_task.python_interface.inputs[model_arg_name])
         for arg, type in dataset_task.python_interface.inputs.items():
             wf.add_workflow_input(arg, type)
 
@@ -163,13 +182,6 @@ class Model(TrackedInstance):
             return self._train_task
 
         *_, hyperparameters_param = signature(self._init).parameters.values()
-
-        init_kwargs = {}
-        if self._init_cls:
-            init_kwargs["init_cls"] = {
-                "module": self._init_cls.__module__,
-                "cls_name": self._init_cls.__name__,
-            }
 
         # assume that reader_return_type is a dict with only a single entry
         [(data_arg_name, data_arg_type)] = self._dataset.reader_return_type.items()
@@ -202,7 +214,7 @@ class Model(TrackedInstance):
             raw_data = kwargs[data_arg_name]
             training_data = self._dataset.get_data(raw_data)
             trained_model = self._trainer(
-                self._init(hyperparameters=hyperparameters, **init_kwargs),
+                self._init(hyperparameters=hyperparameters),
                 *training_data["train"],
             )
             metrics = {
@@ -284,9 +296,10 @@ class Model(TrackedInstance):
 
     def predict(
         self,
-        model: FlytePickle = None,
+        model=None,
+        *,
         features: Any = None,
-        lazy=False,
+        lazy: bool = False,
         **reader_kwargs,
     ):
         if features is None:
@@ -299,6 +312,12 @@ class Model(TrackedInstance):
         if features is None:
             return predict_wf(model=model, **reader_kwargs)
         return predict_wf(model=model, features=features)
+
+    def save(self, model, file, *args, **kwargs):
+        return self._saver(model, file, *args, **kwargs)
+
+    def load(self, file, *args, **kwargs):
+        return self._loader(self._model_type, file, *args, **kwargs)
 
     def remote(
         self,
@@ -334,7 +353,30 @@ class Model(TrackedInstance):
 
 
 @Model._set_default(name="_init")
-def _default_init_model(self, init_cls: dict, hyperparameters: dict) -> FlytePickle:
-    module = importlib.import_module(init_cls["module"])
-    cls = getattr(module, init_cls["cls_name"])
-    return cls(**hyperparameters)
+def _default_init(self, hyperparameters: dict) -> FlytePickle:
+    return self._init_callable(**hyperparameters)
+
+
+@Model._set_default(name="_saver")
+@singledispatchmethod
+def _default_saver(self, model: Any, file: Union[str, os.PathLike, IO], *args, **kwargs) -> Any:
+    raise NotImplementedError(
+        f"Default saver not defined for type {type(model)}. Use the Model.saver decorator to define one."
+    )
+
+
+@_default_saver.register
+def _(self, model: sklearn.base.BaseEstimator, file: Union[str, os.PathLike, IO], *args, **kwargs) -> List[str]:
+    return joblib.dump(model, file, *args, **kwargs)
+
+
+@Model._set_default(name="_loader")
+@singledispatchmethod
+def _default_loader(
+    self,
+    model_type: Type[sklearn.base.BaseEstimator],
+    file: Union[str, os.PathLike, IO],
+    *args,
+    **kwargs,
+) -> sklearn.base.BaseEstimator:
+    return joblib.load(file, *args, **kwargs)

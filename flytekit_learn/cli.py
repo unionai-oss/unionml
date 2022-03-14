@@ -1,8 +1,10 @@
 """flytekit-learn cli."""
 
+import copy
 import importlib
 import json
 import os
+import subprocess
 import typing
 from dataclasses import asdict
 from pathlib import Path
@@ -161,6 +163,7 @@ def train(
     domain: str = typer.Option(None, "--domain", "-d", help="domain name"),
     version: str = typer.Option(None, "--version", "-v", help="version"),
 ):
+    """Train a model."""
     typer.echo(f"[fklearn] app: {app} - training model")
     model = _get_model(app)
     inputs = json.loads(inputs)
@@ -188,6 +191,7 @@ def predict(
     domain: str = typer.Option(None, "--domain", "-d", help="domain name"),
     version: str = typer.Option(None, "--version", "-v", help="version"),
 ):
+    """Generate prediction."""
     typer.echo(f"[fklearn] app: {app} - generating predictions")
     model = _get_model(app)
     version = version or _get_version()
@@ -221,6 +225,24 @@ def predict(
 
     predictions = model._remote.execute(predict_wf, inputs=workflow_inputs, wait=True)
     typer.echo(f"[fklearn] predictions: {predictions.outputs['o0']}")
+
+
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+def uvicorn(ctx: typer.Context, model_path: str = None):
+    """Start a FastAPI app with Uvicorn.
+
+    This command accepts all uvicorn command-line options. For more details, see:
+    https://www.uvicorn.org/#command-line-options
+    """
+    try:
+        import uvicorn  # noqa: F401
+    except ImportError as exc:
+        raise ImportError("uvicorn not found. Please install with `pip install uvicorn`.") from exc
+
+    env = copy.copy(os.environ)
+    if model_path:
+        env["FKLEARN_MODEL_PATH"] = model_path
+    subprocess.run(["uvicorn", *ctx.args], env=env)  # type: ignore
 
 
 @app.command()

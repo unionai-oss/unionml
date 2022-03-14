@@ -1,9 +1,10 @@
 docker
+fastapi
 flytekit>=0.30.3
 gitpython
-sklearn
+joblib
 numpy
 pandas
-fastapi
 pydantic
+sklearn
 typer

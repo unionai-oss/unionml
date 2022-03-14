@@ -1,5 +1,6 @@
 """Utilities for the FastAPI integration."""
 
+import os
 from typing import Any, Dict, List, Optional, Union
 
 from fastapi import Body, Depends, HTTPException
@@ -60,6 +61,12 @@ class PredictParams:
 
 
 def app_wrapper(model, app, default_endpoints: bool, train_endpoint: str, predict_endpoint: str):
+
+    # If the FKLEARN_MODEL_PATH environment variable is set, update the _latest_model attribute with the
+    # specified model path
+    if os.getenv("FKLEARN_MODEL_PATH"):
+        model._latest_model = model.load(os.getenv("FKLEARN_MODEL_PATH"))
+
     @app.get("/", response_class=HTMLResponse)
     def root():
         return """
@@ -125,10 +132,10 @@ def app_wrapper(model, app, default_endpoints: bool, train_endpoint: str, predic
         else:
             raise HTTPException(status_code=500, detail="trained model not found")
 
-        workflow_inputs = {"model": latest_model}
+        workflow_inputs: Dict[str, Any] = {}
         workflow_inputs.update(inputs if inputs else {"features": model._dataset.get_features(features)})
         if params.local:
-            return model.predict(**workflow_inputs)
+            return model.predict(latest_model, **workflow_inputs)
 
         predict_wf = params.remote.fetch_workflow(
             name=model.predict_workflow_name if inputs else model.predict_from_features_workflow_name,
