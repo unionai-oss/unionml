@@ -1,29 +1,38 @@
 import re
+import runpy
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
 import requests
+from sklearn.datasets import load_digits
 
 
-@pytest.fixture(scope="module")
-def app():
+def _app(*args, port: str = "8000"):
     """Transient app server for testing."""
     process = subprocess.Popen(
-        ["uvicorn", "tests.integration.sklearn.fastapi_app:app", "--port", "8000"],
+        ["fklearn", "uvicorn", "tests.integration.sklearn.fastapi_app:app", "--port", port, *args],
         stdout=subprocess.PIPE,
     )
-    _wait_to_exist()
-    yield process
-    process.terminate()
+    _wait_to_exist(port)
+    try:
+        yield process
+    finally:
+        process.terminate()
 
 
-def _wait_to_exist():
-    for _ in range(20):
+@pytest.fixture(scope="function")
+def app():
+    yield from _app()
+
+
+def _wait_to_exist(port):
+    for _ in range(30):
         try:
-            requests.post("http://127.0.0.1:8000/")
+            requests.post(f"http://127.0.0.1:{port}/")
             break
         except Exception:  # pylint: disable=broad-except
             time.sleep(3.0)
@@ -67,3 +76,37 @@ def test_fastapi_app(app, capfd):
     ]
     for patt, line in zip(expected_patterns, cap.out.strip().split("\n")):
         assert re.match(patt, line)
+
+
+def test_load_model_from_filesystem(tmp_path):
+    digits = load_digits(as_frame=True)
+    features = digits.frame[digits.feature_names]
+
+    # run the quickstart module to train a model
+    model_path = tmp_path / "model.joblib"
+    module_vars = runpy.run_module("tests.integration.sklearn.quickstart", run_name="__main__")
+
+    # extract fklearn model and trained_model from module global namespace
+    model = module_vars["model"]
+    trained_model = module_vars["trained_model"]
+
+    model.save(trained_model, model_path)
+    n_samples = 5
+
+    with contextmanager(_app)("--model-path", str(model_path), port="8001"):
+        prediction_response = requests.get(
+            "http://127.0.0.1:8001/predict?local=True",
+            json={"features": features.sample(n_samples, random_state=42).to_dict(orient="records")},
+        )
+        output = prediction_response.json()
+        assert len(output) == n_samples
+        assert all(isinstance(x, float) for x in output)
+
+    # excluding the --model-path argument should raise an error since the fklearn.Model object
+    # doesn't have a _latest_model attribute set yet
+    with contextmanager(_app)(port="8002"):
+        prediction_response = requests.get(
+            "http://127.0.0.1:8002/predict?local=True",
+            json={"features": features.sample(n_samples, random_state=42).to_dict(orient="records")},
+        )
+        assert prediction_response.json() == {"detail": "trained model not found"}

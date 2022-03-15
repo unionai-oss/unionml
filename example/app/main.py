@@ -77,8 +77,3 @@ if __name__ == "__main__":
     print("Predicting from features")
     predictions = model.predict(trained_model, features=breast_cancer_dataset.frame.sample(5, random_state=42))
     print(predictions)
-
-    model_path = "./model.joblib"
-    model.save(trained_model, model_path)
-    loaded_model = model.load(model_path)
-    print(f"Loaded model: {loaded_model}")
