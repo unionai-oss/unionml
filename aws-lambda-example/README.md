@@ -46,11 +46,11 @@ Outputs
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Key                 ULearnFunctionIamRole
 Description         Implicit IAM Role created for ulearn function
-Value               arn:aws:iam::*******:role/ulearn-example-ULearnFunctionRole-*******
+Value               arn:aws:iam::...
 
 Key                 ULearnFunction
 Description         ulearn Lambda Function ARN
-Value               arn:aws:lambda:us-east-2:*******:function:ulearn-example-ULearnFunction-*******
+Value               arn:aws:lambda:...
 
 Key                 ULearnApi
 Description         API Gateway endpoint URL for Prod stage for ULearn function
@@ -60,7 +60,7 @@ Value               https://abcdefghij.execute-api.us-east-2.amazonaws.com/Prod/
 Successfully created/updated stack - ulearn-example in us-east-2
 ```
 
-You'll be able to use curl to hit the API Gateway running your flytekit-learn app. For example, in order to hit the `predict` endpoint you can run:
+Note the value of `UlearnApi`. You'll be able to hit the API Gateway running your flytekit-learn app. For example, in order to hit the `predict` endpoint you can run:
 
 ``` bash
 ulearn-aws-lambda-example$ curl -v -X POST \
