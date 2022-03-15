@@ -3,9 +3,14 @@
 import inspect
 import os
 from collections import OrderedDict
-from functools import partial, singledispatchmethod
+from functools import partial
 from inspect import Parameter, signature
 from typing import IO, Any, Callable, Dict, List, NamedTuple, Optional, Type, Union
+
+try:
+    from functools import singledispatchmethod
+except ImportError:
+    from singledispatchmethod import singledispatchmethod  # type: ignore
 
 import joblib
 import sklearn
