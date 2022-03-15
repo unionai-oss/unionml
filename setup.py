@@ -15,7 +15,6 @@ setup(
         "joblib" "numpy",
         "pandas",
         "pydantic",
-        "singledispatchmethod; python_version < '3.8'",
         "sklearn",
         "typer",
     ],

@@ -5,12 +5,7 @@ import os
 from collections import OrderedDict
 from functools import partial
 from inspect import Parameter, signature
-from typing import IO, Any, Callable, Dict, List, NamedTuple, Optional, Type, Union
-
-try:
-    from functools import singledispatchmethod
-except ImportError:
-    from singledispatchmethod import singledispatchmethod  # type: ignore
+from typing import IO, Any, Callable, Dict, NamedTuple, Optional, Type, Union
 
 import joblib
 import sklearn
@@ -96,6 +91,7 @@ class Model(TrackedInstance):
 
     def init(self, fn):
         self._init = fn
+        self._model_type = signature(fn).return_annotation
         return self._init
 
     def trainer(self, fn=None, **train_task_kwargs):
@@ -322,7 +318,7 @@ class Model(TrackedInstance):
         return self._saver(model, file, *args, **kwargs)
 
     def load(self, file, *args, **kwargs):
-        return self._loader(self._model_type, file, *args, **kwargs)
+        return self._loader(file, *args, **kwargs)
 
     def remote(
         self,
@@ -363,25 +359,20 @@ def _default_init(self, hyperparameters: dict) -> FlytePickle:
 
 
 @Model._set_default(name="_saver")
-@singledispatchmethod
 def _default_saver(self, model: Any, file: Union[str, os.PathLike, IO], *args, **kwargs) -> Any:
+    if isinstance(model, sklearn.base.BaseEstimator):
+        return joblib.dump(model, file, *args, **kwargs)
+
     raise NotImplementedError(
         f"Default saver not defined for type {type(model)}. Use the Model.saver decorator to define one."
     )
 
 
-@_default_saver.register
-def _(self, model: sklearn.base.BaseEstimator, file: Union[str, os.PathLike, IO], *args, **kwargs) -> List[str]:
-    return joblib.dump(model, file, *args, **kwargs)
-
-
 @Model._set_default(name="_loader")
-@singledispatchmethod
-def _default_loader(
-    self,
-    model_type: Type[sklearn.base.BaseEstimator],
-    file: Union[str, os.PathLike, IO],
-    *args,
-    **kwargs,
-) -> sklearn.base.BaseEstimator:
-    return joblib.load(file, *args, **kwargs)
+def _default_loader(self, file: Union[str, os.PathLike, IO], *args, **kwargs) -> Any:
+    if issubclass(self._model_type, sklearn.base.BaseEstimator):
+        return joblib.load(file, *args, **kwargs)
+
+    raise NotImplementedError(
+        f"Default loader not defined for type {self._model_type}. Use the Model.loader decorator to define one."
+    )

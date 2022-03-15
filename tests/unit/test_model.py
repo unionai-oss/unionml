@@ -1,3 +1,4 @@
+import io
 import typing
 from inspect import signature
 
@@ -21,7 +22,7 @@ def mock_data() -> pd.DataFrame:
 
 
 @pytest.fixture(scope="function", params=[{"custom_init": True}, {"custom_init": False}])
-def model_def(request, mock_data) -> Model:
+def raw_model(request, mock_data) -> Model:
 
     dataset = Dataset(
         features=["x"],
@@ -77,11 +78,11 @@ def evaluator():
 
 
 @pytest.fixture(scope="function")
-def model(model_def, trainer, predictor, evaluator):
-    model_def.trainer(trainer)
-    model_def.predictor(predictor)
-    model_def.evaluator(evaluator)
-    return model_def
+def model(raw_model, trainer, predictor, evaluator):
+    raw_model.trainer(trainer)
+    raw_model.predictor(predictor)
+    raw_model.evaluator(evaluator)
+    return raw_model
 
 
 def test_model_decorators(model, trainer, predictor, evaluator):
@@ -174,3 +175,22 @@ def test_model_predict_from_features_task(model, mock_data):
         features=mock_data[["x"]],
     )
     assert all(isinstance(x, float) for x in predictions)
+
+
+def test_model_saver_and_loader_filepath(model, tmp_path):
+    model_path = tmp_path / "model.joblib"
+    model_obj = model._init({"C": 1.0, "max_iter": 1000})
+    output_path, *_ = model.save(model_obj, model_path)
+
+    assert output_path == str(model_path)
+
+    loaded_model_obj = model.load(output_path)
+    assert model_obj.get_params() == loaded_model_obj.get_params()
+
+
+def test_model_saver_and_loader_fileobj(model):
+    fileobj = io.BytesIO()
+    model_obj = model._init({"C": 1.0, "max_iter": 1000})
+    model.save(model_obj, fileobj)
+    loaded_model_obj = model.load(fileobj)
+    assert model_obj.get_params() == loaded_model_obj.get_params()
