@@ -41,25 +41,14 @@ def _wait_to_exist(port):
 
 
 def test_module(capfd):
-    module_path = Path(__file__)
-    subprocess.run(
-        [
-            sys.executable,
-            str(module_path.parent / "quickstart.py"),
-        ],
-        text=True,
-    )
-    cap = capfd.readouterr()
-    expected_patterns = [
-        r"LogisticRegression\(max_iter=1000.0\)",
-        r"\{'train': 1.0, 'test': [0-9.]+\}",
-        r"\[6\.0, 9\.0, 3\.0, 7\.0, 2\.0\]",
-    ]
+    module_vars = runpy.run_module("tests.integration.sklearn.quickstart", run_name="__main__")
+    trained_model = module_vars["trained_model"]
+    predictions = module_vars["predictions"]
 
-    assert cap.out.strip() != ""
+    assert isinstance(trained_model, LogisticRegression)
+    check_is_fitted(trained_model)
 
-    for patt, line in zip(expected_patterns, cap.out.strip().split("\n")):
-        assert re.match(patt, line)
+    assert all([isinstance(x, float) and 0 <= x <= 9 for x in predictions])
 
 
 def test_fastapi_app(app, capfd):
@@ -78,17 +67,6 @@ def test_fastapi_app(app, capfd):
     ]
     for patt, line in zip(expected_patterns, cap.out.strip().split("\n")):
         assert re.match(patt, line)
-
-
-def test_fastapi_app_from_model_path_serve_arg(app):
-    module_vars = runpy.run_module("tests.integration.sklearn.quickstart", run_name="__main__")
-    trained_model = module_vars["trained_model"]
-    predictions = module_vars["predictions"]
-
-    assert isinstance(trained_model, LogisticRegression)
-    check_is_fitted(trained_model)
-
-    assert all([isinstance(x, float) and 0 <= x <= 9 for x in predictions])
 
 
 def test_load_model_from_local_fs(tmp_path):

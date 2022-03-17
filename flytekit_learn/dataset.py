@@ -31,6 +31,11 @@ class Dataset(TrackedInstance):
         self._shuffle = shuffle
         self._random_state = random_state
 
+        # default component functions
+        self._splitter = self._default_splitter
+        self._parser = self._default_parser
+        self._feature_getter = self._default_feature_getter
+
         self._reader = None
         self._reader_input_types: Optional[List[Parameter]] = None
         self._reader_return_type: Optional[Dict[str, Type]] = None
@@ -175,33 +180,27 @@ class Dataset(TrackedInstance):
     ) -> "Dataset":
         return cls._from_flytekit_task(task, *args, **kwargs)
 
+    def _default_splitter(
+        self,
+        data: pd.DataFrame,
+        test_size: float,
+        shuffle: bool,
+        random_state: int,
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        return train_test_split(data, test_size=test_size, random_state=random_state, shuffle=shuffle)
 
-@Dataset._set_default(name="_splitter")
-def _default_splitter(
-    self,
-    data: pd.DataFrame,
-    test_size: float,
-    shuffle: bool,
-    random_state: int,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    return train_test_split(data, test_size=test_size, random_state=random_state, shuffle=shuffle)
+    def _default_parser(
+        self, data: pd.DataFrame, features: List[str], targets: List[str]
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        if not isinstance(data, pd.DataFrame):
+            data = pd.DataFrame(data)
+        if not features:
+            features = [col for col in data if col not in targets]
+        try:
+            targets = data[targets]
+        except KeyError:
+            targets = pd.DataFrame()
+        return data[features], targets
 
-
-@Dataset._set_default(name="_parser")
-def _default_parser(
-    self, data: pd.DataFrame, features: List[str], targets: List[str]
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    if not isinstance(data, pd.DataFrame):
-        data = pd.DataFrame(data)
-    if not features:
-        features = [col for col in data if col not in targets]
-    try:
-        targets = data[targets]
-    except KeyError:
-        targets = pd.DataFrame()
-    return data[features], targets
-
-
-@Dataset._set_default(name="_feature_getter")
-def _default_feature_getter(self, data: Tuple[pd.DataFrame, pd.DataFrame]) -> pd.DataFrame:
-    return data[0]
+    def _default_feature_getter(self, data: Tuple[pd.DataFrame, pd.DataFrame]) -> pd.DataFrame:
+        return data[0]

@@ -65,13 +65,9 @@ class PredictParams:
 def serving_app(
     model: Model,
     app: FastAPI,
-    model_path: Optional[Union[str, os.PathLike]] = None,
 ):
-
-    # If the FKLEARN_MODEL_PATH environment variable is set, use that as the model path,
-    # otherwise use the model_path argument.
     # TODO: load a model from a flytebackend here
-    model_path = os.getenv("FKLEARN_MODEL_PATH") or model_path
+    model_path = os.getenv("FKLEARN_MODEL_PATH")
     if model_path:
         model._latest_model = model.load(model_path)
 

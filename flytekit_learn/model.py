@@ -12,7 +12,6 @@ import sklearn
 from flytekit import Workflow
 from flytekit.core.tracker import TrackedInstance
 from flytekit.remote import FlyteRemote
-from flytekit.types.pickle import FlytePickle
 
 from flytekit_learn.dataset import Dataset
 from flytekit_learn.utils import inner_task
@@ -34,9 +33,10 @@ class Model(TrackedInstance):
         self._dataset = dataset
         self._latest_model = None
 
-        self._model_type = (
-            init if inspect.isclass(init) else signature(init).return_annotation if init is not None else init
-        )
+        # default component functions
+        self._init = self._default_init
+        self._saver = self._default_saver
+        self._loader = self._default_loader
 
         # properties needed for deployment
         self._remote = None
@@ -90,7 +90,6 @@ class Model(TrackedInstance):
 
     def init(self, fn):
         self._init = fn
-        self._model_type = signature(fn).return_annotation
         return self._init
 
     def trainer(self, fn=None, **train_task_kwargs):
@@ -336,33 +335,34 @@ class Model(TrackedInstance):
             default_domain=domain,
         )
 
-    def serve(self, app, model_path: Optional[Union[str, os.PathLike]] = None):
+    def serve(self, app):
         """Create a FastAPI serving app."""
         from flytekit_learn.fastapi import serving_app
 
-        serving_app(self, app, model_path)
+        serving_app(self, app)
 
+    def _default_init(self, hyperparameters: dict) -> Any:
+        if self._init_callable is None:
+            raise ValueError(
+                "When using the _default_init method, you must specify the init argument to the Model constructor."
+            )
+        return self._init_callable(**hyperparameters)
 
-@Model._set_default(name="_init")
-def _default_init(self, hyperparameters: dict) -> FlytePickle:
-    return self._init_callable(**hyperparameters)
+    def _default_saver(self, model: Any, file: Union[str, os.PathLike, IO], *args, **kwargs) -> Any:
+        if isinstance(model, sklearn.base.BaseEstimator):
+            return joblib.dump(model, file, *args, **kwargs)
 
+        raise NotImplementedError(
+            f"Default saver not defined for type {type(model)}. Use the Model.saver decorator to define one."
+        )
 
-@Model._set_default(name="_saver")
-def _default_saver(self, model: Any, file: Union[str, os.PathLike, IO], *args, **kwargs) -> Any:
-    if isinstance(model, sklearn.base.BaseEstimator):
-        return joblib.dump(model, file, *args, **kwargs)
+    def _default_loader(self, file: Union[str, os.PathLike, IO], *args, **kwargs) -> Any:
+        init = self._init_callable if self._init == self._default_init else self._init or self._init_callable
+        model_type = init if inspect.isclass(init) else signature(init).return_annotation if init is not None else init
 
-    raise NotImplementedError(
-        f"Default saver not defined for type {type(model)}. Use the Model.saver decorator to define one."
-    )
+        if issubclass(model_type, sklearn.base.BaseEstimator):
+            return joblib.load(file, *args, **kwargs)
 
-
-@Model._set_default(name="_loader")
-def _default_loader(self, file: Union[str, os.PathLike, IO], *args, **kwargs) -> Any:
-    if issubclass(self._model_type, sklearn.base.BaseEstimator):
-        return joblib.load(file, *args, **kwargs)
-
-    raise NotImplementedError(
-        f"Default loader not defined for type {self._model_type}. Use the Model.loader decorator to define one."
-    )
+        raise NotImplementedError(
+            f"Default loader not defined for type {model_type}. Use the Model.loader decorator to define one."
+        )
