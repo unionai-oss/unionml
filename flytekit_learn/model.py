@@ -310,6 +310,12 @@ class Model(TrackedInstance):
     def load(self, file, *args, **kwargs):
         return self._loader(file, *args, **kwargs)
 
+    def serve(self, app):
+        """Create a FastAPI serving app."""
+        from flytekit_learn.fastapi import serving_app
+
+        serving_app(self, app)
+
     def remote(
         self,
         registry: Optional[str] = None,
@@ -326,12 +332,6 @@ class Model(TrackedInstance):
             default_project=project,
             default_domain=domain,
         )
-
-    def serve(self, app):
-        """Create a FastAPI serving app."""
-        from flytekit_learn.fastapi import serving_app
-
-        serving_app(self, app)
 
     def _default_init(self, hyperparameters: dict) -> Any:
         if self._init_callable is None:

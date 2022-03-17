@@ -248,6 +248,14 @@ def serve_command():
     callback = fn.callback
 
     def custom_callback(**kwargs):
+        if os.getenv("FKLEARN_MODEL_PATH"):
+            typer.echo(
+                f"FKLEARN_MODEL_PATH environment variable is set to {os.getenv('FKLEARN_MODEL_PATH')}. "
+                "Please unset this variable before running `fklearn serve`.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+
         model_path = kwargs.pop("model_path")
         if model_path is not None:
             if not model_path.exists():
