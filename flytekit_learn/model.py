@@ -80,14 +80,6 @@ class Model(TrackedInstance):
     def predict_from_features_workflow_name(self):
         return f"{self.name}.predict_from_features"
 
-    @classmethod
-    def _set_default(cls, fn=None, *, name):
-        if fn is None:
-            return partial(cls._set_default, name=name)
-
-        setattr(cls, name, fn)
-        return getattr(cls, name)
-
     def init(self, fn):
         self._init = fn
         return self._init
