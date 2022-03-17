@@ -1,0 +1,8 @@
+flytekit>=0.31.0
+sklearn
+numpy
+pandas
+fastapi
+pydantic
+typer
+mangum
