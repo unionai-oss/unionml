@@ -1,13 +1,16 @@
 """Utilities for the FastAPI integration."""
 
+import os
 from typing import Any, Dict, List, Optional, Union
 
-from fastapi import Body, Depends, HTTPException
+from fastapi import Body, Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from flytekit.models import filters
 from flytekit.models.admin.common import Sort
 from flytekit.remote import FlyteWorkflowExecution
 from pydantic import BaseModel
+
+from flytekit_learn.model import Model
 
 
 class TrainParams:
@@ -59,7 +62,15 @@ class PredictParams:
         return self
 
 
-def app_wrapper(model, app, default_endpoints: bool, train_endpoint: str, predict_endpoint: str):
+def serving_app(
+    model: Model,
+    app: FastAPI,
+):
+    # TODO: load a model from a flytebackend here
+    model_path = os.getenv("FKLEARN_MODEL_PATH")
+    if model_path:
+        model._latest_model = model.load(model_path)
+
     @app.get("/", response_class=HTMLResponse)
     def root():
         return """
@@ -74,10 +85,7 @@ def app_wrapper(model, app, default_endpoints: bool, train_endpoint: str, predic
             </html>
         """
 
-    if not default_endpoints:
-        return
-
-    @app.post(train_endpoint)
+    @app.post("/train")
     def train(params: TrainParams = Depends(TrainParams(model))):
         if params.inputs is None:
             inputs = {}
@@ -111,7 +119,7 @@ def app_wrapper(model, app, default_endpoints: bool, train_endpoint: str, predic
             "flyte_execution_id": flyte_execution_id,
         }
 
-    @app.post(predict_endpoint)
+    @app.post("/predict")
     def predict(params: PredictParams = Depends(PredictParams(model))):
         inputs, features = params.inputs, params.features
         if inputs is None and features is None:
@@ -125,10 +133,10 @@ def app_wrapper(model, app, default_endpoints: bool, train_endpoint: str, predic
         else:
             raise HTTPException(status_code=500, detail="trained model not found")
 
-        workflow_inputs = {"model": latest_model}
+        workflow_inputs: Dict[str, Any] = {}
         workflow_inputs.update(inputs if inputs else {"features": model._dataset.get_features(features)})
         if params.local:
-            return model.predict(**workflow_inputs)
+            return model.predict(latest_model, **workflow_inputs)
 
         predict_wf = params.remote.fetch_workflow(
             name=model.predict_workflow_name if inputs else model.predict_from_features_workflow_name,
