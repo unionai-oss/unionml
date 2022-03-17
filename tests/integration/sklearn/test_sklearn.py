@@ -9,6 +9,8 @@ from pathlib import Path
 import pytest
 import requests
 from sklearn.datasets import load_digits
+from sklearn.linear_model import LogisticRegression
+from sklearn.utils.validation import check_is_fitted
 
 
 def _app(*args, port: str = "8000"):
@@ -76,6 +78,17 @@ def test_fastapi_app(app, capfd):
     ]
     for patt, line in zip(expected_patterns, cap.out.strip().split("\n")):
         assert re.match(patt, line)
+
+
+def test_fastapi_app_from_model_path_serve_arg(app):
+    module_vars = runpy.run_module("tests.integration.sklearn.quickstart", run_name="__main__")
+    trained_model = module_vars["trained_model"]
+    predictions = module_vars["predictions"]
+
+    assert isinstance(trained_model, LogisticRegression)
+    check_is_fitted(trained_model)
+
+    assert all([isinstance(x, float) and 0 <= x <= 9 for x in predictions])
 
 
 def test_load_model_from_local_fs(tmp_path):
