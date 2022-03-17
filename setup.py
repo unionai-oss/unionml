@@ -18,6 +18,7 @@ setup(
         "pydantic",
         "sklearn",
         "typer",
+        "uvicorn",
     ],
     entry_points={"console_scripts": ["fklearn = flytekit_learn.cli:app"]},
 )

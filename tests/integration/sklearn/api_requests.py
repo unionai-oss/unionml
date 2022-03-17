@@ -9,7 +9,7 @@ training_response = requests.post(
     json={"hyperparameters": {"C": 1.0, "max_iter": 1000}},
 )
 
-prediction_response = requests.get(
+prediction_response = requests.post(
     "http://127.0.0.1:8000/predict?local=True",
     json={"features": features.sample(5, random_state=42).to_dict(orient="records")},
 )

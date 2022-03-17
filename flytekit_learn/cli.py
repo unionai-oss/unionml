@@ -4,14 +4,15 @@ import copy
 import importlib
 import json
 import os
-import subprocess
 import typing
 from dataclasses import asdict
 from pathlib import Path
 
+import click
 import docker
 import git
 import typer
+import uvicorn
 from flytekit import LaunchPlan
 from flytekit.models import filters
 from flytekit.models.admin.common import Sort
@@ -227,28 +228,43 @@ def predict(
     typer.echo(f"[fklearn] predictions: {predictions.outputs['o0']}")
 
 
-@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
-def uvicorn(ctx: typer.Context, model_path: str = None):
-    """Start a FastAPI app with Uvicorn.
-
-    This command accepts all uvicorn command-line options. For more details, see:
-    https://www.uvicorn.org/#command-line-options
-    """
-    try:
-        import uvicorn  # noqa: F401
-    except ImportError as exc:
-        raise ImportError("uvicorn not found. Please install with `pip install uvicorn`.") from exc
-
-    env = copy.copy(os.environ)
-    if model_path:
-        env["FKLEARN_MODEL_PATH"] = model_path
-    subprocess.run(["uvicorn", *ctx.args], env=env)  # type: ignore
+@app.callback()
+def callback():
+    """fklearn command-line tool."""
 
 
-@app.command()
-def schedule():
-    # TODO
-    typer.echo("scheduling")
+def serve_command():
+    """Modify the uvicorn.main entrypoint for fklearn app serving."""
+    fn = copy.deepcopy(uvicorn.main)
+    fn.short_help = "Serve an fklearn model."
+    fn.help = (
+        "Serve an fklearn model using uvicorn. This command uses the main uvicorn entrypoint with an additional "
+        "--model-path argument.\n\nFor more information see: https://www.uvicorn.org/#command-line-options"
+    )
+
+    option = click.Option(param_decls=["--model-path"], default=None, help="model path to use for serving", type=Path)
+    fn.params.append(option)
+
+    callback = fn.callback
+
+    def custom_callback(**kwargs):
+        model_path = kwargs.pop("model_path")
+        if model_path is not None:
+            if not model_path.exists():
+                typer.echo(f"Model path {model_path} not found.", err=True)
+                raise typer.Exit(code=1)
+            os.environ["FKLEARN_MODEL_PATH"] = str(model_path)
+        return callback(**kwargs)
+
+    fn.callback = custom_callback
+    return fn
+
+
+# convert typer app to click object to define a "serve" command
+# that uses the uvicorn.main entrypoint under the hood:
+# https://typer.tiangolo.com/tutorial/using-click/#combine-click-and-typer
+app = typer.main.get_command(app)
+app.add_command(serve_command(), name="serve")
 
 
 if __name__ == "__main__":

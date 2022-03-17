@@ -15,7 +15,6 @@ from flytekit.remote import FlyteRemote
 from flytekit.types.pickle import FlytePickle
 
 from flytekit_learn.dataset import Dataset
-from flytekit_learn.fastapi import app_wrapper
 from flytekit_learn.utils import inner_task
 
 
@@ -297,7 +296,7 @@ class Model(TrackedInstance):
 
     def predict(
         self,
-        model=None,
+        model: Any = None,
         *,
         features: Any = None,
         lazy: bool = False,
@@ -337,20 +336,11 @@ class Model(TrackedInstance):
             default_domain=domain,
         )
 
-    def serve(
-        self,
-        app,
-        default_endpoints: bool = True,
-        train_endpoint: str = "/train",
-        predict_endpoint: str = "/predict",
-    ):
-        app_wrapper(
-            self,
-            app,
-            default_endpoints,
-            train_endpoint=train_endpoint,
-            predict_endpoint=predict_endpoint,
-        )
+    def serve(self, app, model_path: Optional[Union[str, os.PathLike]] = None):
+        """Create a FastAPI serving app."""
+        from flytekit_learn.fastapi import serving_app
+
+        serving_app(self, app, model_path)
 
 
 @Model._set_default(name="_init")

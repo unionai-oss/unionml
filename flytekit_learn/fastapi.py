@@ -3,12 +3,14 @@
 import os
 from typing import Any, Dict, List, Optional, Union
 
-from fastapi import Body, Depends, HTTPException
+from fastapi import Body, Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from flytekit.models import filters
 from flytekit.models.admin.common import Sort
 from flytekit.remote import FlyteWorkflowExecution
 from pydantic import BaseModel
+
+from flytekit_learn.model import Model
 
 
 class TrainParams:
@@ -60,12 +62,18 @@ class PredictParams:
         return self
 
 
-def app_wrapper(model, app, default_endpoints: bool, train_endpoint: str, predict_endpoint: str):
+def serving_app(
+    model: Model,
+    app: FastAPI,
+    model_path: Optional[Union[str, os.PathLike]] = None,
+):
 
-    # If the FKLEARN_MODEL_PATH environment variable is set, update the _latest_model attribute with the
-    # specified model path
-    if os.getenv("FKLEARN_MODEL_PATH"):
-        model._latest_model = model.load(os.getenv("FKLEARN_MODEL_PATH"))
+    # If the FKLEARN_MODEL_PATH environment variable is set, use that as the model path,
+    # otherwise use the model_path argument.
+    # TODO: load a model from a flytebackend here
+    model_path = os.getenv("FKLEARN_MODEL_PATH") or model_path
+    if model_path:
+        model._latest_model = model.load(model_path)
 
     @app.get("/", response_class=HTMLResponse)
     def root():
@@ -81,10 +89,7 @@ def app_wrapper(model, app, default_endpoints: bool, train_endpoint: str, predic
             </html>
         """
 
-    if not default_endpoints:
-        return
-
-    @app.post(train_endpoint)
+    @app.post("/train")
     def train(params: TrainParams = Depends(TrainParams(model))):
         if params.inputs is None:
             inputs = {}
@@ -118,7 +123,7 @@ def app_wrapper(model, app, default_endpoints: bool, train_endpoint: str, predic
             "flyte_execution_id": flyte_execution_id,
         }
 
-    @app.get(predict_endpoint)
+    @app.post("/predict")
     def predict(params: PredictParams = Depends(PredictParams(model))):
         inputs, features = params.inputs, params.features
         if inputs is None and features is None:
