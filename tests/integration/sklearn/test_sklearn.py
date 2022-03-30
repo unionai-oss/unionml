@@ -1,10 +1,7 @@
-import re
 import runpy
 import subprocess
-import sys
 import time
 from contextlib import contextmanager
-from pathlib import Path
 
 import pytest
 import requests
@@ -51,28 +48,7 @@ def test_module(capfd):
     assert all([isinstance(x, float) and 0 <= x <= 9 for x in predictions])
 
 
-def test_fastapi_app(app, capfd):
-    module_path = Path(__file__)
-    subprocess.run(
-        [
-            sys.executable,
-            str(module_path.parent / "api_requests.py"),
-        ],
-        text=True,
-    )
-    cap = capfd.readouterr()
-    expected_patterns = [
-        r'\{"trained_model":"LogisticRegression\(max_iter=1000.0\)","metrics":\{"train":1.0,"test":[0-9.]+\},"flyte_execution_id":null\}',  # noqa
-        r"\[6\.0,9\.0,3\.0,7\.0,2\.0\]",
-    ]
-    for patt, line in zip(expected_patterns, cap.out.strip().split("\n")):
-        assert re.match(patt, line)
-
-
-def test_load_model_from_local_fs(tmp_path):
-    digits = load_digits(as_frame=True)
-    features = digits.frame[digits.feature_names]
-
+def test_fastapi_app(tmp_path):
     # run the quickstart module to train a model
     model_path = tmp_path / "model.joblib"
     module_vars = runpy.run_module("tests.integration.sklearn.quickstart", run_name="__main__")
@@ -84,20 +60,24 @@ def test_load_model_from_local_fs(tmp_path):
     model.save(trained_model, model_path)
     n_samples = 5
 
-    with contextmanager(_app)("--model-path", str(model_path), port="8001"):
-        prediction_response = requests.post(
-            "http://127.0.0.1:8001/predict?local=True",
-            json={"features": features.sample(n_samples, random_state=42).to_dict(orient="records")},
-        )
+    with contextmanager(_app)("--model-path", str(model_path)):
+        api_request_vars = runpy.run_module("tests.integration.sklearn.api_requests", run_name="__main__")
+        prediction_response = api_request_vars["prediction_response"]
         output = prediction_response.json()
         assert len(output) == n_samples
         assert all(isinstance(x, float) for x in output)
 
+
+def test_fastapi_app_no_model():
+    digits = load_digits(as_frame=True)
+    features = digits.frame[digits.feature_names]
+    n_samples = 5
+
     # excluding the --model-path argument should raise an error since the fklearn.Model object
     # doesn't have a model_artifact attribute set yet
-    with contextmanager(_app)(port="8002"):
+    with contextmanager(_app)(port="8001"):
         prediction_response = requests.post(
-            "http://127.0.0.1:8002/predict?local=True",
+            "http://127.0.0.1:8001/predict?local=True",
             json={"features": features.sample(n_samples, random_state=42).to_dict(orient="records")},
         )
         assert prediction_response.json() == {"detail": "trained model not found"}

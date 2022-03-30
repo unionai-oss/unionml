@@ -9,6 +9,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
 from flytekit_learn import Dataset, Model
+from flytekit_learn.model import ModelArtifact
 
 
 @pytest.fixture(scope="function")
@@ -154,7 +155,10 @@ def test_model_predict_task(model, mock_data):
 
     trained_model = LogisticRegression().fit(mock_data[["x"]], mock_data["y"])
     predictions = predict_task(model=trained_model, data=mock_data[["x"]])
-    alt_predictions = model.predict(trained_model, features=mock_data[["x"]])
+
+    model.artifact = ModelArtifact(trained_model)
+    alt_predictions = model.predict(features=mock_data[["x"]])
+
     assert all(isinstance(x, float) for x in predictions)
     assert predictions == alt_predictions
 

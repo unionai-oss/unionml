@@ -91,16 +91,15 @@ def serving_app(
 
         version = None if params.model_version == "latest" else params.model_version
         if not params.local:
-            latest_model = get_latest_model_artifact(model, version)
-        elif model._latest_model_obj:
-            latest_model = model._latest_model_obj
-        else:
+            model.artifact = get_latest_model_artifact(model, version)
+
+        if model.artifact is None:
             raise HTTPException(status_code=500, detail="trained model not found")
 
         workflow_inputs: Dict[str, Any] = {}
         workflow_inputs.update(inputs if inputs else {"features": model._dataset.get_features(features)})
         if params.local:
-            return model.predict(latest_model, **workflow_inputs)
+            return model.predict(**workflow_inputs)
 
         predict_wf = params.remote.fetch_workflow(
             name=model.predict_workflow_name if inputs else model.predict_from_features_workflow_name,
