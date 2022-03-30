@@ -5,12 +5,10 @@ from typing import Any, Dict, List, Optional, Union
 
 from fastapi import Body, Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
-from flytekit.models import filters
-from flytekit.models.admin.common import Sort
-from flytekit.remote import FlyteWorkflowExecution
 from pydantic import BaseModel
 
-from flytekit_learn.model import Model
+from flytekit_learn.model import Model, ModelArtifact
+from flytekit_learn.remote import get_latest_model_artifact
 
 
 class TrainParams:
@@ -69,7 +67,7 @@ def serving_app(
     # TODO: load a model from a flytebackend here
     model_path = os.getenv("FKLEARN_MODEL_PATH")
     if model_path:
-        model._latest_model = model.load(model_path)
+        model.artifact = ModelArtifact(model.load(model_path))
 
     @app.get("/", response_class=HTMLResponse)
     def root():
@@ -85,40 +83,6 @@ def serving_app(
             </html>
         """
 
-    @app.post("/train")
-    def train(params: TrainParams = Depends(TrainParams(model))):
-        if params.inputs is None:
-            inputs = {}
-        if params.inputs and isinstance(params.inputs, BaseModel):
-            inputs = params.inputs.dict()
-        elif isinstance(params.inputs, dict):
-            inputs = params.inputs
-        else:
-            raise ValueError(f"Type of inputs {type(params.inputs)} not understood.")
-
-        if params.local:
-            trained_model, metrics = model.train(**inputs)
-            model._latest_model = trained_model
-            model._metrics = metrics
-            trained_model, flyte_execution_id = str(trained_model), None
-        else:
-            train_wf = params.remote.fetch_workflow(name=params.model.train_workflow_name)
-            execution = params.remote.execute(train_wf, inputs=inputs, wait=params.wait)
-            flyte_execution_id = {
-                "project": execution.id.project,
-                "domain": execution.id.domain,
-                "name": execution.id.name,
-            }
-            trained_model, metrics = None, None
-            if params.wait:
-                trained_model = execution.outputs["trained_model"]
-                metrics = execution.outputs["metrics"]
-        return {
-            "trained_model": trained_model,
-            "metrics": metrics,
-            "flyte_execution_id": flyte_execution_id,
-        }
-
     @app.post("/predict")
     def predict(params: PredictParams = Depends(PredictParams(model))):
         inputs, features = params.inputs, params.features
@@ -127,9 +91,9 @@ def serving_app(
 
         version = None if params.model_version == "latest" else params.model_version
         if not params.local:
-            latest_model = _get_latest_trained_model(model, params.remote, version)
-        elif model._latest_model:
-            latest_model = model._latest_model
+            latest_model = get_latest_model_artifact(model, version)
+        elif model._latest_model_obj:
+            latest_model = model._latest_model_obj
         else:
             raise HTTPException(status_code=500, detail="trained model not found")
 
@@ -143,20 +107,3 @@ def serving_app(
             version=version,
         )
         return params.remote.execute(predict_wf, inputs=workflow_inputs, wait=True).outputs["o0"]
-
-
-def _get_latest_trained_model(model, remote, version):
-    train_workflow = remote.fetch_workflow(name=model.train_workflow_name, version=version)
-    [latest_training_execution, *_], _ = remote.client.list_executions_paginated(
-        train_workflow.id.project,
-        train_workflow.id.domain,
-        limit=1,
-        filters=[
-            filters.Equal("launch_plan.name", train_workflow.id.name),
-            filters.Equal("phase", "SUCCEEDED"),
-        ],
-        sort_by=Sort("created_at", Sort.Direction.DESCENDING),
-    )
-    latest_training_execution = FlyteWorkflowExecution.promote_from_model(latest_training_execution)
-    remote.sync(latest_training_execution)
-    return latest_training_execution.outputs["trained_model"]

@@ -94,7 +94,7 @@ def test_load_model_from_local_fs(tmp_path):
         assert all(isinstance(x, float) for x in output)
 
     # excluding the --model-path argument should raise an error since the fklearn.Model object
-    # doesn't have a _latest_model attribute set yet
+    # doesn't have a model_artifact attribute set yet
     with contextmanager(_app)(port="8002"):
         prediction_response = requests.post(
             "http://127.0.0.1:8002/predict?local=True",

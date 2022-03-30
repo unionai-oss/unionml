@@ -17,6 +17,11 @@ from flytekit_learn.dataset import Dataset
 from flytekit_learn.utils import inner_task
 
 
+class ModelArtifact(NamedTuple):
+    object: Any
+    metrics: Optional[Dict[str, float]] = None
+
+
 class Model(TrackedInstance):
     def __init__(
         self,
@@ -31,7 +36,7 @@ class Model(TrackedInstance):
         self._init_callable = init
         self._hyperparameters = hyperparameters
         self._dataset = dataset
-        self._latest_model = None
+        self._artifact: Optional[ModelArtifact] = None
 
         # default component functions
         self._init = self._default_init
@@ -39,7 +44,7 @@ class Model(TrackedInstance):
         self._loader = self._default_loader
 
         # properties needed for deployment
-        self._remote = None
+        self._remote: Optional[FlyteRemote] = None
         self._config_file_path: Optional[str] = None
         self._registry: Optional[str] = None
         self._dockerfile: Optional[str] = None
@@ -55,6 +60,14 @@ class Model(TrackedInstance):
         # user-provided task kwargs
         self._train_task_kwargs = None
         self._predict_task_kwargs = None
+
+    @property
+    def artifact(self) -> Optional[ModelArtifact]:
+        return self._artifact
+
+    @artifact.setter
+    def artifact(self, new_value: ModelArtifact):
+        self._artifact = new_value
 
     @property
     def config_file_path(self) -> Optional[str]:
@@ -269,40 +282,28 @@ class Model(TrackedInstance):
     def train(
         self,
         hyperparameters: Dict[str, Any] = None,
-        *,
-        data: Any = None,
-        lazy=False,
         **reader_kwargs,
-    ):
-        train_wf = self.train_workflow()
-        if lazy:
-            return train_wf
-        if hyperparameters is None:
-            raise ValueError("hyperparameters need to be provided when lazy=False")
-
-        trained_model, metrics = train_wf(hyperparameters=hyperparameters, **reader_kwargs)
-        self._latest_model = trained_model
-        self._latest_metrics = metrics
-        return trained_model, metrics
+    ) -> ModelArtifact:
+        model_obj, metrics = self.train_workflow()(
+            hyperparameters={} if hyperparameters is None else hyperparameters,
+            **reader_kwargs,
+        )
+        self.artifact = ModelArtifact(model_obj, metrics)
+        return self.artifact
 
     def predict(
         self,
-        model: Any = None,
-        *,
         features: Any = None,
-        lazy: bool = False,
         **reader_kwargs,
     ):
+        if self.artifact is None:
+            raise RuntimeError(
+                "ModelArtifact not found. You must train a model first with the `train` method before generating "
+                "predictions."
+            )
         if features is None:
-            predict_wf = self.predict_workflow()
-        else:
-            predict_wf = self.predict_from_features_workflow()
-        if lazy:
-            return predict_wf
-
-        if features is None:
-            return predict_wf(model=model, **reader_kwargs)
-        return predict_wf(model=model, features=features)
+            return self.predict_workflow()(model=self.artifact.object, **reader_kwargs)
+        return self.predict_from_features_workflow()(model=self.artifact.object, features=features)
 
     def save(self, model, file, *args, **kwargs):
         return self._saver(model, file, *args, **kwargs)
@@ -332,6 +333,94 @@ class Model(TrackedInstance):
             default_project=project,
             default_domain=domain,
         )
+
+    def remote_deploy(self):
+        """Deploy model services to a Flyte backend."""
+        from flytekit_learn import remote
+
+        version = remote.get_app_version()
+        image = remote.get_image_fqn(self, version)
+
+        # FlyteRemote needs to be re-instantiated after setting this environment variable so that the workflow's
+        # default image is set correctly. This can be simplified after flytekit config improvements
+        # are merged: https://github.com/flyteorg/flytekit/pull/857
+        os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
+        self._remote = FlyteRemote.from_config(
+            config_file_path=self._config_file_path,
+            default_project=self._remote._default_project,
+            default_domain=self._remote._default_domain,
+        )
+
+        remote.create_project(self._remote, self._remote._default_project)
+        if self._remote._flyte_admin_url.startswith("localhost"):
+            # assume that a localhost flyte_admin_url means that we want to use Flyte sandbox
+            remote.sandbox_docker_build(self, image)
+        else:
+            remote.docker_build_push(self, image)
+
+        args = [self._remote._default_project, self._remote._default_domain, version]
+        for wf in [
+            self.train_workflow(),
+            self.predict_workflow(),
+            self.predict_from_features_workflow(),
+        ]:
+            remote.deploy_wf(wf, self._remote, *args)
+
+    def remote_train(
+        self,
+        app_version: str = None,
+        *,
+        hyperparameters: Optional[Dict[str, Any]] = None,
+        **reader_kwargs,
+    ) -> ModelArtifact:
+        if self._remote is None:
+            raise RuntimeError("First configure the remote client with the `Model.remote` method")
+        train_wf = self._remote.fetch_workflow(name=self.train_workflow_name, version=app_version)
+        execution = self._remote.execute(
+            train_wf,
+            inputs={"hyperparameters": {} if hyperparameters is None else hyperparameters, **reader_kwargs},
+            wait=True,
+        )
+        return ModelArtifact(
+            execution.outputs["trained_model"],
+            execution.outputs["metrics"],
+        )
+
+    def remote_predict(
+        self,
+        app_version: str = None,
+        *,
+        features: Any = None,
+        **reader_kwargs,
+    ):
+        if self._remote is None:
+            raise RuntimeError("First configure the remote client with the `Model.remote` method")
+
+        from flytekit_learn import remote
+
+        app_version = app_version or remote.get_app_version()
+        model_artifact = remote.get_latest_model_artifact(self, app_version)
+
+        if (features is not None and reader_kwargs is not None) or (features and reader_kwargs):
+            raise ValueError("You must provide only one of `features` or `reader_kwargs`")
+
+        inputs = {"model": model_artifact.object}
+        if features is None:
+            workflow_name = self.predict_workflow_name
+            inputs.update(reader_kwargs)
+        else:
+            workflow_name = self.predict_from_features_workflow_name
+            inputs.update({"features": features})
+
+        predict_wf = self._remote.fetch_workflow(
+            self._remote._default_project,
+            self._remote._default_domain,
+            workflow_name,
+            app_version,
+        )
+        execution = self._remote.execute(predict_wf, inputs=inputs, wait=True)
+        predictions, *_ = execution.outputs.values()
+        return predictions
 
     def _default_init(self, hyperparameters: dict) -> Any:
         if self._init_callable is None:

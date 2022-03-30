@@ -149,9 +149,9 @@ def deploy(
         _docker_build_push(model, image)
 
     for wf in [
-        model.train(lazy=True),
-        model.predict(lazy=True),
-        model.predict(lazy=True, features=True),
+        model.train_workflow(),
+        model.predict_workflow(),
+        model.predict_from_features_workflow(),
     ]:
         _deploy_wf(wf, model._remote, *args)
 
