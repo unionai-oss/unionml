@@ -1,71 +1,27 @@
 """Utilities for the FastAPI integration."""
 
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, NamedTuple, Optional, Union
 
 from fastapi import Body, Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
+from flytekit.remote import FlyteRemote
 from pydantic import BaseModel
 
 from flytekit_learn.model import Model, ModelArtifact
 from flytekit_learn.remote import get_latest_model_artifact
 
 
-class TrainParams:
-
-    __slots__ = ("model", "remote", "local", "wait", "inputs")
-
-    def __init__(self, model):
-        self.model = model
-
-    def __call__(
-        self,
-        local: bool = False,
-        wait: bool = False,
-        inputs: Optional[Union[Dict, BaseModel]] = Body(None),
-    ) -> "TrainParams":
-        self.remote = self.model._remote
-        self.local = local
-        self.wait = wait
-        self.inputs = inputs
-        return self
-
-
-class PredictParams:
-
-    __slots__ = (
-        "model",
-        "remote",
-        "local",
-        "model_version",
-        "inputs",
-        "features",
-    )
-
-    def __init__(self, model):
-        self.model = model
-
-    def __call__(
-        self,
-        local: bool = False,  # TODO remove this, instead do model.serve(app, debug=True)
-        model_version: str = "latest",
-        inputs: Optional[Union[Dict, BaseModel]] = Body(None),
-        features: Optional[List[Dict[str, Any]]] = Body(None),
-    ) -> "PredictParams":
-        self.remote = self.model._remote
-        self.local = local
-        self.model_version = model_version
-        self.inputs = inputs
-        self.features = features
-        return self
+class PredictParams(NamedTuple):
+    model: Model
+    remote: FlyteRemote
+    local: bool
+    model_version: str
+    inputs: Optional[Union[Dict, BaseModel]]
+    features: Optional[List[Dict[str, Any]]]
 
 
 def serving_app(model: Model, app: FastAPI):
-    # TODO: load a model from a flytebackend here
-    model_path = os.getenv("FKLEARN_MODEL_PATH")
-    if model_path:
-        model.artifact = ModelArtifact(model.load(model_path))
-
     @app.get("/", response_class=HTMLResponse)
     def root():
         return """
@@ -80,8 +36,20 @@ def serving_app(model: Model, app: FastAPI):
             </html>
         """
 
+    async def load_predict_params(
+        local: bool = False,
+        model_version: str = "latest",
+        inputs: Optional[Union[Dict, BaseModel]] = Body(None),
+        features: Optional[List[Dict[str, Any]]] = Body(None),
+    ) -> PredictParams:
+        # TODO: load a model from a flytebackend here
+        model_path = os.getenv("FKLEARN_MODEL_PATH")
+        if model_path:
+            model.artifact = ModelArtifact(model.load(model_path))
+        return PredictParams(model, model._remote, local, model_version, inputs, features)
+
     @app.post("/predict")
-    def predict(params: PredictParams = Depends(PredictParams(model))):
+    async def predict(params: PredictParams = Depends(load_predict_params)):
         inputs, features = params.inputs, params.features
         if inputs is None and features is None:
             raise HTTPException(status_code=500, detail="inputs or features must be supplied.")

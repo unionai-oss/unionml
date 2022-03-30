@@ -183,8 +183,8 @@ def test_model_predict_from_features_task(model, mock_data):
 
 def test_model_saver_and_loader_filepath(model, tmp_path):
     model_path = tmp_path / "model.joblib"
-    model_obj = model._init({"C": 1.0, "max_iter": 1000})
-    output_path, *_ = model.save(model_obj, model_path)
+    model_obj, _ = model.train(hyperparameters={"C": 1.0, "max_iter": 1000}, sample_frac=1.0, random_state=42)
+    output_path, *_ = model.save(model_path)
 
     assert output_path == str(model_path)
 
@@ -194,7 +194,7 @@ def test_model_saver_and_loader_filepath(model, tmp_path):
 
 def test_model_saver_and_loader_fileobj(model):
     fileobj = io.BytesIO()
-    model_obj = model._init({"C": 1.0, "max_iter": 1000})
-    model.save(model_obj, fileobj)
+    model_obj, _ = model.train(hyperparameters={"C": 1.0, "max_iter": 1000}, sample_frac=1.0, random_state=42)
+    model.save(fileobj)
     loaded_model_obj = model.load(fileobj)
     assert model_obj.get_params() == loaded_model_obj.get_params()

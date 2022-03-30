@@ -55,9 +55,7 @@ def test_fastapi_app(tmp_path):
 
     # extract fklearn model and trained_model from module global namespace
     model = module_vars["model"]
-    trained_model = module_vars["trained_model"]
-
-    model.save(trained_model, model_path)
+    model.save(model_path)
     n_samples = 5
 
     with contextmanager(_app)("--model-path", str(model_path)):
