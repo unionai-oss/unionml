@@ -53,6 +53,7 @@ def get_image_fqn(model: Model, version: str) -> str:
 
 
 def sandbox_docker_build(model: Model, image_fqn: str):
+    logger.info("Building docker container in flyte sandbox.")
     client = docker.from_env()
     sandbox_container = None
     for container in client.containers.list():

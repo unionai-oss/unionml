@@ -403,7 +403,7 @@ class Model(TrackedInstance):
         app_version = app_version or remote.get_app_version()
         model_artifact = remote.get_latest_model_artifact(self, app_version)
 
-        if (features is not None and reader_kwargs is not None) or (features and reader_kwargs):
+        if (features is not None and len(reader_kwargs) > 0) or (features is None and len(reader_kwargs) == 0):
             raise ValueError("You must provide only one of `features` or `reader_kwargs`")
 
         inputs = {"model": model_artifact.object}
