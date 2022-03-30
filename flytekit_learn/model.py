@@ -305,8 +305,10 @@ class Model(TrackedInstance):
             return self.predict_workflow()(model=self.artifact.object, **reader_kwargs)
         return self.predict_from_features_workflow()(model=self.artifact.object, features=features)
 
-    def save(self, model, file, *args, **kwargs):
-        return self._saver(model, file, *args, **kwargs)
+    def save(self, file, *args, **kwargs):
+        if self.artifact is None:
+            raise AttributeError("`artifact` property is None. Call the `train` method to train a model first")
+        return self._saver(self.artifact.object, file, *args, **kwargs)
 
     def load(self, file, *args, **kwargs):
         return self._loader(file, *args, **kwargs)
@@ -429,12 +431,12 @@ class Model(TrackedInstance):
             )
         return self._init_callable(**hyperparameters)
 
-    def _default_saver(self, model: Any, file: Union[str, os.PathLike, IO], *args, **kwargs) -> Any:
-        if isinstance(model, sklearn.base.BaseEstimator):
-            return joblib.dump(model, file, *args, **kwargs)
+    def _default_saver(self, model_obj: Any, file: Union[str, os.PathLike, IO], *args, **kwargs) -> Any:
+        if isinstance(model_obj, sklearn.base.BaseEstimator):
+            return joblib.dump(model_obj, file, *args, **kwargs)
 
         raise NotImplementedError(
-            f"Default saver not defined for type {type(model)}. Use the Model.saver decorator to define one."
+            f"Default saver not defined for type {type(model_obj)}. Use the Model.saver decorator to define one."
         )
 
     def _default_loader(self, file: Union[str, os.PathLike, IO], *args, **kwargs) -> Any:

@@ -27,7 +27,7 @@ handler.setFormatter(logging.Formatter("%(asctime)s %(name)s %(levelname)s %(mes
 logger.addHandler(handler)
 
 
-def get_model(app: str, reload: bool = False):
+def get_model(app: str, reload: bool = False) -> Model:
     module_name, model_var = app.split(":")
     module = importlib.import_module(module_name)
     if reload:
@@ -39,16 +39,16 @@ def create_project(remote: FlyteRemote, project: typing.Optional[str]):
     project = project or remote.default_project
     projects, _ = remote.client.list_projects_paginated(filters=[filters.Equal("project.name", project)])
     if not projects:
-        return remote.client.register_project(Project(id=project, name=project, description=project))
+        remote.client.register_project(Project(id=project, name=project, description=project))
 
 
-def get_app_version():
+def get_app_version() -> str:
     repo = git.Repo(".", search_parent_directories=True)
     commit = repo.rev_parse("HEAD")
     return commit.hexsha
 
 
-def get_image_fqn(model: Model, version: str):
+def get_image_fqn(model: Model, version: str) -> str:
     return f"{model.registry}/{IMAGE_PREFIX}-{model.name.replace('_', '-')}:{version}"
 
 
@@ -107,7 +107,7 @@ def deploy_wf(wf, remote: FlyteRemote, project: str, domain: str, version: str):
         logger.info(f"Workflow already exists {identifiers}")
 
 
-def get_latest_model_artifact(model: Model, app_version: typing.Optional[str] = None) -> typing.Any:
+def get_latest_model_artifact(model: Model, app_version: typing.Optional[str] = None) -> ModelArtifact:
     if model._remote is None:
         raise RuntimeError("You need to configure the remote client with the `Model.remote` method")
 

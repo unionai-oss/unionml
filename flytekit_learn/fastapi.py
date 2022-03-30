@@ -60,10 +60,7 @@ class PredictParams:
         return self
 
 
-def serving_app(
-    model: Model,
-    app: FastAPI,
-):
+def serving_app(model: Model, app: FastAPI):
     # TODO: load a model from a flytebackend here
     model_path = os.getenv("FKLEARN_MODEL_PATH")
     if model_path:
