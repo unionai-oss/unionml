@@ -4,6 +4,7 @@ from inspect import Parameter, signature
 from typing import Dict, List, NamedTuple, Optional, Tuple, Type
 
 import pandas as pd
+import pydantic
 from flytekit.core.tracker import TrackedInstance
 from flytekit.extras.sqlite3.task import SQLite3Task
 from sklearn.model_selection import train_test_split
@@ -123,7 +124,9 @@ class Dataset(TrackedInstance):
         }
 
     def get_features(self, data):
-        parsed_data = self._parser(data, self._features, self._targets)
+        data_param, *_ = signature(self._parser).parameters.values()
+        data_type = data_param.annotation
+        parsed_data = self._parser(data_type(data), self._features, self._targets)
         return self._feature_getter(parsed_data)
 
     @property
@@ -188,10 +191,10 @@ class Dataset(TrackedInstance):
         if not features:
             features = [col for col in data if col not in targets]
         try:
-            targets = data[targets]
+            target_data = data[targets]
         except KeyError:
-            targets = pd.DataFrame()
-        return data[features], targets
+            target_data = pd.DataFrame()
+        return data[features], target_data
 
     def _default_feature_getter(self, data: Tuple[pd.DataFrame, pd.DataFrame]) -> pd.DataFrame:
         return data[0]

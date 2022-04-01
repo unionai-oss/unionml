@@ -2,13 +2,16 @@
 
 import inspect
 import os
+from ast import Param
 from collections import OrderedDict
-from functools import partial
+from dataclasses import asdict, dataclass, field, is_dataclass, make_dataclass
+from functools import cached_property, partial
 from inspect import Parameter, signature
 from typing import IO, Any, Callable, Dict, NamedTuple, Optional, Type, Union
 
 import joblib
 import sklearn
+from dataclasses_json import dataclass_json
 from flytekit import Workflow
 from flytekit.core.tracker import TrackedInstance
 from flytekit.remote import FlyteRemote
@@ -17,8 +20,18 @@ from flytekit_learn.dataset import Dataset
 from flytekit_learn.utils import inner_task
 
 
+@dataclass
+class BaseHyperparameters:
+    """Hyperparameter base class"""
+
+    pass
+
+
 class ModelArtifact(NamedTuple):
+    """Model artifact, containing a specific model object and optional metrics associated with it."""
+
     object: Any
+    hyperparameters: BaseHyperparameters = None
     metrics: Optional[Dict[str, float]] = None
 
 
@@ -29,12 +42,12 @@ class Model(TrackedInstance):
         init: Union[Type, Callable] = None,
         *,
         dataset: Dataset,
-        hyperparameters: Optional[Dict[str, Type]] = None,
+        hyperparameter_config: Optional[Dict[str, Type]] = None,
     ):
         super().__init__()
         self.name = name
         self._init_callable = init
-        self._hyperparameters = hyperparameters
+        self._hyperparameter_config = hyperparameter_config
         self._dataset = dataset
         self._artifact: Optional[ModelArtifact] = None
 
@@ -68,6 +81,26 @@ class Model(TrackedInstance):
     @artifact.setter
     def artifact(self, new_value: ModelArtifact):
         self._artifact = new_value
+
+    @cached_property
+    def hyperparameter_type(self) -> Type:
+        hyperparameter_fields = []
+        if self._hyperparameter_config is None:
+            # extract types from the init callable that instantiates a new model
+            model_obj_sig = signature(self._init_callable)
+
+            # if any of the arguments are not type-annotated, default to using an untyped dictionary
+            if any(p.annotation is inspect._empty for p in model_obj_sig.parameters.values()):
+                return dict
+
+            for hparam_name, hparam in model_obj_sig.parameters.items():
+                hyperparameter_fields.append((hparam_name, hparam.annotation, field(default=hparam.default)))
+        else:
+            # extract types from hyperparameters Model init argument
+            for hparam_name, hparam_type in self._hyperparameter_config.items():
+                hyperparameter_fields.append((hparam_name, hparam_type))
+
+        return dataclass_json(make_dataclass("Hyperparameters", hyperparameter_fields, bases=(BaseHyperparameters,)))
 
     @property
     def config_file_path(self) -> Optional[str]:
@@ -123,6 +156,14 @@ class Model(TrackedInstance):
         self._loader = fn
         return self._loader
 
+    @property
+    def trainer_params(self):
+        return {
+            name: param
+            for name, param in signature(self._trainer).parameters.items()
+            if param.kind == Parameter.KEYWORD_ONLY
+        }
+
     def train_workflow(self):
         dataset_task = self._dataset.dataset_task()
         train_task = self.train_task()
@@ -133,8 +174,17 @@ class Model(TrackedInstance):
         ], *_ = train_task.python_interface.inputs.items()
 
         wf = Workflow(name=self.train_workflow_name)
+
+        # add hyperparameter argument
         wf.add_workflow_input(hyperparam_arg, hyperparam_type)
+
+        # add dataset.reader arguments
         for arg, type in dataset_task.python_interface.inputs.items():
+            wf.add_workflow_input(arg, type)
+
+        # add training keyword-only arguments
+        trainer_param_types = {k: v.annotation for k, v in self.trainer_params.items()}
+        for arg, type in trainer_param_types.items():
             wf.add_workflow_input(arg, type)
 
         dataset_node = wf.add_entity(
@@ -143,9 +193,14 @@ class Model(TrackedInstance):
         )
         train_node = wf.add_entity(
             train_task,
-            **{hyperparam_arg: wf.inputs[hyperparam_arg], **dataset_node.outputs},
+            **{
+                hyperparam_arg: wf.inputs[hyperparam_arg],
+                **dataset_node.outputs,
+                **{arg: wf.inputs[arg] for arg in trainer_param_types},
+            },
         )
         wf.add_workflow_output("trained_model", train_node.outputs["trained_model"])
+        wf.add_workflow_output("hyperparameters", train_node.outputs["hyperparameters"])
         wf.add_workflow_output("metrics", train_node.outputs["metrics"])
         return wf
 
@@ -185,12 +240,14 @@ class Model(TrackedInstance):
         if self._train_task:
             return self._train_task
 
+        # make sure hyperparameter type signature is correct
         *_, hyperparameters_param = signature(self._init).parameters.values()
+        hyperparameters_param = hyperparameters_param.replace(annotation=self.hyperparameter_type)
 
         # assume that reader_return_type is a dict with only a single entry
         [(data_arg_name, data_arg_type)] = self._dataset.reader_return_type.items()
 
-        # TODO: make sure return type is not None
+        # get keyword-only training args
         @inner_task(
             fklearn_obj=self,
             input_parameters=OrderedDict(
@@ -203,12 +260,14 @@ class Model(TrackedInstance):
                             kind=Parameter.KEYWORD_ONLY,
                             annotation=data_arg_type,
                         ),
+                        *self.trainer_params.values(),
                     ]
                 ]
             ),
             return_annotation=NamedTuple(
                 "TrainingResults",
                 trained_model=signature(self._trainer).return_annotation,
+                hyperparameters=self.hyperparameter_type,
                 metrics=Dict[str, signature(self._evaluator).return_annotation],
             ),
             **({} if self._train_task_kwargs is None else self._train_task_kwargs),
@@ -216,15 +275,19 @@ class Model(TrackedInstance):
         def train_task(**kwargs):
             hyperparameters = kwargs["hyperparameters"]
             raw_data = kwargs[data_arg_name]
+            trainer_kwargs = {p: kwargs[p] for p in self.trainer_params}
+
+            hyperparameters_dict = asdict(hyperparameters) if is_dataclass(hyperparameters) else hyperparameters
             training_data = self._dataset.get_data(raw_data)
             trained_model = self._trainer(
-                self._init(hyperparameters=hyperparameters),
+                self._init(hyperparameters=hyperparameters_dict),
                 *training_data["train"],
+                **trainer_kwargs,
             )
             metrics = {
                 split_key: self._evaluator(trained_model, *training_data[split_key]) for split_key in ["train", "test"]
             }
-            return trained_model, metrics
+            return trained_model, hyperparameters, metrics
 
         self._train_task = train_task
         return train_task
@@ -254,20 +317,23 @@ class Model(TrackedInstance):
         self._predict_task = predict_task
         return predict_task
 
+    # TODO: see if this can be merged with predict_task
     def predict_from_features_task(self):
         if self._predict_from_features_task:
             return self._predict_from_features_task
 
         predictor_sig = signature(self._predictor)
+        model_param, *_ = predictor_sig.parameters.values()
+        model_param = model_param.replace(name="model")
+
+        # assume that reader_return_type is a dict with only a single entry
+        [(_, data_arg_type)] = self._dataset.reader_return_type.items()
+        data_param = Parameter("features", kind=Parameter.KEYWORD_ONLY, annotation=data_arg_type)
 
         @inner_task(
             fklearn_obj=self,
             input_parameters=OrderedDict(
-                [
-                    # assume that the first argument of the predictor represents the model object
-                    ("model", p.replace(name="model")) if i == 0 else (name, p)
-                    for i, (name, p) in enumerate(predictor_sig.parameters.items())
-                ]
+                [("model", model_param), ("features", data_param)]
             ),
             return_annotation=predictor_sig.return_annotation,
             **self._predict_task_kwargs,
@@ -282,14 +348,16 @@ class Model(TrackedInstance):
     def train(
         self,
         hyperparameters: Dict[str, Any] = None,
+        trainer_kwargs: Dict[str, Any] = None,
         **reader_kwargs,
     ) -> ModelArtifact:
-        model_obj, metrics = self.train_workflow()(
-            hyperparameters={} if hyperparameters is None else hyperparameters,
-            **reader_kwargs,
+        trainer_kwargs = {} if trainer_kwargs is None else trainer_kwargs
+        model_obj, hyperparameters, metrics = self.train_workflow()(
+            hyperparameters=self.hyperparameter_type(**({} if hyperparameters is None else hyperparameters)),
+            **{**reader_kwargs, **trainer_kwargs},
         )
-        self.artifact = ModelArtifact(model_obj, metrics)
-        return self.artifact
+        self.artifact = ModelArtifact(model_obj, hyperparameters, metrics)
+        return model_obj, metrics
 
     def predict(
         self,
@@ -308,7 +376,7 @@ class Model(TrackedInstance):
     def save(self, file, *args, **kwargs):
         if self.artifact is None:
             raise AttributeError("`artifact` property is None. Call the `train` method to train a model first")
-        return self._saver(self.artifact.object, file, *args, **kwargs)
+        return self._saver(self.artifact.object, self.artifact.hyperparameters, file, *args, **kwargs)
 
     def load(self, file, *args, **kwargs):
         return self._loader(file, *args, **kwargs)
@@ -431,20 +499,45 @@ class Model(TrackedInstance):
             )
         return self._init_callable(**hyperparameters)
 
-    def _default_saver(self, model_obj: Any, file: Union[str, os.PathLike, IO], *args, **kwargs) -> Any:
+    def _default_saver(
+        self,
+        model_obj: Any,
+        hyperparameters: Union[dict, BaseHyperparameters],
+        file: Union[str, os.PathLike, IO],
+        *args,
+        **kwargs,
+    ) -> Any:
+        import torch
+
+        hyperparameters = asdict(hyperparameters) if is_dataclass(hyperparameters) else hyperparameters
         if isinstance(model_obj, sklearn.base.BaseEstimator):
-            return joblib.dump(model_obj, file, *args, **kwargs)
+            return joblib.dump({"model_state": model_obj, "hyperparameters": hyperparameters}, file, *args, **kwargs)
+        elif isinstance(model_obj, torch.nn.Module):
+            torch.save(
+                {"model_state": model_obj.state_dict(), "hyperparameters": hyperparameters},
+                file,
+                *args,
+                **kwargs,
+            )
+            return file
 
         raise NotImplementedError(
             f"Default saver not defined for type {type(model_obj)}. Use the Model.saver decorator to define one."
         )
 
     def _default_loader(self, file: Union[str, os.PathLike, IO], *args, **kwargs) -> Any:
+        import torch
+
         init = self._init_callable if self._init == self._default_init else self._init or self._init_callable
         model_type = init if inspect.isclass(init) else signature(init).return_annotation if init is not None else init
 
         if issubclass(model_type, sklearn.base.BaseEstimator):
-            return joblib.load(file, *args, **kwargs)
+            deserialized_model = joblib.load(file, *args, **kwargs)
+            return deserialized_model["model_state"]
+        elif issubclass(model_type, torch.nn.Module):
+            deserialized_model = torch.load(file, *args, **kwargs)
+            model = model_type(**deserialized_model["hyperparameters"])
+            return model.load_state_dict(deserialized_model["model_state"])
 
         raise NotImplementedError(
             f"Default loader not defined for type {model_type}. Use the Model.loader decorator to define one."

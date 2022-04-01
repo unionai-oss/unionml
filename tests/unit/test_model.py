@@ -9,7 +9,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
 from flytekit_learn import Dataset, Model
-from flytekit_learn.model import ModelArtifact
+from flytekit_learn.model import BaseHyperparameters, ModelArtifact
 
 
 @pytest.fixture(scope="function")
@@ -40,7 +40,7 @@ def raw_model(request, mock_data) -> Model:
     model = Model(
         name="test_model",
         init=None if request.param["custom_init"] else LogisticRegression,
-        hyperparameters={"C": float, "max_iter": int},
+        hyperparameter_config={"C": float, "max_iter": int},
         dataset=dataset,
     )
 
@@ -98,7 +98,7 @@ def test_model_train_task(model, mock_data):
     eval_ret_type = signature(model._evaluator).return_annotation
 
     assert isinstance(train_task, PythonFunctionTask)
-    assert train_task.python_interface.inputs["hyperparameters"] == dict
+    assert issubclass(train_task.python_interface.inputs["hyperparameters"], BaseHyperparameters)
     assert train_task.python_interface.inputs["data"] == reader_ret_type
     assert train_task.python_interface.outputs["trained_model"].__module__ == "flytekit.types.pickle.pickle"
     assert train_task.python_interface.outputs["metrics"] == typing.Dict[str, eval_ret_type]

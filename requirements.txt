@@ -1,3 +1,4 @@
+dataclasses_json
 docker
 fastapi
 flytekit>=0.30.3

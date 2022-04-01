@@ -146,7 +146,7 @@ endpoints with the `requests` library.
 
       Invoke the endpoints using the `requests` library
 
-      ```{literalinclude} ../../tests/integration/sklearn/api_requests.py
+      ```{literalinclude} ../../tests/integration/api_requests.py
       ```
 
    ```
@@ -169,7 +169,7 @@ endpoints with the `requests` library.
 
       Invoke the endpoints using the `requests` library
 
-      ```{literalinclude} ../../tests/integration/sklearn/api_requests.py
+      ```{literalinclude} ../../tests/integration/api_requests.py
       ```
 
    ```
