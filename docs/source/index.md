@@ -45,7 +45,7 @@ into their corresponding digit labels.
 
       ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
       ---
-      lines: 1-13
+      lines: 1-12
       ---
       ```
 
@@ -55,7 +55,7 @@ into their corresponding digit labels.
 
       ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
       ---
-      lines: 1-13
+      lines: 1-12
       ---
       ```
 
@@ -102,7 +102,7 @@ Invoke `model.train` to train a model and `model.predict` to generate prediction
 
       ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
       ---
-      lines: 34-38
+      lines: 34-40
       ---
       ```
 
@@ -112,7 +112,7 @@ Invoke `model.train` to train a model and `model.predict` to generate prediction
 
       ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
       ---
-      lines: 34-38
+      lines: 34-40
       ---
       ```
 
@@ -125,11 +125,6 @@ Invoke `model.train` to train a model and `model.predict` to generate prediction
 `flytekit-learn` integrates with [FastAPI](https://fastapi.tiangolo.com/) to automatically
 create `/train/` and `/predict/` endpoints. Start a server with `uvicorn` and call the app
 endpoints with the `requests` library.
-
-```{code-block} bash
-pip install requests uvicorn
-```
-
 
 ````{tabs}
 
@@ -146,7 +141,7 @@ pip install requests uvicorn
       Start the server, assuming the `flytekit-learn` app is in a `main.py` script
 
       ```{code-block} bash
-      uvicorn main:app --reload
+      fklearn serve main:app --reload --model-path /tmp/model_object.joblib
       ```
 
       Invoke the endpoints using the `requests` library
@@ -169,7 +164,7 @@ pip install requests uvicorn
       Start the server, assuming the `flytekit-learn` app is in a `main.py` script
 
       ```{code-block} bash
-      uvicorn main:app --reload
+      fklearn serve main:app --reload --model-path /tmp/model_object.joblib
       ```
 
       Invoke the endpoints using the `requests` library

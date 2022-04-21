@@ -95,13 +95,15 @@ if __name__ == "__main__":
     )
 
     predictions = model.predict(
-        trained_model,
         features=load_digits(as_frame=True).frame.sample(5, random_state=42)
     )
 
     print(f"trained model: {trained_model}")
     print(f"training metrics: {metrics}")
     print(f"predictions: {predictions}")
+
+    # save model to a file, using joblib as the default serialization format
+    model.save("/tmp/model_object.joblib")
 ```
 
 ```{note}
@@ -138,12 +140,12 @@ model.serve(app)
 `model.serve` will take the `FastAPI` app and automatically create `/train/` and `/predict/` endpoints that you can
 invoke with HTTP requests.
 
-Start the server with `uvicorn`:
+Start the server with `fklearn serve`:
 
 ```{prompt} bash
 :prompts: $
 
-uvicorn main:app --reload
+fklearn main:app --reload
 ```
 
 Once the server's started, you can use the Python `requests` library or any other HTTP library for training
