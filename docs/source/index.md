@@ -43,7 +43,7 @@ into their corresponding digit labels.
 
    ```{group-tab} sklearn
 
-      ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
+      ```{literalinclude} ../../tests/integration/sklearn_app/quickstart.py
       ---
       lines: 1-12
       ---
@@ -53,9 +53,9 @@ into their corresponding digit labels.
 
    ```{group-tab} pytorch
 
-      ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
+      ```{literalinclude} ../../tests/integration/pytorch_app/quickstart.py
       ---
-      lines: 1-12
+      lines: 1-28
       ---
       ```
 
@@ -72,7 +72,7 @@ core components for model training and prediction:
 
    ```{group-tab} sklearn
 
-      ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
+      ```{literalinclude} ../../tests/integration/sklearn_app/quickstart.py
       ---
       lines: 14-32
       ---
@@ -82,9 +82,19 @@ core components for model training and prediction:
 
    ```{group-tab} pytorch
 
-      ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
+      First we'll define some helper functions to convert dataframes to tensors
+
+      ```{literalinclude} ../../tests/integration/pytorch_app/quickstart.py
       ---
-      lines: 14-32
+      lines: 31-37
+      ---
+      ```
+
+      Then let's define the app methods
+
+      ```{literalinclude} ../../tests/integration/pytorch_app/quickstart.py
+      ---
+      lines: 39-77
       ---
       ```
 
@@ -100,7 +110,7 @@ Invoke `model.train` to train a model and `model.predict` to generate prediction
 
    ```{group-tab} sklearn
 
-      ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
+      ```{literalinclude} ../../tests/integration/sklearn_app/quickstart.py
       ---
       lines: 34-40
       ---
@@ -110,9 +120,9 @@ Invoke `model.train` to train a model and `model.predict` to generate prediction
 
    ```{group-tab} pytorch
 
-      ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
+      ```{literalinclude} ../../tests/integration/pytorch_app/quickstart.py
       ---
-      lines: 34-40
+      lines: 79-88
       ---
       ```
 
@@ -132,7 +142,7 @@ endpoints with the `requests` library.
 
       Bind a FastAPI `app` to the `model` object with `model.serve`
 
-      ```{literalinclude} ../../tests/integration/sklearn/fastapi_app.py
+      ```{literalinclude} ../../tests/integration/sklearn_app/fastapi_app.py
       ---
       lines: 3-6
       ---
@@ -155,7 +165,7 @@ endpoints with the `requests` library.
 
       Bind a FastAPI `app` to the `model` object with `model.serve`
 
-      ```{literalinclude} ../../tests/integration/sklearn/fastapi_app.py
+      ```{literalinclude} ../../tests/integration/pytorch_app/fastapi_app.py
       ---
       lines: 3-6
       ---
@@ -164,7 +174,7 @@ endpoints with the `requests` library.
       Start the server, assuming the `flytekit-learn` app is in a `main.py` script
 
       ```{code-block} bash
-      fklearn serve main:app --reload --model-path /tmp/model_object.joblib
+      fklearn serve main:app --reload --model-path /tmp/model_object.pt
       ```
 
       Invoke the endpoints using the `requests` library

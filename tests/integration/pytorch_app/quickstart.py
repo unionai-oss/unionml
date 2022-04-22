@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List
 
 import pandas as pd
 import torch
@@ -10,15 +10,12 @@ from sklearn.metrics import accuracy_score
 from flytekit_learn import Dataset, Model
 
 
+# define a simple pytorch module
 class PytorchModel(nn.Module):
     def __init__(self, in_dims: int, hidden_dims: int, out_dims: int):
         super().__init__()
         self.layers = nn.Sequential(
             nn.Linear(in_dims, hidden_dims),
-            nn.ReLU(),
-            nn.Linear(hidden_dims, hidden_dims),
-            nn.ReLU(),
-            nn.Linear(hidden_dims, hidden_dims),
             nn.ReLU(),
             nn.Linear(hidden_dims, out_dims),
         )
@@ -31,56 +28,52 @@ dataset = Dataset(name="digits_dataset", test_size=0.2, shuffle=True, targets=["
 model = Model(name="digits_classifier", init=PytorchModel, dataset=dataset)
 
 
+def process_features(features: pd.DataFrame) -> torch.Tensor:
+    return torch.from_numpy(features.values).float()
+
+
+def process_target(target: pd.DataFrame) -> torch.Tensor:
+    return torch.from_numpy(target.squeeze().values).long()
+
+
 @dataset.reader
 def reader() -> pd.DataFrame:
     return load_digits(as_frame=True).frame
 
 
-@dataset.parser
-def parser(
-    data: pd.DataFrame,
-    features: Optional[List[str]],
-    targets: List[str],
-) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
-    if not features:
-        features = [col for col in data.columns if col not in targets]
-    try:
-        target_data = torch.from_numpy(data[targets].squeeze().values).long()
-    except KeyError:
-        target_data = None
-    return (torch.from_numpy(data[features].values).float(), target_data)
-
-
 @model.trainer
 def trainer(
-    pytorch_model: PytorchModel,
+    module: PytorchModel,
     features: pd.DataFrame,
     target: pd.DataFrame,
     *,
+    # keyword-only arguments define trainer parameters
     batch_size: int,
     n_epochs: int,
     learning_rate: float,
     weight_decay: float
 ) -> PytorchModel:
-    opt = torch.optim.Adam(pytorch_model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    opt = torch.optim.Adam(module.parameters(), lr=learning_rate, weight_decay=weight_decay)
     for _ in range(n_epochs):
-        for (X, y) in zip(torch.split(features, batch_size), torch.split(target, batch_size)):
+        for (X, y) in zip(
+            torch.split(process_features(features), batch_size),
+            torch.split(process_target(target), batch_size),
+        ):
             opt.zero_grad()
-            out = pytorch_model(X)
-            loss = F.cross_entropy(out, y)
+            loss = F.cross_entropy(module(X), y)
             loss.backward()
             opt.step()
-    return pytorch_model
+    return module
 
 
 @model.predictor
-def predictor(pytorch_model: PytorchModel, features: torch.Tensor) -> List[float]:
-    return [float(x) for x in pytorch_model(features).argmax(1)]
+def predictor(module: PytorchModel, features: pd.DataFrame) -> List[float]:
+    return [float(x) for x in module(process_features(features)).argmax(1)]
 
 
 @model.evaluator
-def evaluator(pytorch_model: PytorchModel, features: torch.Tensor, target: torch.Tensor) -> float:
-    return accuracy_score(target.squeeze(), predictor(pytorch_model, features))
+def evaluator(module: PytorchModel, features: pd.DataFrame, target: pd.DataFrame) -> float:
+    return accuracy_score(target.squeeze(), predictor(module, features))
 
 
 if __name__ == "__main__":
