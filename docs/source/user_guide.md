@@ -11,13 +11,11 @@ model
 local_app
 ```
 
-`flytekit-learn` is an opinionated machine learning framework that makes going from
-prototype to production fast and simple. Taking inspiration from web protocols, `flytekit-learn`
-asks the question:
+`flytekit-learn` is a machine learning microframework that makes going from prototype to production fast
+and simple. Taking inspiration from web protocols, `flytekit-learn` asks the question:
 
 > Is it possible to define a standard set of functions/methods for machine learning that can be
-> reused in many different contexts, from model training to batch, streaming,
-> or event-based prediction?
+> reused in many different contexts, from model training to batch or streaming prediction?
 
 ## `flytekit-learn` Apps
 

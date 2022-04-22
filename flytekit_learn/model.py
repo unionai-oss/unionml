@@ -2,12 +2,11 @@
 
 import inspect
 import os
-from ast import Param
 from collections import OrderedDict
 from dataclasses import asdict, dataclass, field, is_dataclass, make_dataclass
 from functools import cached_property, partial
 from inspect import Parameter, signature
-from typing import IO, Any, Callable, Dict, NamedTuple, Optional, Type, Union
+from typing import IO, Any, Callable, Dict, List, NamedTuple, Optional, Tuple, Type, Union
 
 import joblib
 import sklearn
@@ -31,7 +30,7 @@ class ModelArtifact(NamedTuple):
     """Model artifact, containing a specific model object and optional metrics associated with it."""
 
     object: Any
-    hyperparameters: BaseHyperparameters = None
+    hyperparameters: Optional[Union[BaseHyperparameters, dict]] = None
     metrics: Optional[Dict[str, float]] = None
 
 
@@ -84,10 +83,10 @@ class Model(TrackedInstance):
 
     @cached_property
     def hyperparameter_type(self) -> Type:
-        hyperparameter_fields = []
+        hyperparameter_fields: List[Any] = []
         if self._hyperparameter_config is None:
             # extract types from the init callable that instantiates a new model
-            model_obj_sig = signature(self._init_callable)
+            model_obj_sig = signature(self._init_callable)  # type: ignore
 
             # if any of the arguments are not type-annotated, default to using an untyped dictionary
             if any(p.annotation is inspect._empty for p in model_obj_sig.parameters.values()):
@@ -332,9 +331,7 @@ class Model(TrackedInstance):
 
         @inner_task(
             fklearn_obj=self,
-            input_parameters=OrderedDict(
-                [("model", model_param), ("features", data_param)]
-            ),
+            input_parameters=OrderedDict([("model", model_param), ("features", data_param)]),
             return_annotation=predictor_sig.return_annotation,
             **self._predict_task_kwargs,
         )
@@ -350,7 +347,7 @@ class Model(TrackedInstance):
         hyperparameters: Dict[str, Any] = None,
         trainer_kwargs: Dict[str, Any] = None,
         **reader_kwargs,
-    ) -> ModelArtifact:
+    ) -> Tuple[Any, Any]:
         trainer_kwargs = {} if trainer_kwargs is None else trainer_kwargs
         model_obj, hyperparameters, metrics = self.train_workflow()(
             hyperparameters=self.hyperparameter_type(**({} if hyperparameters is None else hyperparameters)),
@@ -537,7 +534,8 @@ class Model(TrackedInstance):
         elif issubclass(model_type, torch.nn.Module):
             deserialized_model = torch.load(file, *args, **kwargs)
             model = model_type(**deserialized_model["hyperparameters"])
-            return model.load_state_dict(deserialized_model["model_state"])
+            model.load_state_dict(deserialized_model["model_state"])
+            return model
 
         raise NotImplementedError(
             f"Default loader not defined for type {model_type}. Use the Model.loader decorator to define one."

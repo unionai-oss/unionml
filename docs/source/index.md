@@ -21,7 +21,7 @@ Contributing <contributing>
 
 It's built on top of [flyte](https://docs.flyte.org/en/latest/) and
 [flytekit](https://docs.flyte.org/projects/flytekit/en/latest/) to provide a high-level
-interface for model training and batch, streaming, and event-based prediction.
+interface for model training and prediction in batch and streaming contexts.
 
 # Installation
 
@@ -123,7 +123,7 @@ Invoke `model.train` to train a model and `model.predict` to generate prediction
 ## Serve Seamlessly with FastAPI
 
 `flytekit-learn` integrates with [FastAPI](https://fastapi.tiangolo.com/) to automatically
-create `/train/` and `/predict/` endpoints. Start a server with `uvicorn` and call the app
+create `/train/` and `/predict/` endpoints. Start a server with `fklearn serve` and call the app
 endpoints with the `requests` library.
 
 ````{tabs}

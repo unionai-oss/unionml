@@ -4,7 +4,6 @@ from inspect import Parameter, signature
 from typing import Dict, List, NamedTuple, Optional, Tuple, Type
 
 import pandas as pd
-import pydantic
 from flytekit.core.tracker import TrackedInstance
 from flytekit.extras.sqlite3.task import SQLite3Task
 from sklearn.model_selection import train_test_split
@@ -136,10 +135,14 @@ class Dataset(TrackedInstance):
         return self._reader_input_types
 
     @property
-    def reader_return_type(self) -> Optional[Dict[str, Type]]:
+    def reader_return_type(self) -> Dict[str, Type]:
         if self._reader and self._reader_return_type is None:
             return {"data": signature(self._reader).return_annotation}
-        return self._reader_return_type
+        elif self._reader_return_type is not None:
+            return self._reader_return_type
+        raise ValueError(
+            "reader_return_type is not defined. Please define a @dataset.reader function with an output annotation."
+        )
 
     @classmethod
     def _from_flytekit_task(

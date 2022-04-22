@@ -19,8 +19,8 @@ dataset = Dataset(
 model = Model(
     name="breast_cancer_classifier",
     init=LogisticRegression,
-    hyperparameters={"C": float, "max_iter": int},
     dataset=dataset,
+    hyperparameter_config={"C": float, "max_iter": int},
 )
 
 # attach Flyte remote backend
