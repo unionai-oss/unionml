@@ -73,7 +73,7 @@ def predictor():
 def evaluator():
     def _evaluator(model: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> float:
         predictions = model.predict(features)
-        return accuracy_score(target, predictions)
+        return float(accuracy_score(target, predictions))
 
     return _evaluator
 

@@ -73,7 +73,7 @@ def predictor(module: PytorchModel, features: pd.DataFrame) -> List[float]:
 
 @model.evaluator
 def evaluator(module: PytorchModel, features: pd.DataFrame, target: pd.DataFrame) -> float:
-    return accuracy_score(target.squeeze(), predictor(module, features))
+    return float(accuracy_score(target.squeeze(), predictor(module, features)))
 
 
 if __name__ == "__main__":

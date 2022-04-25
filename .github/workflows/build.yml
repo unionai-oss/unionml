@@ -40,6 +40,6 @@ jobs:
     - name: Lint with black
       run: |
         pre-commit run --all-files
-    - name: Test with pytest
+    - name: Unit tests with pytest
       run: |
-        pytest tests
+        pytest tests/unit

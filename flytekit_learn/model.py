@@ -4,7 +4,7 @@ import inspect
 import os
 from collections import OrderedDict
 from dataclasses import asdict, dataclass, field, is_dataclass, make_dataclass
-from functools import cached_property, partial
+from functools import partial
 from inspect import Parameter, signature
 from typing import IO, Any, Callable, Dict, List, NamedTuple, Optional, Tuple, Type, Union
 
@@ -73,6 +73,9 @@ class Model(TrackedInstance):
         self._train_task_kwargs = None
         self._predict_task_kwargs = None
 
+        # dynamically defined types
+        self._hyperparameter_type: Optional[Type] = None
+
     @property
     def artifact(self) -> Optional[ModelArtifact]:
         return self._artifact
@@ -81,8 +84,11 @@ class Model(TrackedInstance):
     def artifact(self, new_value: ModelArtifact):
         self._artifact = new_value
 
-    @cached_property
+    @property
     def hyperparameter_type(self) -> Type:
+        if self._hyperparameter_type is not None:
+            return self._hyperparameter_type
+
         hyperparameter_fields: List[Any] = []
         if self._hyperparameter_config is None:
             # extract types from the init callable that instantiates a new model
@@ -99,7 +105,10 @@ class Model(TrackedInstance):
             for hparam_name, hparam_type in self._hyperparameter_config.items():
                 hyperparameter_fields.append((hparam_name, hparam_type))
 
-        return dataclass_json(make_dataclass("Hyperparameters", hyperparameter_fields, bases=(BaseHyperparameters,)))
+        self._hyperparameter_type = dataclass_json(
+            make_dataclass("Hyperparameters", hyperparameter_fields, bases=(BaseHyperparameters,))
+        )
+        return self._hyperparameter_type
 
     @property
     def config_file_path(self) -> Optional[str]:
