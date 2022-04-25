@@ -83,7 +83,7 @@ def test_sqlite_dataset_reader(mock_sqlite_db, task_cls, task_config_cls, uri_fn
     @model.evaluator
     def evaluator(model: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> float:
         predictions = model.predict(features)
-        return accuracy_score(target, predictions)
+        return float(accuracy_score(target, predictions))
 
     trained_model, _ = model.train(hyperparameters={"C": 100.0}, limit=50)
     assert isinstance(trained_model, LogisticRegression)

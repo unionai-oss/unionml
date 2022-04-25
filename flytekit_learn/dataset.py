@@ -123,7 +123,9 @@ class Dataset(TrackedInstance):
         }
 
     def get_features(self, data):
-        parsed_data = self._parser(data, self._features, self._targets)
+        data_param, *_ = signature(self._parser).parameters.values()
+        data_type = data_param.annotation
+        parsed_data = self._parser(data_type(data), self._features, self._targets)
         return self._feature_getter(parsed_data)
 
     @property
@@ -133,10 +135,14 @@ class Dataset(TrackedInstance):
         return self._reader_input_types
 
     @property
-    def reader_return_type(self) -> Optional[Dict[str, Type]]:
+    def reader_return_type(self) -> Dict[str, Type]:
         if self._reader and self._reader_return_type is None:
             return {"data": signature(self._reader).return_annotation}
-        return self._reader_return_type
+        elif self._reader_return_type is not None:
+            return self._reader_return_type
+        raise ValueError(
+            "reader_return_type is not defined. Please define a @dataset.reader function with an output annotation."
+        )
 
     @classmethod
     def _from_flytekit_task(
@@ -188,10 +194,10 @@ class Dataset(TrackedInstance):
         if not features:
             features = [col for col in data if col not in targets]
         try:
-            targets = data[targets]
+            target_data = data[targets]
         except KeyError:
-            targets = pd.DataFrame()
-        return data[features], targets
+            target_data = pd.DataFrame()
+        return data[features], target_data
 
     def _default_feature_getter(self, data: Tuple[pd.DataFrame, pd.DataFrame]) -> pd.DataFrame:
         return data[0]

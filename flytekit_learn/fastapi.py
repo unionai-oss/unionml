@@ -62,7 +62,11 @@ def serving_app(model: Model, app: FastAPI):
             raise HTTPException(status_code=500, detail="trained model not found")
 
         workflow_inputs: Dict[str, Any] = {}
-        workflow_inputs.update(inputs if inputs else {"features": model._dataset.get_features(features)})
+        if model._dataset.reader_return_type is not None:
+            # convert raw features to whatever the output type of the reader is.
+            (_, feature_type), *_ = model._dataset.reader_return_type.items()
+            features = feature_type(features)
+        workflow_inputs.update(inputs if inputs else {"features": features})
         if params.local:
             return model.predict(**workflow_inputs)
 

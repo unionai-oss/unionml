@@ -6,14 +6,13 @@ from contextlib import contextmanager
 import pytest
 import requests
 from sklearn.datasets import load_digits
-from sklearn.linear_model import LogisticRegression
 from sklearn.utils.validation import check_is_fitted
 
 
-def _app(*args, port: str = "8000"):
+def _app(ml_framework: str, *args, port: str = "8000"):
     """Transient app server for testing."""
     process = subprocess.Popen(
-        ["fklearn", "serve", "tests.integration.sklearn.fastapi_app:app", "--port", port, *args],
+        ["fklearn", "serve", f"tests.integration.{ml_framework}_app.fastapi_app:app", "--port", port, *args],
         stdout=subprocess.PIPE,
     )
     _wait_to_exist(port)
@@ -23,43 +22,56 @@ def _app(*args, port: str = "8000"):
         process.terminate()
 
 
-@pytest.fixture(scope="function")
-def app():
-    yield from _app()
-
-
 def _wait_to_exist(port):
     for _ in range(30):
         try:
             requests.get(f"http://127.0.0.1:{port}/")
             break
         except Exception:  # pylint: disable=broad-except
-            time.sleep(3.0)
+            time.sleep(1.0)
 
 
-def test_module(capfd):
-    module_vars = runpy.run_module("tests.integration.sklearn.quickstart", run_name="__main__")
+@pytest.mark.parametrize(
+    "ml_framework, model_cls_name, model_checker",
+    [
+        ("sklearn", "LogisticRegression", check_is_fitted),
+        ("pytorch", "PytorchModel", None),
+    ],
+    ids=["sklearn", "pytorch"],
+)
+def test_module(ml_framework, model_cls_name, model_checker):
+    module_vars = runpy.run_module(f"tests.integration.{ml_framework}_app.quickstart", run_name="__main__")
     trained_model = module_vars["trained_model"]
     predictions = module_vars["predictions"]
 
-    assert isinstance(trained_model, LogisticRegression)
-    check_is_fitted(trained_model)
+    model_cls = module_vars[model_cls_name]
+    assert isinstance(trained_model, model_cls)
+    if model_checker:
+        model_checker(trained_model)
 
     assert all([isinstance(x, float) and 0 <= x <= 9 for x in predictions])
 
 
-def test_fastapi_app(tmp_path):
+@pytest.mark.parametrize(
+    "ml_framework, filename",
+    [
+        ("sklearn", "model.joblib"),
+        ("pytorch", "model.pt"),
+    ],
+    ids=["sklearn", "pytorch"],
+)
+def test_fastapi_app(ml_framework, filename, tmp_path):
     # run the quickstart module to train a model
-    model_path = tmp_path / "model.joblib"
-    module_vars = runpy.run_module("tests.integration.sklearn.quickstart", run_name="__main__")
+    model_path = tmp_path / filename
+    module_vars = runpy.run_module(f"tests.integration.{ml_framework}_app.quickstart", run_name="__main__")
 
     # extract fklearn model and trained_model from module global namespace
     model = module_vars["model"]
     model.save(model_path)
     n_samples = 5
 
-    with contextmanager(_app)("--model-path", str(model_path)):
-        api_request_vars = runpy.run_module("tests.integration.sklearn.api_requests", run_name="__main__")
+    with contextmanager(_app)(ml_framework, "--model-path", str(model_path)):
+        api_request_vars = runpy.run_module("tests.integration.api_requests", run_name="__main__")
         prediction_response = api_request_vars["prediction_response"]
         output = prediction_response.json()
         assert len(output) == n_samples
@@ -73,7 +85,7 @@ def test_fastapi_app_no_model():
 
     # excluding the --model-path argument should raise an error since the fklearn.Model object
     # doesn't have a model_artifact attribute set yet
-    with contextmanager(_app)(port="8001"):
+    with contextmanager(_app)("sklearn", port="8001"):
         prediction_response = requests.post(
             "http://127.0.0.1:8001/predict?local=True",
             json={"features": features.sample(n_samples, random_state=42).to_dict(orient="records")},

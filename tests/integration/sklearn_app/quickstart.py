@@ -28,7 +28,7 @@ def predictor(estimator: LogisticRegression, features: pd.DataFrame) -> List[flo
 
 @model.evaluator
 def evaluator(estimator: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> float:
-    return accuracy_score(target.squeeze(), predictor(estimator, features))
+    return float(accuracy_score(target.squeeze(), predictor(estimator, features)))
 
 
 if __name__ == "__main__":

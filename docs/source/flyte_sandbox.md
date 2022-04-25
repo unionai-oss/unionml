@@ -104,7 +104,7 @@ our app workflows.
 
 ````{dropdown} See app source
 
-   ```{literalinclude} ../../tests/integration/sklearn/quickstart.py
+   ```{literalinclude} ../../tests/integration/sklearn_app/quickstart.py
    ```
 
 ````

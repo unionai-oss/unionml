@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from tests.integration.sklearn.quickstart import model
+from tests.integration.sklearn_app.quickstart import model
 
 app = FastAPI()
 model.serve(app)
