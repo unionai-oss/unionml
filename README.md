@@ -1,6 +1,6 @@
-# `flytekit-learn`
+# µlearn
 
-The easiest way to build and deploy machine learning services
+_"micro·learn"_: the easiest way to build and deploy machine learning services
 
 ## Build the Documentation
 
@@ -9,8 +9,8 @@ Until we release this into the wild, you'll have to build the docs locally.
 First create and activate a virtual environment
 
 ```
-python -m venv ~/fklearn_env
-source ~/fklearn_env/bin/activate
+python -m venv ~/ulearn_env
+source ~/ulearn_env/bin/activate
 ```
 
 Install requirements:

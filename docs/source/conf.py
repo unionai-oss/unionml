@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = "flytekit-learn"
+project = "ulearn"
 copyright = "2022, unionai-oss"
 author = "unionai-oss"
 
@@ -50,18 +50,18 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "conf.py"]
 # a list of builtin themes.
 #
 html_theme = "furo"
-html_title = "flytekit-learn"
-html_logo = "_static/images/flyte-logo.png"
-html_favicon = "_static/images/flyte-logo.png"
+html_title = "µlearn"
+html_logo = "_static/images/union-logo.svg"
+html_favicon = "_static/images/union-logo.svg"
 
 html_theme_options = {
     "light_css_variables": {
-        "color-brand-primary": "#4300c9",
-        "color-brand-content": "#4300c9",
+        "color-brand-primary": "#e59f12",
+        "color-brand-content": "#e59f12",
     },
     "dark_css_variables": {
-        "color-brand-primary": "#9d68e4",
-        "color-brand-content": "#9d68e4",
+        "color-brand-primary": "#FDB51D",
+        "color-brand-content": "#FDB51D",
     },
 }
 

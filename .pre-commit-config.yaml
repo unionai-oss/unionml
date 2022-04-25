@@ -27,8 +27,8 @@ repos:
   rev: v0.942
   hooks:
     - id: mypy
-      entry: mypy flytekit_learn tests example
-      files: (^flytekit_learn/|^tests)
+      entry: mypy ulearn tests example
+      files: (^ulearn/|^tests)
       exclude: (^docs/)
       pass_filenames: false
       additional_dependencies:

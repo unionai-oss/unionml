@@ -14,13 +14,13 @@ from flytekit.models.admin.common import Sort
 from flytekit.models.project import Project
 from flytekit.remote import FlyteRemote, FlyteWorkflowExecution
 
-from flytekit_learn.model import Model, ModelArtifact
+from ulearn.model import Model, ModelArtifact
 
-IMAGE_PREFIX = "flytekit-learn"
+IMAGE_PREFIX = "ulearn"
 FLYTE_SANDBOX_CONTAINER_NAME = "flyte-sandbox"
 
 
-logger = logging.getLogger("flytekit-learn")
+logger = logging.getLogger("ulearn")
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s"))

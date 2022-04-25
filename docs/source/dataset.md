@@ -2,14 +2,14 @@
 
 # Defining a Dataset
 
-A `Dataset` is one of the core parts of a *`flytekit-learn` app*. You can think of
+A `Dataset` is one of the core parts of a *`ulearn` app*. You can think of
 it as a specification for a dataset's source in addition to a set of common
 machine-learning-specific abstractions, which we'll get into later in this guide.
 
 First, let's define a dataset:
 
 ```{code-block} python
-from flytekit_learn import Dataset
+from ulearn import Dataset
 
 dataset = Dataset(
     name="digits_dataset",
@@ -25,7 +25,7 @@ In the above code snippet you might notice a few things:
 
 - We're defining a `Dataset` with the name `"digits_dataset"`.
 - The `targets` argument accepts a list of strings referring to the column names.
-  By default `flytekit_learn.Dataset` understands `pandas.DataFrame` objects as datasets,
+  By default `ulearn.Dataset` understands `pandas.DataFrame` objects as datasets,
   but as we'll see later this can be customized to accept data in any arbitrary format.
 - The `test_size` argument specifies what fraction of the dataset should be reserved
   as the hold-out test set for model evaluation.
@@ -121,4 +121,4 @@ def parser(data: pd.DataFrame, features: Optional[List[str]], targets: List[str]
 ## Next
 
 Now that we've defined a `Dataset`, we need to {ref}`Bind a Model and Dataset <model>` together
-to create our `flytekit-learn` app.
+to create our `ulearn` app.

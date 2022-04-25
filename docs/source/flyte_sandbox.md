@@ -5,7 +5,7 @@
 In {ref}`Local Training and Prediction <local_app>` we ran our training and prediction
 functions locally by:
 
-1. Executing our `flytekit-learn` app as python module by calling the `model.train` and
+1. Executing our `ulearn` app as python module by calling the `model.train` and
    `model.predict` methods.
 2. Starting a FastAPI server and invoking the `/train` and `/predict` endpoints using
    the `requests` library.
@@ -17,7 +17,7 @@ and light-weight models, this won't scale well to larger datasets and models. Fo
 we'll need to access cloud resources.
 ```
 
-`flytekit-learn` integrates tightly with [Flyte](https://docs.flyte.org/en/latest/), which is
+`ulearn` integrates tightly with [Flyte](https://docs.flyte.org/en/latest/), which is
 a data- and machine-learning-aware orchestration platform that leverages cloud services like
 [AWS](https://aws.amazon.com/) and [GCP](https://cloud.google.com/) to easily scale and
 maintain data processing machine learning workloads.
@@ -26,7 +26,7 @@ In this guide, we'll:
 
 1. Spin up a Flyte sandbox, which is a standalone, minimal Flyte cluster that you can create
    on your individual laptop or workstation.
-2. Configure digit classification `flytekit-learn` app to use the Flyte sandbox as the compute
+2. Configure digit classification `ulearn` app to use the Flyte sandbox as the compute
    backend for our training and prediction workload.
 
 
@@ -90,7 +90,7 @@ We should now be able to go to `http://localhost:30081/console` on your browser 
 
 ## Deploy App Workflows
 
-A `flytekit-learn` app is composed of a `Dataset`, `Model`, and serving app component
+A `ulearn` app is composed of a `Dataset`, `Model`, and serving app component
 (e.g. `fastapi.FastAPI`). Under the hood, a `Model` object exposes
 `*_workflow` methods that return [`flytekit.workflow`](https://docs.flyte.org/projects/flytekit/en/latest/generated/flytekit.workflow.html#flytekit.workflow) objects, which are essentially
 execution graphs that perform multiple steps of computation.
@@ -98,8 +98,8 @@ execution graphs that perform multiple steps of computation.
 To make these computations scalable, reproducible, and auditable, we can serialize
 our workflows and register them to a Flyte cluster, in this case a local Flyte sandbox.
 
-Going back to our digit classification app, let's assume that we have a `flytekit-learn`
-app in an `app/main.py` file. We can use the `fklearn` command-line tool to easily deploy
+Going back to our digit classification app, let's assume that we have a `ulearn`
+app in an `app/main.py` file. We can use the `ulearn` command-line tool to easily deploy
 our app workflows.
 
 ````{dropdown} See app source
@@ -157,13 +157,13 @@ RUN pip install -r /root/requirements.txt
 # Copy the actual code
 COPY . /root
 
-# This tag is supplied by the fklearn deploy command
+# This tag is supplied by the ulearn deploy command
 ARG tag
 ENV FLYTE_INTERNAL_IMAGE $tag
 ENV FLYTE_CONFIG=config/remote.config
 ```
 
-### `fklearn deploy`
+### `ulearn deploy`
 
 To deploy run:
 
@@ -172,19 +172,19 @@ To deploy run:
 prompts: $
 ---
 
-fklearn deploy app.main:model
+ulearn deploy app.main:model
 ```
 
 ```{note}
-The first argument of `fklearn deploy` should be a `:`-separated string whose first section
-is the module name containing the `flytekit-learn` app and second section is the variable
-name pointing to the `flytekit_learn.Model` object.
+The first argument of `ulearn deploy` should be a `:`-separated string whose first section
+is the module name containing the `ulearn` app and second section is the variable
+name pointing to the `ulearn.Model` object.
 ```
 
 Now that your app workflows are deployed, you can run training and prediction jobs using
 the Flyte sandbox cluster:
 
-### `fklearn train`
+### `ulearn train`
 
 Train a model given some hyperparameters:
 
@@ -193,10 +193,10 @@ Train a model given some hyperparameters:
 prompts: $
 ---
 
-fklearn train app.main:model -i '{"hyperparameters": {"C": 1.0, "max_iter": 1000}, "sample_frac": 1.0, "random_state": 123}'
+ulearn train app.main:model -i '{"hyperparameters": {"C": 1.0, "max_iter": 1000}, "sample_frac": 1.0, "random_state": 123}'
 ```
 
-### `fklearn predict`
+### `ulearn predict`
 
 Generate predictions with json data:
 
@@ -205,5 +205,5 @@ Generate predictions with json data:
 prompts: $
 ---
 
-fklearn predict app.main:model -f <path-to-json-file>
+ulearn predict app.main:model -f <path-to-json-file>
 ```

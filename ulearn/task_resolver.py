@@ -8,24 +8,24 @@ from flytekit.core.tracker import TrackedInstance
 
 
 class TaskResolver(TrackedInstance, TaskResolverMixin):
-    """Task Resolver for flytekit-learn"""
+    """Task Resolver for ulearn"""
 
     def name(self) -> str:
         return "TaskResolver"
 
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
-        _, app_module, _, fklearn_obj, _, task_name, *_ = loader_args
+        _, app_module, _, ulearn_obj, _, task_name, *_ = loader_args
 
-        _fklearn_obj = getattr(importlib.import_module(app_module), fklearn_obj)
-        task_method = getattr(_fklearn_obj, task_name)
+        _ulearn_obj = getattr(importlib.import_module(app_module), ulearn_obj)
+        task_method = getattr(_ulearn_obj, task_name)
         return task_method()
 
     def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:
         return [
             "app-module",
-            task.task_function.__fklearn_object__.instantiated_in,
-            "fklearn-obj-name",
-            task.task_function.__fklearn_object__.lhs,
+            task.task_function.__ulearn_object__.instantiated_in,
+            "ulearn-obj-name",
+            task.task_function.__ulearn_object__.lhs,
             "task-name",
             task.task_function.__name__,
         ]
