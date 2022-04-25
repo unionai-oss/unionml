@@ -8,7 +8,7 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.extras.sqlite3.task import SQLite3Task
 from sklearn.model_selection import train_test_split
 
-from flytekit_learn.utils import inner_task
+from ulearn.utils import inner_task
 
 
 class Dataset(TrackedInstance):
@@ -85,7 +85,7 @@ class Dataset(TrackedInstance):
 
         # TODO: make sure return type is not None
         @inner_task(
-            fklearn_obj=self,
+            ulearn_obj=self,
             input_parameters=reader_sig.parameters,
             return_annotation=NamedTuple("ReaderOutput", data=reader_sig.return_annotation),
             **self._reader_task_kwargs,

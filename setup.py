@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="flytekit-learn",
+    name="ulearn",
     version="0.0.0+dev0",
     description="The easiest way to build and deploy machine learning services.",
     author="unionai-oss",
@@ -10,7 +10,7 @@ setup(
     install_requires=[
         "docker",
         "fastapi",
-        "flytekit>=0.30.3",
+        "flytekit>=0.32.6",
         "gitpython",
         "joblib",
         "numpy",
@@ -20,5 +20,5 @@ setup(
         "typer",
         "uvicorn",
     ],
-    entry_points={"console_scripts": ["fklearn = flytekit_learn.cli:app"]},
+    entry_points={"console_scripts": ["ulearn = ulearn.cli:app"]},
 )

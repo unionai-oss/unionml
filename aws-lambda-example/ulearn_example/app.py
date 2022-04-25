@@ -8,7 +8,7 @@ from sklearn.datasets import load_breast_cancer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
-from flytekit_learn import Dataset, Model
+from ulearn import Dataset, Model
 
 dataset = Dataset(
     targets=["target"],

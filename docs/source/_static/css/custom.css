@@ -3,7 +3,7 @@
 }
 
 .sidebar-brand-text {
-  display: none;
+  font-weight: bold;
 }
 
 .sphinx-tabs-tab {

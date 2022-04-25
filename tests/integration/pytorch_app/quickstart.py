@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from sklearn.datasets import load_digits
 from sklearn.metrics import accuracy_score
 
-from flytekit_learn import Dataset, Model
+from ulearn import Dataset, Model
 
 
 # define a simple pytorch module

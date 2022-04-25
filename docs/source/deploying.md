@@ -2,8 +2,8 @@
 
 # Deployment Guide
 
-`flytekit-learn` uses `flytekit` under the hood to execute your workflows locally, but you
-can realize the true benefits of `flytekit-learn` by deploying your workflows to a production-grade
+`ulearn` uses `flytekit` under the hood to execute your workflows locally, but you
+can realize the true benefits of `ulearn` by deploying your workflows to a production-grade
 `flyte` cluster.
 
 <!-- TODO: add few bullet points on benefits, with links to flyte docs -->
