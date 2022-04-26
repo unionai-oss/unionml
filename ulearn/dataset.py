@@ -33,7 +33,7 @@ class Dataset(TrackedInstance):
         # default component functions
         self._splitter = self._default_splitter
         self._parser = self._default_parser
-        self._feature_getter = self._default_feature_getter
+        self._feature_processor = self._default_feature_processor
 
         self._reader = None
         self._reader_input_types: Optional[List[Parameter]] = None
@@ -58,8 +58,8 @@ class Dataset(TrackedInstance):
         self._parser = fn
         return fn
 
-    def feature_getter(self, fn):
-        self._feature_getter = fn
+    def feature_processor(self, fn):
+        self._feature_processor = fn
         return fn
 
     @property
@@ -113,7 +113,7 @@ class Dataset(TrackedInstance):
         return f"{self.name}.features"
 
     def get_data(self, raw_data):
-        train_split, test_split = self._splitter(data=raw_data, **self.splitter_kwargs)
+        train_split, test_split = self._splitter(raw_data, **self.splitter_kwargs)
         # TODO: make this more generic so as to include a validation split
         train_data = self._parser(train_split, **self.parser_kwargs)
         test_data = self._parser(test_split, **self.parser_kwargs)
@@ -126,7 +126,7 @@ class Dataset(TrackedInstance):
         data_param, *_ = signature(self._parser).parameters.values()
         data_type = data_param.annotation
         parsed_data = self._parser(data_type(data), self._features, self._targets)
-        return self._feature_getter(parsed_data)
+        return self._feature_processor(parsed_data)
 
     @property
     def reader_input_types(self) -> Optional[List[Parameter]]:
@@ -199,5 +199,5 @@ class Dataset(TrackedInstance):
             target_data = pd.DataFrame()
         return data[features], target_data
 
-    def _default_feature_getter(self, data: Tuple[pd.DataFrame, pd.DataFrame]) -> pd.DataFrame:
+    def _default_feature_processor(self, data: Tuple[pd.DataFrame, pd.DataFrame]) -> pd.DataFrame:
         return data[0]
