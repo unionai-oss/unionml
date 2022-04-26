@@ -3,6 +3,7 @@
 import copy
 import json
 import os
+import sys
 from pathlib import Path
 
 import click
@@ -10,6 +11,8 @@ import typer
 import uvicorn
 
 from ulearn.remote import get_model
+
+sys.path.append(os.curdir)
 
 app = typer.Typer()
 
