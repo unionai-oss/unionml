@@ -12,9 +12,9 @@ import joblib
 import sklearn
 from dataclasses_json import dataclass_json
 from flytekit import Workflow
+from flytekit.configuration import Config
 from flytekit.core.tracker import TrackedInstance
 from flytekit.remote import FlyteRemote
-from flytekit.configuration import Config
 
 from ulearn.dataset import Dataset
 from ulearn.utils import inner_task
