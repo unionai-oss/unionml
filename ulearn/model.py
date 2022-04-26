@@ -12,6 +12,7 @@ import joblib
 import sklearn
 from dataclasses_json import dataclass_json
 from flytekit import Workflow
+from flytekit.configuration import Config
 from flytekit.core.tracker import TrackedInstance
 from flytekit.remote import FlyteRemote
 
@@ -306,6 +307,7 @@ class Model(TrackedInstance):
 
         predictor_sig = signature(self._predictor)
         model_param, *_ = predictor_sig.parameters.values()
+        model_param = model_param.replace(name="model")
 
         # assume that reader_return_type is a dict with only a single entry
         [(data_arg_name, data_arg_type)] = self._dataset.reader_return_type.items()
@@ -320,7 +322,7 @@ class Model(TrackedInstance):
         )
         def predict_task(model, **kwargs):
             parsed_data = self._dataset._parser(kwargs[data_arg_name], **self._dataset.parser_kwargs)
-            return self._predictor(model, self._dataset._feature_getter(parsed_data))
+            return self._predictor(model, self._dataset._feature_processor(parsed_data))
 
         self._predict_task = predict_task
         return predict_task
@@ -346,7 +348,7 @@ class Model(TrackedInstance):
         )
         def predict_from_features_task(model, features):
             parsed_data = self._dataset._parser(features, **self._dataset.parser_kwargs)
-            return self._predictor(model, self._dataset._feature_getter(parsed_data))
+            return self._predictor(model, self._dataset._feature_processor(parsed_data))
 
         self._predict_from_features_task = predict_from_features_task
         return predict_from_features_task
@@ -404,8 +406,8 @@ class Model(TrackedInstance):
         self._config_file_path = config_file_path
         self._registry = registry
         self._dockerfile = dockerfile
-        self._remote = FlyteRemote.from_config(
-            config_file_path=config_file_path,
+        self._remote = FlyteRemote(
+            config=Config.auto(config_file=self._config_file_path),
             default_project=project,
             default_domain=domain,
         )
@@ -421,14 +423,14 @@ class Model(TrackedInstance):
         # default image is set correctly. This can be simplified after flytekit config improvements
         # are merged: https://github.com/flyteorg/flytekit/pull/857
         os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
-        self._remote = FlyteRemote.from_config(
-            config_file_path=self._config_file_path,
+        self._remote = FlyteRemote(
+            config=Config.auto(config_file=self._config_file_path),
             default_project=self._remote._default_project,
             default_domain=self._remote._default_domain,
         )
 
         remote.create_project(self._remote, self._remote._default_project)
-        if self._remote._flyte_admin_url.startswith("localhost"):
+        if self._remote.config.platform.endpoint.startswith("localhost"):
             # assume that a localhost flyte_admin_url means that we want to use Flyte sandbox
             remote.sandbox_docker_build(self, image)
         else:
@@ -440,7 +442,7 @@ class Model(TrackedInstance):
             self.predict_workflow(),
             self.predict_from_features_workflow(),
         ]:
-            remote.deploy_wf(wf, self._remote, *args)
+            remote.deploy_wf(wf, self._remote, image, *args)
 
     def remote_train(
         self,

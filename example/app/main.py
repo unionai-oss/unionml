@@ -1,4 +1,3 @@
-import os
 from typing import List
 
 import pandas as pd
@@ -27,7 +26,7 @@ model = Model(
 model.remote(
     registry="ghcr.io/unionai-oss",
     dockerfile="Dockerfile",
-    config_file_path=os.environ.get("FLYTE_CONFIG", "config/sandbox.config"),
+    config_file_path="config/config-remote.yaml",
     project="ulearn",
     domain="development",
 )

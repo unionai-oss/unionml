@@ -8,8 +8,6 @@ ENV PYTHONPATH /root
 
 RUN apt-get update && apt-get install -y build-essential git-all
 
-ARG config
-
 # Install the AWS cli separately to prevent issues with boto being written over
 RUN pip3 install awscli
 # Similarly, if you're using GCP be sure to update this command to install gsutil
@@ -25,9 +23,3 @@ ENV PATH="${VENV}/bin:$PATH"
 COPY ./requirements.txt /root
 RUN pip install -r /root/requirements.txt
 COPY . /root
-
-COPY $config /root/flyte.config
-
-# This tag is supplied by the build script and will be used to determine the version
-# when registering tasks, workflows, and launch plans
-ENV FLYTE_INTERNAL_IMAGE $image

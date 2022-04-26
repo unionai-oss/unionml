@@ -25,3 +25,8 @@
 [role="tablist"] {
     border-bottom: 1px solid var(--color-sidebar-background-border);
 }
+
+body[data-theme="dark"] .card {
+  background-color: rgb(50, 50, 50);
+  border: 1px solid var(--color-sidebar-background-border);
+}

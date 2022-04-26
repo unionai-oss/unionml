@@ -1,0 +1,17 @@
+admin:
+  # For GRPC endpoints you might want to use dns:///flyte.myexample.com
+  endpoint: dns:///playground.hosted.unionai.cloud
+  authType: Pkce
+  # Change insecure flag to ensure that you use the right setting for your environment
+  insecure: false
+storage:
+  type: stow
+  stow:
+    kind: s3
+    config:
+      auth_type: iam
+      region: us-east-2
+logger:
+  # Logger settings to control logger output. Useful to debug logger:
+  show-source: true
+  level: 1

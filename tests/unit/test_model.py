@@ -170,7 +170,7 @@ def test_model_predict_from_features_task(model, mock_data):
     assert predict_from_features_task.python_interface.inputs["model"].__module__ == "flytekit.types.pickle.pickle"
     assert (
         predict_from_features_task.python_interface.inputs["features"]
-        == signature(model._dataset._feature_getter).return_annotation
+        == signature(model._dataset._feature_processor).return_annotation
     )
     assert predict_from_features_task.python_interface.outputs["o0"] == signature(model._predictor).return_annotation
 
