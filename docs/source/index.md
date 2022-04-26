@@ -3,7 +3,7 @@
 </h1>
 
 <div style="font-size: 1.5em; color: #777;">
-<i>"micro·learn"</i>: the easiest way to build and deploy machine learning services.
+<i>"micro·learn"</i>: the microframework for building and deploying machine learning services.
 </div>
 
 <br>

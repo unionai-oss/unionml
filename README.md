@@ -1,6 +1,6 @@
 # µlearn
 
-_"micro·learn"_: the easiest way to build and deploy machine learning services
+_"micro·learn"_: the microframework for building and deploying machine learning services
 
 ## Build the Documentation
 
