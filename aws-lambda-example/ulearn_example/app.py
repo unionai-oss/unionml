@@ -25,7 +25,7 @@ model = Model(
 
 # attach Flyte remote backend
 model.remote(
-    os.environ.get("FLYTE_CONFIG", "config/sandbox.config"),
+    config_file_path="config/config-sandbox.yaml",
     project="flytesnacks",
     domain="development",
 )

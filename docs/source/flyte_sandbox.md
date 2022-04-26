@@ -156,11 +156,6 @@ RUN pip install -r /root/requirements.txt
 
 # Copy the actual code
 COPY . /root
-
-# This tag is supplied by the ulearn deploy command
-ARG tag
-ENV FLYTE_INTERNAL_IMAGE $tag
-ENV FLYTE_CONFIG=config/remote.config
 ```
 
 ### `ulearn deploy`

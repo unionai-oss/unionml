@@ -8,6 +8,7 @@ from dataclasses import asdict
 import docker
 import git
 from flytekit import LaunchPlan
+from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.exceptions.user import FlyteEntityAlreadyExistsException
 from flytekit.models import filters
 from flytekit.models.admin.common import Sort
@@ -66,9 +67,7 @@ def sandbox_docker_build(model: Model, image_fqn: str):
             "`flytectl sandbox start --source .`"
         )
 
-    _, build_logs = sandbox_container.exec_run(
-        ["docker", "build", "/root", "--tag", image_fqn, "--build-arg", f"config={str(model.config_file_path)}"],
-    )
+    _, build_logs = sandbox_container.exec_run(["docker", "build", "/root", "--tag", image_fqn])
     for line in build_logs.decode().splitlines():
         logger.info(line)
 
@@ -81,10 +80,6 @@ def docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Imag
         path=".",
         dockerfile=model.dockerfile,
         tag=image_fqn,
-        buildargs={
-            "image": image_fqn,
-            "config": str(model.config_file_path),
-        },
         rm=True,
     )
     for line in build_logs:
@@ -96,16 +91,15 @@ def docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Imag
     return image
 
 
-def deploy_wf(wf, remote: FlyteRemote, project: str, domain: str, version: str):
+def deploy_wf(wf, remote: FlyteRemote, image: str, project: str, domain: str, version: str):
     """Register all tasks, workflows, and launchplans needed to execute the workflow."""
     logger.info(f"Deploying workflow {wf.name}")
-    identifiers = asdict(remote._resolve_identifier_kwargs(wf, project, domain, wf.name, version))
-    remote._register_entity_if_not_exists(wf, identifiers)
-    try:
-        remote.register(wf, **identifiers)
-        remote.register(LaunchPlan.get_or_create(wf), **identifiers)
-    except FlyteEntityAlreadyExistsException:
-        logger.info(f"Workflow already exists {identifiers}")
+    serialization_settings = SerializationSettings(
+        project=project,
+        domain=domain,
+        image_config=ImageConfig.auto(img_name=image),
+    )
+    remote.register_workflow(wf, serialization_settings, version)
 
 
 def get_latest_model_artifact(model: Model, app_version: typing.Optional[str] = None) -> ModelArtifact:
