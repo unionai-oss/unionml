@@ -356,8 +356,8 @@ class Model(TrackedInstance):
 
     def train(
         self,
-        hyperparameters: Dict[str, Any] = None,
-        trainer_kwargs: Dict[str, Any] = None,
+        hyperparameters: Optional[Dict[str, Any]] = None,
+        trainer_kwargs: Optional[Dict[str, Any]] = None,
         **reader_kwargs,
     ) -> Tuple[Any, Any]:
         trainer_kwargs = {} if trainer_kwargs is None else trainer_kwargs
@@ -452,6 +452,7 @@ class Model(TrackedInstance):
         app_version: str = None,
         *,
         hyperparameters: Optional[Dict[str, Any]] = None,
+        trainer_kwargs: Optional[Dict[str, Any]] = None,
         **reader_kwargs,
     ) -> ModelArtifact:
         if self._remote is None:
@@ -459,7 +460,10 @@ class Model(TrackedInstance):
         train_wf = self._remote.fetch_workflow(name=self.train_workflow_name, version=app_version)
         execution = self._remote.execute(
             train_wf,
-            inputs={"hyperparameters": {} if hyperparameters is None else hyperparameters, **reader_kwargs},
+            inputs={
+                "hyperparameters": {} if hyperparameters is None else hyperparameters,
+                **{**reader_kwargs, **trainer_kwargs},
+            },
             wait=True,
         )
         return ModelArtifact(
