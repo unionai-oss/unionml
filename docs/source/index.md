@@ -1,9 +1,9 @@
 <h1 style="font-weight: bold; font-size: 3.5em;">
-    <span style="color: var(--color-link)">µ</span>learn
+   UnionML
 </h1>
 
 <div style="font-size: 1.5em; color: #777;">
-<i>"micro·learn"</i>: the microframework for building and deploying machine learning services.
+The microframework for building and deploying machine learning services.
 </div>
 
 <br>

@@ -50,7 +50,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "conf.py"]
 # a list of builtin themes.
 #
 html_theme = "furo"
-html_title = "µlearn"
+html_title = "UnionML"
 html_logo = "_static/images/union-logo.svg"
 html_favicon = "_static/images/union-logo.svg"
 

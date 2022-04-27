@@ -1,6 +1,6 @@
-# µlearn
+# UnionML
 
-_"micro·learn"_: the microframework for building and deploying machine learning services
+The microframework for building and deploying machine learning services
 
 ## Build the Documentation
 
