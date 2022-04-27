@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-__version__ = "0.0.0+develop"
+__version__ = "0.0.0+dev0"
 
 setup(
     name="unionml",
