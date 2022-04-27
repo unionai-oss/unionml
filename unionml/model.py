@@ -546,7 +546,7 @@ class Model(TrackedInstance):
             execution = self.remote_wait(execution)
             print("Done.")
         self.artifact = ModelArtifact(
-            execution.outputs["object"],
+            execution.outputs["model_object"],
             execution.outputs["hyperparameters"],
             execution.outputs["metrics"],
         )
