@@ -100,7 +100,7 @@ def test_model_train_task(model, mock_data):
     assert isinstance(train_task, PythonFunctionTask)
     assert issubclass(train_task.python_interface.inputs["hyperparameters"], BaseHyperparameters)
     assert train_task.python_interface.inputs["data"] == reader_ret_type
-    assert train_task.python_interface.outputs["object"].__module__ == "flytekit.types.pickle.pickle"
+    assert train_task.python_interface.outputs["model_object"].__module__ == "flytekit.types.pickle.pickle"
     assert train_task.python_interface.outputs["metrics"] == typing.Dict[str, eval_ret_type]
 
     outputs = train_task(
@@ -108,8 +108,8 @@ def test_model_train_task(model, mock_data):
         data=mock_data,
     )
 
-    assert outputs.__class__.__name__ == "TrainingResults"
-    assert isinstance(outputs.object, LogisticRegression)
+    assert outputs.__class__.__name__ == "ModelArtifact"
+    assert isinstance(outputs.model_object, LogisticRegression)
     assert isinstance(outputs.metrics["train"], eval_ret_type)
     assert isinstance(outputs.metrics["test"], eval_ret_type)
 

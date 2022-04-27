@@ -210,7 +210,7 @@ class Model(TrackedInstance):
                 **{arg: wf.inputs[arg] for arg in trainer_param_types},
             },
         )
-        wf.add_workflow_output("object", train_node.outputs["object"])
+        wf.add_workflow_output("model_object", train_node.outputs["model_object"])
         wf.add_workflow_output("hyperparameters", train_node.outputs["hyperparameters"])
         wf.add_workflow_output("metrics", train_node.outputs["metrics"])
         return wf
@@ -278,8 +278,8 @@ class Model(TrackedInstance):
                 ]
             ),
             return_annotation=NamedTuple(
-                "TrainingResults",
-                object=signature(self._trainer).return_annotation,
+                "ModelArtifact",
+                model_object=signature(self._trainer).return_annotation,
                 hyperparameters=self.hyperparameter_type,
                 metrics=Dict[str, signature(self._evaluator).return_annotation],
             ),
