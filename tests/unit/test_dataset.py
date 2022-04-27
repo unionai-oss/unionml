@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 from flytekit.core.python_function_task import PythonFunctionTask
 
-from ulearn import Dataset
+from unionml import Dataset
 
 
 @pytest.fixture(scope="function")

@@ -17,7 +17,7 @@ Deployment Guide <deploying>
 Contributing <contributing>
 ```
 
-`ulearn` is a framework for building end-to-end machine learning services.
+`unionml` is a framework for building end-to-end machine learning services.
 
 It's built on top of [flyte](https://docs.flyte.org/en/latest/) and
 [flytekit](https://docs.flyte.org/projects/flytekit/en/latest/) to provide a high-level
@@ -26,14 +26,14 @@ interface for model training and prediction in batch and streaming contexts.
 # Installation
 
 ```{code-block} bash
-pip install ulearn
+pip install unionml
 ```
 
 # Getting Started
 
-## Create a `ulearn` App
+## Create a `unionml` App
 
-A `ulearn` app requires two core components: a `Dataset` and a `Model`.
+A `unionml` app requires two core components: a `Dataset` and a `Model`.
 
 First let's import our app dependencies and define `dataset` and `model` objects.
 In this example, we'll build an app that classifies images of handwritten digits
@@ -132,8 +132,8 @@ Invoke `model.train` to train a model and `model.predict` to generate prediction
 
 ## Serve Seamlessly with FastAPI
 
-`ulearn` integrates with [FastAPI](https://fastapi.tiangolo.com/) to automatically
-create `/train/` and `/predict/` endpoints. Start a server with `ulearn serve` and call the app
+`unionml` integrates with [FastAPI](https://fastapi.tiangolo.com/) to automatically
+create `/train/` and `/predict/` endpoints. Start a server with `unionml serve` and call the app
 endpoints with the `requests` library.
 
 ````{tabs}
@@ -148,10 +148,10 @@ endpoints with the `requests` library.
       ---
       ```
 
-      Start the server, assuming the `ulearn` app is in a `main.py` script
+      Start the server, assuming the `unionml` app is in a `main.py` script
 
       ```{code-block} bash
-      ulearn serve main:app --reload --model-path /tmp/model_object.joblib
+      unionml serve main:app --reload --model-path /tmp/model_object.joblib
       ```
 
       Invoke the endpoints using the `requests` library
@@ -171,10 +171,10 @@ endpoints with the `requests` library.
       ---
       ```
 
-      Start the server, assuming the `ulearn` app is in a `main.py` script
+      Start the server, assuming the `unionml` app is in a `main.py` script
 
       ```{code-block} bash
-      ulearn serve main:app --reload --model-path /tmp/model_object.pt
+      unionml serve main:app --reload --model-path /tmp/model_object.pt
       ```
 
       Invoke the endpoints using the `requests` library
@@ -188,4 +188,4 @@ endpoints with the `requests` library.
 
 # What Next?
 
-Learn how to leverage the full power of `ulearn` 🦾 in the {ref}`User Guide <user_guide>`
+Learn how to leverage the full power of `unionml` 🦾 in the {ref}`User Guide <user_guide>`

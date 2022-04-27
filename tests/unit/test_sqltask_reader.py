@@ -9,7 +9,7 @@ from flytekitplugins.sqlalchemy import SQLAlchemyConfig, SQLAlchemyTask
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
-from ulearn import Dataset, Model
+from unionml import Dataset, Model
 
 
 @pytest.fixture

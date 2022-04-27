@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = "ulearn"
+project = "unionml"
 copyright = "2022, unionai-oss"
 author = "unionai-oss"
 

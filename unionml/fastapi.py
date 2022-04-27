@@ -8,8 +8,8 @@ from fastapi.responses import HTMLResponse
 from flytekit.remote import FlyteRemote
 from pydantic import BaseModel
 
-from ulearn.model import Model, ModelArtifact
-from ulearn.remote import get_latest_model_artifact
+from unionml.model import Model, ModelArtifact
+from unionml.remote import get_latest_model_artifact
 
 
 class PredictParams(NamedTuple):
@@ -27,10 +27,10 @@ def serving_app(model: Model, app: FastAPI):
         return """
             <html>
                 <head>
-                    <title>ulearn</title>
+                    <title>unionml</title>
                 </head>
                 <body>
-                    <h1>ulearn</h1>
+                    <h1>unionml</h1>
                     <p>The easiest way to build and deploy models</p>
                 </body>
             </html>
@@ -43,7 +43,7 @@ def serving_app(model: Model, app: FastAPI):
         features: Optional[List[Dict[str, Any]]] = Body(None),
     ) -> PredictParams:
         # TODO: load a model from a flytebackend here
-        model_path = os.getenv("ulearn_MODEL_PATH")
+        model_path = os.getenv("unionml_MODEL_PATH")
         if model_path:
             model.artifact = ModelArtifact(model.load(model_path))
         return PredictParams(model, model._remote, local, model_version, inputs, features)

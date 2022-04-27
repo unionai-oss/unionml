@@ -1,7 +1,7 @@
 import json
 
 import pytest
-from ulearn_example import app
+from unionml_example import app
 
 
 @pytest.fixture()

@@ -3,10 +3,10 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   python3.8
 
-  Sample SAM Template for ulearn-aws-lambda-example
+  Sample SAM Template for unionml-aws-lambda-example
 
 Resources:
-  ULearnFunction:
+  unionmlFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       Timeout: 30
@@ -15,26 +15,26 @@ Resources:
       Architectures:
         - x86_64
       Events:
-        ULearn:
+        unionml:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
             Path: /{proxy+}
             Method: post
     Metadata:
       Dockerfile: Dockerfile
-      DockerContext: ./ulearn_example
+      DockerContext: ./unionml_example
       DockerTag: python3.8-v1
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  ULearnApi:
-    Description: "API Gateway endpoint URL for Prod stage for ULearn function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/ulearn/"
-  ULearnFunction:
-    Description: "ulearn Lambda Function ARN"
-    Value: !GetAtt ULearnFunction.Arn
-  ULearnFunctionIamRole:
-    Description: "Implicit IAM Role created for ulearn function"
-    Value: !GetAtt ULearnFunctionRole.Arn
+  unionmlApi:
+    Description: "API Gateway endpoint URL for Prod stage for unionml function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/unionml/"
+  unionmlFunction:
+    Description: "unionml Lambda Function ARN"
+    Value: !GetAtt unionmlFunction.Arn
+  unionmlFunctionIamRole:
+    Description: "Implicit IAM Role created for unionml function"
+    Value: !GetAtt unionmlFunctionRole.Arn

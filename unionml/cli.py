@@ -1,4 +1,4 @@
-"""ulearn cli."""
+"""unionml cli."""
 
 import copy
 import json
@@ -10,21 +10,21 @@ import click
 import typer
 import uvicorn
 
-from ulearn.remote import get_model
+from unionml.remote import get_model
 
 sys.path.append(os.curdir)
 
 app = typer.Typer()
 
 
-IMAGE_PREFIX = "ulearn"
+IMAGE_PREFIX = "unionml"
 FLYTE_SANDBOX_CONTAINER_NAME = "flyte-sandbox"
 
 
 @app.command()
 def deploy(app: str):
     """Deploy model to a Flyte backend."""
-    typer.echo(f"[ulearn] deploying {app}")
+    typer.echo(f"[unionml] deploying {app}")
     model = get_model(app)
     model.remote_deploy()
 
@@ -36,15 +36,15 @@ def train(
     app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
 ):
     """Train a model."""
-    typer.echo(f"[ulearn] app: {app} - training model")
+    typer.echo(f"[unionml] app: {app} - training model")
     model = get_model(app)
     train_inputs = {}
     if inputs:
         train_inputs.update(json.loads(inputs))
     model_artifact = model.remote_train(app_version, **train_inputs)
-    typer.echo("[ulearn] training completed with model artifacts:")
-    typer.echo(f"[ulearn] model object: {model_artifact.object}")
-    typer.echo(f"[ulearn] model metrics: {model_artifact.metrics}")
+    typer.echo("[unionml] training completed with model artifacts:")
+    typer.echo(f"[unionml] model object: {model_artifact.object}")
+    typer.echo(f"[unionml] model metrics: {model_artifact.metrics}")
 
 
 @app.command()
@@ -55,7 +55,7 @@ def predict(
     app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
 ):
     """Generate prediction."""
-    typer.echo(f"[ulearn] app: {app} - generating predictions")
+    typer.echo(f"[unionml] app: {app} - generating predictions")
     model = get_model(app)
 
     prediction_inputs = {}
@@ -67,20 +67,20 @@ def predict(
         prediction_inputs.update({"features": model._dataset.get_features(features)})
 
     predictions = model.remote_predict(app_version, **prediction_inputs)
-    typer.echo(f"[ulearn] predictions: {predictions}")
+    typer.echo(f"[unionml] predictions: {predictions}")
 
 
 @app.callback()
 def callback():
-    """ulearn command-line tool."""
+    """unionml command-line tool."""
 
 
 def serve_command():
-    """Modify the uvicorn.main entrypoint for ulearn app serving."""
+    """Modify the uvicorn.main entrypoint for unionml app serving."""
     fn = copy.deepcopy(uvicorn.main)
-    fn.short_help = "Serve an ulearn model."
+    fn.short_help = "Serve an unionml model."
     fn.help = (
-        "Serve an ulearn model using uvicorn. This command uses the main uvicorn entrypoint with an additional "
+        "Serve an unionml model using uvicorn. This command uses the main uvicorn entrypoint with an additional "
         "--model-path argument.\n\nFor more information see: https://www.uvicorn.org/#command-line-options"
     )
 
@@ -90,10 +90,10 @@ def serve_command():
     callback = fn.callback
 
     def custom_callback(**kwargs):
-        if os.getenv("ulearn_MODEL_PATH"):
+        if os.getenv("unionml_MODEL_PATH"):
             typer.echo(
-                f"ulearn_MODEL_PATH environment variable is set to {os.getenv('ulearn_MODEL_PATH')}. "
-                "Please unset this variable before running `ulearn serve`.",
+                f"unionml_MODEL_PATH environment variable is set to {os.getenv('unionml_MODEL_PATH')}. "
+                "Please unset this variable before running `unionml serve`.",
                 err=True,
             )
             raise typer.Exit(code=1)
@@ -103,7 +103,7 @@ def serve_command():
             if not model_path.exists():
                 typer.echo(f"Model path {model_path} not found.", err=True)
                 raise typer.Exit(code=1)
-            os.environ["ulearn_MODEL_PATH"] = str(model_path)
+            os.environ["unionml_MODEL_PATH"] = str(model_path)
         return callback(**kwargs)
 
     fn.callback = custom_callback

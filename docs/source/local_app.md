@@ -22,10 +22,10 @@ is working as expected.
 
 ```{note}
 Local interaction with `Model` objects are mainly useful for local development, debugging, and
-unit testing of your `ulearn` app.
+unit testing of your `unionml` app.
 ```
 
-Here's our complete `ulearn` app for digit classification in a `main.py` script:
+Here's our complete `unionml` app for digit classification in a `main.py` script:
 
 ```{code-cell}
 from typing import List
@@ -35,7 +35,7 @@ from sklearn.datasets import load_digits
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
-from ulearn import Dataset, Model
+from unionml import Dataset, Model
 
 
 dataset = Dataset(
@@ -123,7 +123,7 @@ You may notice a few things about the code example above:
 
 ## Serve with FastAPI
 
-`ulearn` integrates with [FastAPI](https://fastapi.tiangolo.com/) to make model serving super easy. Simply
+`unionml` integrates with [FastAPI](https://fastapi.tiangolo.com/) to make model serving super easy. Simply
 create a `FastAPI` app and pass it into `model.serve` in the `main.py` script:
 
 ```{code-cell}
@@ -140,12 +140,12 @@ model.serve(app)
 `model.serve` will take the `FastAPI` app and automatically create `/train/` and `/predict/` endpoints that you can
 invoke with HTTP requests.
 
-Start the server with `ulearn serve`:
+Start the server with `unionml serve`:
 
 ```{prompt} bash
 :prompts: $
 
-ulearn main:app --reload
+unionml main:app --reload
 ```
 
 Once the server's started, you can use the Python `requests` library or any other HTTP library for training
@@ -183,11 +183,11 @@ server.
 
 ## Next
 
-We've run our training and prediction code by invoking our `ulearn` app as a
+We've run our training and prediction code by invoking our `unionml` app as a
 python module and starting a local FastAPI server, but how do we deploy it as a suite of integrated
 machine learning services in the ☁️ cloud?
 
-`ulearn` is coupled with [Flyte](https://docs.flyte.org/en/latest/), which is a scalable,
+`unionml` is coupled with [Flyte](https://docs.flyte.org/en/latest/), which is a scalable,
 reliable, and robust orchestration platform for data processing and machine learning. But before we
 deploy to the cloud, it's important to understand what a Flyte cluster is by
 {ref}`spinning up a Flyte Sandbox <flyte_sandbox>` locally.

@@ -27,8 +27,8 @@ repos:
   rev: v0.942
   hooks:
     - id: mypy
-      entry: mypy ulearn tests example
-      files: (^ulearn/|^tests)
+      entry: mypy unionml tests example
+      files: (^unionml/|^tests)
       exclude: (^docs/)
       pass_filenames: false
       additional_dependencies:

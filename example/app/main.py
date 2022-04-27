@@ -6,7 +6,7 @@ from sklearn.datasets import load_breast_cancer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
-from ulearn import Dataset, Model
+from unionml import Dataset, Model
 
 dataset = Dataset(
     name="breast_cancer_data",
@@ -27,7 +27,7 @@ model.remote(
     registry="ghcr.io/unionai-oss",
     dockerfile="Dockerfile",
     config_file_path="config/config-remote.yaml",
-    project="ulearn",
+    project="unionml",
     domain="development",
 )
 
@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
     warnings.simplefilter("ignore")
 
-    print("Running ulearn locally")
+    print("Running unionml locally")
     breast_cancer_dataset = load_breast_cancer(as_frame=True)
     hyperparameters = {"C": 1.0, "max_iter": 1000}
     trained_model, metrics = model.train(hyperparameters, sample_frac=1.0, random_state=123)

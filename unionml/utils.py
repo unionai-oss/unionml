@@ -3,13 +3,13 @@ from inspect import Parameter, signature
 
 from flytekit import task
 
-from ulearn.task_resolver import task_resolver
+from unionml.task_resolver import task_resolver
 
 
 def inner_task(
     fn=None,
     *,
-    ulearn_obj,
+    unionml_obj,
     input_parameters=None,
     return_annotation=None,
     **task_kwargs,
@@ -22,14 +22,14 @@ def inner_task(
       - OR it takes on the signature specified by the ``input_parameters`` and ``return_annotation`` arguments
         if they are provided
     - renames the wrapped function to ``task_name``.
-    - assigns an ``ulearn_obj`` to the function object.
-    - converts the wrapper function into a flytekit task, using the ulearn task resolver.
+    - assigns an ``unionml_obj`` to the function object.
+    - converts the wrapper function into a flytekit task, using the unionml task resolver.
     """
 
     if fn is None:
         return partial(
             inner_task,
-            ulearn_obj=ulearn_obj,
+            unionml_obj=unionml_obj,
             input_parameters=input_parameters,
             return_annotation=return_annotation,
             **task_kwargs,
@@ -52,7 +52,7 @@ def inner_task(
     wrapper.__annotations__.update({k: v.annotation for k, v in input_parameters.items()})
     wrapper.__annotations__["return"] = return_annotation
 
-    wrapper.__ulearn_object__ = ulearn_obj
+    wrapper.__unionml_object__ = unionml_obj
     output_task = task(wrapper, task_resolver=task_resolver, **task_kwargs)
-    output_task._name = f"{ulearn_obj.name}.{wrapper.__name__}"
+    output_task._name = f"{unionml_obj.name}.{wrapper.__name__}"
     return output_task

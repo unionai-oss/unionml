@@ -7,7 +7,7 @@ from sklearn.datasets import load_breast_cancer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
-from ulearn import Dataset, Model
+from unionml import Dataset, Model
 
 dataset = Dataset(
     targets=["target"],

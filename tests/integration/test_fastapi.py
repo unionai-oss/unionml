@@ -12,7 +12,7 @@ from sklearn.utils.validation import check_is_fitted
 def _app(ml_framework: str, *args, port: str = "8000"):
     """Transient app server for testing."""
     process = subprocess.Popen(
-        ["ulearn", "serve", f"tests.integration.{ml_framework}_app.fastapi_app:app", "--port", port, *args],
+        ["unionml", "serve", f"tests.integration.{ml_framework}_app.fastapi_app:app", "--port", port, *args],
         stdout=subprocess.PIPE,
     )
     _wait_to_exist(port)
@@ -65,7 +65,7 @@ def test_fastapi_app(ml_framework, filename, tmp_path):
     model_path = tmp_path / filename
     module_vars = runpy.run_module(f"tests.integration.{ml_framework}_app.quickstart", run_name="__main__")
 
-    # extract ulearn model and trained_model from module global namespace
+    # extract unionml model and trained_model from module global namespace
     model = module_vars["model"]
     model.save(model_path)
     n_samples = 5
@@ -83,7 +83,7 @@ def test_fastapi_app_no_model():
     features = digits.frame[digits.feature_names]
     n_samples = 5
 
-    # excluding the --model-path argument should raise an error since the ulearn.Model object
+    # excluding the --model-path argument should raise an error since the unionml.Model object
     # doesn't have a model_artifact attribute set yet
     with contextmanager(_app)("sklearn", port="8001"):
         prediction_response = requests.post(

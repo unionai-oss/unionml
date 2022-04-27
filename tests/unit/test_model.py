@@ -8,8 +8,8 @@ from flytekit.core.python_function_task import PythonFunctionTask
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
-from ulearn import Dataset, Model
-from ulearn.model import BaseHyperparameters, ModelArtifact
+from unionml import Dataset, Model
+from unionml.model import BaseHyperparameters, ModelArtifact
 
 
 @pytest.fixture(scope="function")

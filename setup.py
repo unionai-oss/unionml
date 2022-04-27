@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="ulearn",
+    name="unionml",
     version="0.0.0+dev0",
     description="The easiest way to build and deploy machine learning services.",
     author="unionai-oss",
@@ -20,5 +20,5 @@ setup(
         "typer",
         "uvicorn",
     ],
-    entry_points={"console_scripts": ["ulearn = ulearn.cli:app"]},
+    entry_points={"console_scripts": ["unionml = unionml.cli:app"]},
 )

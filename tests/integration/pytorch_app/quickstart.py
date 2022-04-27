@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from sklearn.datasets import load_digits
 from sklearn.metrics import accuracy_score
 
-from ulearn import Dataset, Model
+from unionml import Dataset, Model
 
 
 # define a simple pytorch module

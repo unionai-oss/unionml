@@ -1,17 +1,17 @@
 import logging
 import re
 
-from ulearn.dataset import Dataset
-from ulearn.model import Model
+from unionml.dataset import Dataset
+from unionml.model import Model
 
 
-# silence FlyteRemote beta warning since ulearn won't expose it to end users.
+# silence FlyteRemote beta warning since unionml won't expose it to end users.
 class FlyteRemoteFilter(logging.Filter):
     def filter(self, record):
         return not re.match("^This feature is still in beta.+", record.getMessage())
 
 
-# silence logger warnings having to do with PickleFile, since ulearn allows this
+# silence logger warnings having to do with PickleFile, since unionml allows this
 # by default.
 class PickleFilter(logging.Filter):
     def filter(self, record):

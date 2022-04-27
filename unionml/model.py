@@ -16,8 +16,8 @@ from flytekit.configuration import Config
 from flytekit.core.tracker import TrackedInstance
 from flytekit.remote import FlyteRemote
 
-from ulearn.dataset import Dataset
-from ulearn.utils import inner_task
+from unionml.dataset import Dataset
+from unionml.utils import inner_task
 
 
 @dataclass
@@ -65,7 +65,7 @@ class Model(TrackedInstance):
         if self._dataset.name is None:
             self._dataset.name = f"{self.name}.dataset"
 
-        # ulearn-compiled tasks
+        # unionml-compiled tasks
         self._train_task = None
         self._predict_task = None
         self._predict_from_features_task = None
@@ -258,7 +258,7 @@ class Model(TrackedInstance):
 
         # get keyword-only training args
         @inner_task(
-            ulearn_obj=self,
+            unionml_obj=self,
             input_parameters=OrderedDict(
                 [
                     (p.name, p)
@@ -315,7 +315,7 @@ class Model(TrackedInstance):
 
         # TODO: make sure return type is not None
         @inner_task(
-            ulearn_obj=self,
+            unionml_obj=self,
             input_parameters=OrderedDict([(p.name, p) for p in [model_param, data_param]]),
             return_annotation=predictor_sig.return_annotation,
             **self._predict_task_kwargs,
@@ -341,7 +341,7 @@ class Model(TrackedInstance):
         data_param = Parameter("features", kind=Parameter.KEYWORD_ONLY, annotation=data_arg_type)
 
         @inner_task(
-            ulearn_obj=self,
+            unionml_obj=self,
             input_parameters=OrderedDict([("model", model_param), ("features", data_param)]),
             return_annotation=predictor_sig.return_annotation,
             **self._predict_task_kwargs,
@@ -391,7 +391,7 @@ class Model(TrackedInstance):
 
     def serve(self, app):
         """Create a FastAPI serving app."""
-        from ulearn.fastapi import serving_app
+        from unionml.fastapi import serving_app
 
         serving_app(self, app)
 
@@ -414,7 +414,7 @@ class Model(TrackedInstance):
 
     def remote_deploy(self):
         """Deploy model services to a Flyte backend."""
-        from ulearn import remote
+        from unionml import remote
 
         version = remote.get_app_version()
         image = remote.get_image_fqn(self, version)
@@ -474,7 +474,7 @@ class Model(TrackedInstance):
         if self._remote is None:
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
 
-        from ulearn import remote
+        from unionml import remote
 
         app_version = app_version or remote.get_app_version()
         model_artifact = remote.get_latest_model_artifact(self, app_version)

@@ -21,7 +21,7 @@ as the underlying data container.
 Now let's define a `Model` and bind it with the `Dataset`.
 
 ```{code-block} python
-from ulearn import DatasetModel
+from unionml import DatasetModel
 
 from sklearn.linear_model import LogisticRegression
 

@@ -1,8 +1,8 @@
-# ulearn-aws-lambda-example
+# unionml-aws-lambda-example
 
 This project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
 
-- ulearn_example - Code for the application's Lambda function and Project Dockerfile.
+- unionml_example - Code for the application's Lambda function and Project Dockerfile.
 - events - Invocation events that you can use to invoke the function.
 - tests - Unit tests for the application code.
 - template.yaml - A template that defines the application's AWS resources.
@@ -36,7 +36,7 @@ The first command will build a docker image from a Dockerfile and then copy the 
 * **Allow SAM CLI IAM role creation**: Many AWS SAM templates, including this example, create AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modifies IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command.
 * **Save arguments to samconfig.toml**: If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.
 
-You can find your API Gateway Endpoint URL in the output values displayed after deployment. You can hit that endpoint to exercise your ulearn app, for example, let's say that this is the output of `sam deploy`:
+You can find your API Gateway Endpoint URL in the output values displayed after deployment. You can hit that endpoint to exercise your unionml app, for example, let's say that this is the output of `sam deploy`:
 
 ``` asciidoc
 ...
@@ -44,26 +44,26 @@ CloudFormation outputs from deployed stack
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Outputs
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Key                 ULearnFunctionIamRole
-Description         Implicit IAM Role created for ulearn function
+Key                 unionmlFunctionIamRole
+Description         Implicit IAM Role created for unionml function
 Value               arn:aws:iam::...
 
-Key                 ULearnFunction
-Description         ulearn Lambda Function ARN
+Key                 unionmlFunction
+Description         unionml Lambda Function ARN
 Value               arn:aws:lambda:...
 
-Key                 ULearnApi
-Description         API Gateway endpoint URL for Prod stage for ULearn function
-Value               https://abcdefghij.execute-api.us-east-2.amazonaws.com/Prod/ulearn/
+Key                 unionmlApi
+Description         API Gateway endpoint URL for Prod stage for unionml function
+Value               https://abcdefghij.execute-api.us-east-2.amazonaws.com/Prod/unionml/
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Successfully created/updated stack - ulearn-example in us-east-2
+Successfully created/updated stack - unionml-example in us-east-2
 ```
 
-Note the value of `UlearnApi`. You'll be able to hit the API Gateway running your ulearn app. For example, in order to hit the `predict` endpoint you can run:
+Note the value of `unionmlApi`. You'll be able to hit the API Gateway running your unionml app. For example, in order to hit the `predict` endpoint you can run:
 
 ``` bash
-ulearn-aws-lambda-example$ curl -v -X POST \
+unionml-aws-lambda-example$ curl -v -X POST \
     -H "Content-Type: application/json" \
     -d '{"inputs": {"sample_frac": 0.01, "random_state": 43}}' \
     "https://abcdefghij.execute-api.us-east-2.amazonaws.com/Prod/predict?local=True&model_source=local"
@@ -74,31 +74,31 @@ ulearn-aws-lambda-example$ curl -v -X POST \
 Build your application with the `sam build` command.
 
 ```bash
-ulearn-aws-lambda-example$ sam build
+unionml-aws-lambda-example$ sam build
 ```
 
-The SAM CLI builds a docker image from a Dockerfile and then installs dependencies defined in `ulearn_example/requirements.txt` inside the docker image. The processed template file is saved in the `.aws-sam/build` folder.
+The SAM CLI builds a docker image from a Dockerfile and then installs dependencies defined in `unionml_example/requirements.txt` inside the docker image. The processed template file is saved in the `.aws-sam/build` folder.
 
 Test a single function by invoking it directly with a test event. An event is a JSON document that represents the input that the function receives from the event source. Test events are included in the `events` folder in this project.
 
 Run functions locally and invoke them with the `sam local invoke` command.
 
 ```bash
-ulearn-aws-lambda-example$ sam local invoke ULearnFunction --event events/event.json
+unionml-aws-lambda-example$ sam local invoke unionmlFunction --event events/event.json
 ```
 
 The SAM CLI can also emulate your application's API. Use the `sam local start-api` to run the API locally on port 3000.
 
 ```bash
-ulearn-aws-lambda-example$ sam local start-api
-ulearn-aws-lambda-example$ curl http://localhost:3000/
+unionml-aws-lambda-example$ sam local start-api
+unionml-aws-lambda-example$ curl http://localhost:3000/
 ```
 
 The SAM CLI reads the application template to determine the API's routes and the functions that they invoke. The `Events` property on each function's definition includes the route and method for each path.
 
 ```yaml
       Events:
-        ULearn:
+        unionml:
           Type: Api
           Properties:
             Path: /{proxy+}
@@ -115,7 +115,7 @@ To simplify troubleshooting, SAM CLI has a command called `sam logs`. `sam logs`
 `NOTE`: This command works for all AWS Lambda functions; not just the ones you deploy using SAM.
 
 ```bash
-ulearn-aws-lambda-example$ sam logs -n ULearnFunction --stack-name ulearn-aws-lambda-example --tail
+unionml-aws-lambda-example$ sam logs -n unionmlFunction --stack-name unionml-aws-lambda-example --tail
 ```
 
 You can find more information and examples about filtering Lambda function logs in the [SAM CLI Documentation](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-logging.html).
@@ -125,8 +125,8 @@ You can find more information and examples about filtering Lambda function logs 
 Tests are defined in the `tests` folder in this project. Use PIP to install the [pytest](https://docs.pytest.org/en/latest/) and run unit tests from your local machine.
 
 ```bash
-ulearn-aws-lambda-example$ pip install pytest pytest-mock --user
-ulearn-aws-lambda-example$ python -m pytest tests/ -v
+unionml-aws-lambda-example$ pip install pytest pytest-mock --user
+unionml-aws-lambda-example$ python -m pytest tests/ -v
 ```
 
 ## Cleanup
@@ -134,7 +134,7 @@ ulearn-aws-lambda-example$ python -m pytest tests/ -v
 To delete the sample application that you created, use the AWS CLI. Assuming you used your project name for the stack name, you can run the following:
 
 ```bash
-aws cloudformation delete-stack --stack-name ulearn-aws-lambda-example
+aws cloudformation delete-stack --stack-name unionml-aws-lambda-example
 ```
 
 ## Resources
