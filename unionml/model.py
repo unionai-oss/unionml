@@ -150,7 +150,7 @@ class Model(TrackedInstance):
 
     def predictor(self, fn=None, **predict_task_kwargs):
         if fn is None:
-            return partial(self.trainer, **predict_task_kwargs)
+            return partial(self.predictor, **predict_task_kwargs)
         self._predictor = fn
         self._predict_task_kwargs = predict_task_kwargs
         return self._predictor

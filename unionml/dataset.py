@@ -1,5 +1,6 @@
 """Dataset class for defining data source, splitting, parsing, and iteration."""
 
+from functools import partial
 from inspect import Parameter, signature
 from typing import Dict, List, NamedTuple, Optional, Tuple, Type, TypeVar, cast
 
@@ -43,7 +44,9 @@ class Dataset(TrackedInstance):
         self._labeller = None
         self._dataset_task = None
 
-    def reader(self, fn, **reader_task_kwargs):
+    def reader(self, fn=None, **reader_task_kwargs):
+        if fn is None:
+            return partial(self.reader, **reader_task_kwargs)
         self._reader = fn
         self._reader_task_kwargs = reader_task_kwargs
         return fn
