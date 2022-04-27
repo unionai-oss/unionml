@@ -14,7 +14,7 @@ from flytekit.remote import FlyteRemote, FlyteWorkflowExecution
 
 from unionml.model import Model, ModelArtifact
 
-IMAGE_PREFIX = "unionml"
+IMAGE_NAME = "unionml"
 FLYTE_SANDBOX_CONTAINER_NAME = "flyte-sandbox"
 
 
@@ -46,8 +46,9 @@ def get_app_version() -> str:
     return commit.hexsha
 
 
-def get_image_fqn(model: Model, version: str) -> str:
-    return f"{model.registry}/{IMAGE_PREFIX}-{model.name.replace('_', '-')}:{version}"
+def get_image_fqn(model: Model, version: str, image_name: typing.Optional[str] = None) -> str:
+    image_name = IMAGE_NAME if image_name is None else image_name
+    return f"{model.registry}/{image_name}:{model.name.replace('_', '-')}-{version}"
 
 
 def sandbox_docker_build(model: Model, image_fqn: str):
