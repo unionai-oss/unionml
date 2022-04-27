@@ -461,7 +461,7 @@ class Model(TrackedInstance):
         execution = self._remote.execute(
             train_wf,
             inputs={
-                "hyperparameters": {} if hyperparameters is None else hyperparameters,
+                "hyperparameters": self.hyperparameter_type(**({} if hyperparameters is None else hyperparameters)),
                 **{**reader_kwargs, **trainer_kwargs},
             },
             wait=True,
