@@ -56,6 +56,10 @@ def test_dataset_task(dataset, simple_reader):
 
 
 def test_dataset_get_features(dataset):
+    @dataset.reader
+    def reader() -> pd.DataFrame:
+        pass
+
     features = dataset.get_features(pd.DataFrame({"x": [1, 2, 3], "y": [4, 5, 6]}))
     assert features.equals(pd.DataFrame({"x": [1, 2, 3]}))
 

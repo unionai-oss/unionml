@@ -68,7 +68,7 @@ def test_lambda_handler(apigw_event):
 
     assert ret["statusCode"] == 200
     expected_data = {
-        "trained_model": "LogisticRegression(max_iter=10.0)",
+        "object": "LogisticRegression(max_iter=10.0)",
         "metrics": {"train": 0.9208791208791208, "test": 0.9298245614035088},
         "flyte_execution_id": None,
     }

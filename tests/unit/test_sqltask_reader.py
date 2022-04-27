@@ -85,8 +85,8 @@ def test_sqlite_dataset_reader(mock_sqlite_db, task_cls, task_config_cls, uri_fn
         predictions = model.predict(features)
         return float(accuracy_score(target, predictions))
 
-    trained_model, _ = model.train(hyperparameters={"C": 100.0}, limit=50)
-    assert isinstance(trained_model, LogisticRegression)
+    model_object, _ = model.train(hyperparameters={"C": 100.0}, limit=50)
+    assert isinstance(model_object, LogisticRegression)
 
     predictions = model.predict(limit=5)
     features = pd.read_sql("SELECT x1, x2, x3 FROM mock_table LIMIT 5", conn)

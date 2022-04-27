@@ -100,7 +100,7 @@ def test_model_train_task(model, mock_data):
     assert isinstance(train_task, PythonFunctionTask)
     assert issubclass(train_task.python_interface.inputs["hyperparameters"], BaseHyperparameters)
     assert train_task.python_interface.inputs["data"] == reader_ret_type
-    assert train_task.python_interface.outputs["trained_model"].__module__ == "flytekit.types.pickle.pickle"
+    assert train_task.python_interface.outputs["object"].__module__ == "flytekit.types.pickle.pickle"
     assert train_task.python_interface.outputs["metrics"] == typing.Dict[str, eval_ret_type]
 
     outputs = train_task(
@@ -109,7 +109,7 @@ def test_model_train_task(model, mock_data):
     )
 
     assert outputs.__class__.__name__ == "TrainingResults"
-    assert isinstance(outputs.trained_model, LogisticRegression)
+    assert isinstance(outputs.object, LogisticRegression)
     assert isinstance(outputs.metrics["train"], eval_ret_type)
     assert isinstance(outputs.metrics["test"], eval_ret_type)
 
@@ -125,23 +125,23 @@ def test_model_train(model, custom_init):
         def init(hyperparameters: dict) -> LogisticRegression:
             return LogisticRegression(**hyperparameters)
 
-    trained_model, metrics = model.train(
+    model_object, metrics = model.train(
         hyperparameters={"C": 1.0, "max_iter": 1000},
         sample_frac=1.0,
         random_state=123,
     )
-    assert isinstance(trained_model, LogisticRegression)
+    assert isinstance(model_object, LogisticRegression)
     assert isinstance(metrics["train"], float)
     assert isinstance(metrics["test"], float)
 
 
 def test_model_train_from_data(model):
-    trained_model, metrics = model.train(
+    model_object, metrics = model.train(
         hyperparameters={"C": 1.0, "max_iter": 1000},
         sample_frac=1.0,
         random_state=123,
     )
-    assert isinstance(trained_model, LogisticRegression)
+    assert isinstance(model_object, LogisticRegression)
     assert isinstance(metrics["train"], float)
     assert isinstance(metrics["test"], float)
 
@@ -150,13 +150,13 @@ def test_model_predict_task(model, mock_data):
     predict_task = model.predict_task()
 
     assert isinstance(predict_task, PythonFunctionTask)
-    assert predict_task.python_interface.inputs["model"].__module__ == "flytekit.types.pickle.pickle"
+    assert predict_task.python_interface.inputs["model_object"].__module__ == "flytekit.types.pickle.pickle"
     assert predict_task.python_interface.outputs["o0"] == signature(model._predictor).return_annotation
 
-    trained_model = LogisticRegression().fit(mock_data[["x"]], mock_data["y"])
-    predictions = predict_task(model=trained_model, data=mock_data[["x"]])
+    model_object = LogisticRegression().fit(mock_data[["x"]], mock_data["y"])
+    predictions = predict_task(model_object=model_object, data=mock_data[["x"]])
 
-    model.artifact = ModelArtifact(trained_model)
+    model.artifact = ModelArtifact(model_object)
     alt_predictions = model.predict(features=mock_data[["x"]])
 
     assert all(isinstance(x, float) for x in predictions)
@@ -167,15 +167,17 @@ def test_model_predict_from_features_task(model, mock_data):
     predict_from_features_task = model.predict_from_features_task()
 
     assert isinstance(predict_from_features_task, PythonFunctionTask)
-    assert predict_from_features_task.python_interface.inputs["model"].__module__ == "flytekit.types.pickle.pickle"
+    assert (
+        predict_from_features_task.python_interface.inputs["model_object"].__module__ == "flytekit.types.pickle.pickle"
+    )
     assert (
         predict_from_features_task.python_interface.inputs["features"]
-        == signature(model._dataset._feature_processor).return_annotation
+        == signature(model._dataset._reader).return_annotation
     )
     assert predict_from_features_task.python_interface.outputs["o0"] == signature(model._predictor).return_annotation
 
     predictions = predict_from_features_task(
-        model=LogisticRegression().fit(mock_data[["x"]], mock_data["y"]),
+        model_object=LogisticRegression().fit(mock_data[["x"]], mock_data["y"]),
         features=mock_data[["x"]],
     )
     assert all(isinstance(x, float) for x in predictions)

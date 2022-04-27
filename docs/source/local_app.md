@@ -88,7 +88,7 @@ warnings.simplefilter("ignore")
 
 ```{code-cell}
 if __name__ == "__main__":
-    trained_model, metrics = model.train(
+    model_object, metrics = model.train(
         hyperparameters={"C": 1.0, "max_iter": 1000},
         sample_frac=1.0,
         random_state=12345,
@@ -98,7 +98,7 @@ if __name__ == "__main__":
         features=load_digits(as_frame=True).frame.sample(5, random_state=42)
     )
 
-    print(f"trained model: {trained_model}")
+    print(f"model object: {model_object}")
     print(f"training metrics: {metrics}")
     print(f"predictions: {predictions}")
 

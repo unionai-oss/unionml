@@ -66,8 +66,8 @@ if __name__ == "__main__":
     print("Running unionml locally")
     breast_cancer_dataset = load_breast_cancer(as_frame=True)
     hyperparameters = {"C": 1.0, "max_iter": 1000}
-    trained_model, metrics = model.train(hyperparameters, sample_frac=1.0, random_state=123)
-    print(trained_model, metrics)
+    model_object, metrics = model.train(hyperparameters, sample_frac=1.0, random_state=123)
+    print(model_object, metrics)
 
     print("Predicting from reader")
     predictions = model.predict(sample_frac=0.01, random_state=321)

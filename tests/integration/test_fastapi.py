@@ -41,13 +41,13 @@ def _wait_to_exist(port):
 )
 def test_module(ml_framework, model_cls_name, model_checker):
     module_vars = runpy.run_module(f"tests.integration.{ml_framework}_app.quickstart", run_name="__main__")
-    trained_model = module_vars["trained_model"]
+    model_object = module_vars["model_object"]
     predictions = module_vars["predictions"]
 
     model_cls = module_vars[model_cls_name]
-    assert isinstance(trained_model, model_cls)
+    assert isinstance(model_object, model_cls)
     if model_checker:
-        model_checker(trained_model)
+        model_checker(model_object)
 
     assert all([isinstance(x, float) and 0 <= x <= 9 for x in predictions])
 
@@ -65,7 +65,7 @@ def test_fastapi_app(ml_framework, filename, tmp_path):
     model_path = tmp_path / filename
     module_vars = runpy.run_module(f"tests.integration.{ml_framework}_app.quickstart", run_name="__main__")
 
-    # extract unionml model and trained_model from module global namespace
+    # extract unionml model and model_object from module global namespace
     model = module_vars["model"]
     model.save(model_path)
     n_samples = 5

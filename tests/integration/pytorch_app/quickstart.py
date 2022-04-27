@@ -77,12 +77,12 @@ def evaluator(module: PytorchModel, features: pd.DataFrame, target: pd.DataFrame
 
 
 if __name__ == "__main__":
-    trained_model, metrics = model.train(
+    model_object, metrics = model.train(
         hyperparameters={"in_dims": 64, "hidden_dims": 32, "out_dims": 10},
         trainer_kwargs={"batch_size": 512, "n_epochs": 1000, "learning_rate": 0.0003, "weight_decay": 0.0001},
     )
     predictions = model.predict(features=load_digits(as_frame=True).frame.sample(5, random_state=42))
-    print(trained_model, metrics, predictions, sep="\n")
+    print(model_object, metrics, predictions, sep="\n")
 
     # save model to a file using torch.save
     model.save("/tmp/model_object.pt")

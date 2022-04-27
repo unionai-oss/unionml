@@ -15,6 +15,7 @@ from flytekit import Workflow
 from flytekit.configuration import Config
 from flytekit.core.tracker import TrackedInstance
 from flytekit.remote import FlyteRemote
+from flytekit.remote.executions import FlyteWorkflowExecution
 
 from unionml.dataset import Dataset
 from unionml.utils import inner_task
@@ -30,7 +31,7 @@ class BaseHyperparameters:
 class ModelArtifact(NamedTuple):
     """Model artifact, containing a specific model object and optional metrics associated with it."""
 
-    object: Any
+    model_object: Any
     hyperparameters: Optional[Union[BaseHyperparameters, dict]] = None
     metrics: Optional[Dict[str, float]] = None
 
@@ -209,7 +210,7 @@ class Model(TrackedInstance):
                 **{arg: wf.inputs[arg] for arg in trainer_param_types},
             },
         )
-        wf.add_workflow_output("trained_model", train_node.outputs["trained_model"])
+        wf.add_workflow_output("object", train_node.outputs["object"])
         wf.add_workflow_output("hyperparameters", train_node.outputs["hyperparameters"])
         wf.add_workflow_output("metrics", train_node.outputs["metrics"])
         return wf
@@ -220,7 +221,7 @@ class Model(TrackedInstance):
 
         wf = Workflow(name=self.predict_workflow_name)
         model_arg_name, *_ = predict_task.python_interface.inputs.keys()
-        wf.add_workflow_input("model", predict_task.python_interface.inputs[model_arg_name])
+        wf.add_workflow_input("model_object", predict_task.python_interface.inputs[model_arg_name])
         for arg, type in dataset_task.python_interface.inputs.items():
             wf.add_workflow_input(arg, type)
 
@@ -228,7 +229,9 @@ class Model(TrackedInstance):
             dataset_task,
             **{k: wf.inputs[k] for k in dataset_task.python_interface.inputs},
         )
-        predict_node = wf.add_entity(predict_task, **{"model": wf.inputs["model"], **dataset_node.outputs})
+        predict_node = wf.add_entity(
+            predict_task, **{"model_object": wf.inputs["model_object"], **dataset_node.outputs}
+        )
         for output_name, promise in predict_node.outputs.items():
             wf.add_workflow_output(output_name, promise)
         return wf
@@ -239,7 +242,7 @@ class Model(TrackedInstance):
         wf = Workflow(name=self.predict_from_features_workflow_name)
         for i, (arg, type) in enumerate(predict_task.python_interface.inputs.items()):
             # assume that the first argument is the model object
-            wf.add_workflow_input("model" if i == 0 else arg, type)
+            wf.add_workflow_input("model_object" if i == 0 else arg, type)
 
         predict_node = wf.add_entity(predict_task, **{k: wf.inputs[k] for k in wf.inputs})
         for output_name, promise in predict_node.outputs.items():
@@ -276,7 +279,7 @@ class Model(TrackedInstance):
             ),
             return_annotation=NamedTuple(
                 "TrainingResults",
-                trained_model=signature(self._trainer).return_annotation,
+                object=signature(self._trainer).return_annotation,
                 hyperparameters=self.hyperparameter_type,
                 metrics=Dict[str, signature(self._evaluator).return_annotation],
             ),
@@ -289,15 +292,15 @@ class Model(TrackedInstance):
 
             hyperparameters_dict = asdict(hyperparameters) if is_dataclass(hyperparameters) else hyperparameters
             training_data = self._dataset.get_data(raw_data)
-            trained_model = self._trainer(
+            model_object = self._trainer(
                 self._init(hyperparameters=hyperparameters_dict),
                 *training_data["train"],
                 **trainer_kwargs,
             )
             metrics = {
-                split_key: self._evaluator(trained_model, *training_data[split_key]) for split_key in ["train", "test"]
+                split_key: self._evaluator(model_object, *training_data[split_key]) for split_key in training_data
             }
-            return trained_model, hyperparameters, metrics
+            return model_object, hyperparameters, metrics
 
         self._train_task = train_task
         return train_task
@@ -308,7 +311,7 @@ class Model(TrackedInstance):
 
         predictor_sig = signature(self._predictor)
         model_param, *_ = predictor_sig.parameters.values()
-        model_param = model_param.replace(name="model")
+        model_param = model_param.replace(name="model_object")
 
         # assume that reader_return_type is a dict with only a single entry
         [(data_arg_name, data_arg_type)] = self._dataset.reader_return_type.items()
@@ -321,21 +324,20 @@ class Model(TrackedInstance):
             return_annotation=predictor_sig.return_annotation,
             **self._predict_task_kwargs,
         )
-        def predict_task(model, **kwargs):
+        def predict_task(model_object, **kwargs):
             parsed_data = self._dataset._parser(kwargs[data_arg_name], **self._dataset.parser_kwargs)
-            return self._predictor(model, self._dataset._feature_processor(parsed_data))
+            return self._predictor(model_object, self._dataset._feature_loader(*parsed_data))
 
         self._predict_task = predict_task
         return predict_task
 
-    # TODO: see if this can be merged with predict_task
     def predict_from_features_task(self):
         if self._predict_from_features_task:
             return self._predict_from_features_task
 
         predictor_sig = signature(self._predictor)
         model_param, *_ = predictor_sig.parameters.values()
-        model_param = model_param.replace(name="model")
+        model_param = model_param.replace(name="model_object")
 
         # assume that reader_return_type is a dict with only a single entry
         [(_, data_arg_type)] = self._dataset.reader_return_type.items()
@@ -343,13 +345,13 @@ class Model(TrackedInstance):
 
         @inner_task(
             unionml_obj=self,
-            input_parameters=OrderedDict([("model", model_param), ("features", data_param)]),
+            input_parameters=OrderedDict([("model_object", model_param), ("features", data_param)]),
             return_annotation=predictor_sig.return_annotation,
             **self._predict_task_kwargs,
         )
-        def predict_from_features_task(model, features):
+        def predict_from_features_task(model_object, features):
             parsed_data = self._dataset._parser(features, **self._dataset.parser_kwargs)
-            return self._predictor(model, self._dataset._feature_processor(parsed_data))
+            return self._predictor(model_object, self._dataset._feature_loader(*parsed_data))
 
         self._predict_from_features_task = predict_from_features_task
         return predict_from_features_task
@@ -379,13 +381,13 @@ class Model(TrackedInstance):
                 "predictions."
             )
         if features is None:
-            return self.predict_workflow()(model=self.artifact.object, **reader_kwargs)
-        return self.predict_from_features_workflow()(model=self.artifact.object, features=features)
+            return self.predict_workflow()(model_object=self.artifact.model_object, **reader_kwargs)
+        return self.predict_from_features_workflow()(model_object=self.artifact.model_object, features=features)
 
     def save(self, file, *args, **kwargs):
         if self.artifact is None:
             raise AttributeError("`artifact` property is None. Call the `train` method to train a model first")
-        return self._saver(self.artifact.object, self.artifact.hyperparameters, file, *args, **kwargs)
+        return self._saver(self.artifact.model_object, self.artifact.hyperparameters, file, *args, **kwargs)
 
     def load(self, file, *args, **kwargs):
         return self._loader(file, *args, **kwargs)
@@ -450,11 +452,12 @@ class Model(TrackedInstance):
     def remote_train(
         self,
         app_version: str = None,
+        wait: bool = False,
         *,
         hyperparameters: Optional[Dict[str, Any]] = None,
         trainer_kwargs: Optional[Dict[str, Any]] = None,
         **reader_kwargs,
-    ) -> ModelArtifact:
+    ) -> Union[ModelArtifact, FlyteWorkflowExecution]:
         if self._remote is None:
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
         train_wf = self._remote.fetch_workflow(name=self.train_workflow_name, version=app_version)
@@ -462,22 +465,32 @@ class Model(TrackedInstance):
             train_wf,
             inputs={
                 "hyperparameters": self.hyperparameter_type(**({} if hyperparameters is None else hyperparameters)),
-                **{**reader_kwargs, **trainer_kwargs},
+                **{**reader_kwargs, **trainer_kwargs},  # type: ignore
             },
-            wait=True,
+            project=self._remote.default_project,
+            domain=self._remote.default_domain,
+            wait=wait,
+            type_hints={"hyperparameters": self.hyperparameter_type},
         )
-        return ModelArtifact(
-            execution.outputs["trained_model"],
-            execution.outputs["metrics"],
+        console_url = self._remote.generate_console_url(execution)
+        print(
+            f"Executing {train_wf.id.name}, execution name: {execution.id.name}."
+            f"\nGo to {console_url} to see the execution in the console."
         )
+        if not wait:
+            return execution
+
+        self.remote_load(execution)
+        return self.artifact
 
     def remote_predict(
         self,
         app_version: str = None,
+        wait: bool = False,
         *,
         features: Any = None,
         **reader_kwargs,
-    ):
+    ) -> Union[Any, FlyteWorkflowExecution]:
         if self._remote is None:
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
 
@@ -489,7 +502,7 @@ class Model(TrackedInstance):
         if (features is not None and len(reader_kwargs) > 0) or (features is None and len(reader_kwargs) == 0):
             raise ValueError("You must provide only one of `features` or `reader_kwargs`")
 
-        inputs = {"model": model_artifact.object}
+        inputs = {"model": model_artifact.model_object}
         if features is None:
             workflow_name = self.predict_workflow_name
             inputs.update(reader_kwargs)
@@ -503,9 +516,40 @@ class Model(TrackedInstance):
             workflow_name,
             app_version,
         )
-        execution = self._remote.execute(predict_wf, inputs=inputs, wait=True)
+        execution = self._remote.execute(
+            predict_wf,
+            inputs=inputs,
+            project=self._remote.default_project,
+            domain=self._remote.default_domain,
+            wait=wait,
+        )
+        console_url = self._remote.generate_console_url(execution)
+        print(
+            f"Executing {predict_wf.id.name}, execution name: {execution.id.name}."
+            f"\nGo to {console_url} to see the execution in the console."
+        )
+        if not wait:
+            return execution
         predictions, *_ = execution.outputs.values()
         return predictions
+
+    def remote_wait(self, execution: FlyteWorkflowExecution, **kwargs) -> Any:
+        if self._remote is None:
+            raise ValueError("You must call `model.remote` to attach a remote backend to this model.")
+        return self._remote.wait(execution, **kwargs)
+
+    def remote_load(self, execution: FlyteWorkflowExecution):
+        if self._remote is None:
+            raise ValueError("You must call `model.remote` to attach a remote backend to this model.")
+        if not execution.is_done:
+            print(f"Waiting for execution {execution.id.name} to complete...")
+            execution = self.remote_wait(execution)
+            print("Done.")
+        self.artifact = ModelArtifact(
+            execution.outputs["object"],
+            execution.outputs["hyperparameters"],
+            execution.outputs["metrics"],
+        )
 
     def _default_init(self, hyperparameters: dict) -> Any:
         if self._init_callable is None:

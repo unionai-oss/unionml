@@ -43,7 +43,7 @@ def train(
         train_inputs.update(json.loads(inputs))
     model_artifact = model.remote_train(app_version, **train_inputs)
     typer.echo("[unionml] training completed with model artifacts:")
-    typer.echo(f"[unionml] model object: {model_artifact.object}")
+    typer.echo(f"[unionml] model object: {model_artifact.model_object}")
     typer.echo(f"[unionml] model metrics: {model_artifact.metrics}")
 
 

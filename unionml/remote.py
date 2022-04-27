@@ -125,6 +125,6 @@ def get_latest_model_artifact(model: Model, app_version: typing.Optional[str] = 
     model._remote.sync(latest_training_execution)
 
     return ModelArtifact(
-        latest_training_execution.outputs["trained_model"],
+        latest_training_execution.outputs["model_object"],
         latest_training_execution.outputs["metrics"],
     )
