@@ -1,9 +1,6 @@
 name: Publish Python Package
 
 on:
-  push:
-    branches:
-      - "pypi-ci"
   release:
     types: [published]
 
@@ -27,7 +24,6 @@ jobs:
         run: |
           # from refs/tags/v1.2.3 get 1.2.3
           VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
-          VERSION="0.0.1"
           PLACEHOLDER="__version__\ =\ \"0.0.0+dev0\""
           grep "$PLACEHOLDER" "setup.py"
           sed -i "s/$PLACEHOLDER/__version__ = \"$VERSION\"/g" "setup.py"
