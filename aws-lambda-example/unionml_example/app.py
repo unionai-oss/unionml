@@ -18,16 +18,16 @@ dataset = Dataset(
 model = Model(
     name="breast_cancer",
     init=LogisticRegression,
-    hyperparameters={"C": float, "max_iter": int},
+    hyperparameter_config={"C": float, "max_iter": int},
     dataset=dataset,
 )
 
 # attach Flyte remote backend
-model.remote(
-    config_file_path="config/config-sandbox.yaml",
-    project="flytesnacks",
-    domain="development",
-)
+# model.remote(
+#     config_file_path="config/config-sandbox.yaml",
+#     project="flytesnacks",
+#     domain="development",
+# )
 
 # serve the model with FastAPI
 app = FastAPI()

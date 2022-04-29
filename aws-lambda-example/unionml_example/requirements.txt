@@ -1,4 +1,4 @@
-flytekit>=0.31.0
+unionml>=0.0.1
 sklearn
 numpy
 pandas
