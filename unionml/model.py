@@ -594,7 +594,10 @@ class Model(TrackedInstance):
             deserialized_model = joblib.load(file, *args, **kwargs)
             return deserialized_model["model_state"]
         elif issubclass(model_type, torch.nn.Module):
-            deserialized_model = torch.load(file, *args, **kwargs)
+            if not torch.cuda.is_available():
+                deserialized_model = torch.load(file, map_location=torch.device("cpu"), *args, **kwargs)
+            else:
+                deserialized_model = torch.load(file, map_location=torch.device("cuda"), *args, **kwargs)
             model = model_type(**deserialized_model["hyperparameters"])
             model.load_state_dict(deserialized_model["model_state"])
             return model
