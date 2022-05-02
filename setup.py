@@ -2,6 +2,9 @@ from setuptools import find_packages, setup
 
 __version__ = "0.0.0+dev0"
 
+with open("requirements.txt") as f:
+    install_requires = [x.strip() for x in f.readlines()]
+
 setup(
     name="unionml",
     version=__version__,
@@ -9,19 +12,6 @@ setup(
     author="unionai-oss",
     author_email="info@union.ai",
     packages=find_packages(exclude=["tests*"]),
-    install_requires=[
-        "dataclasses_json",
-        "docker",
-        "fastapi",
-        "flytekit>=1.0.0",
-        "gitpython",
-        "joblib",
-        "numpy",
-        "pandas",
-        "pydantic",
-        "sklearn",
-        "typer",
-        "uvicorn",
-    ],
+    install_requires=install_requires,
     entry_points={"console_scripts": ["unionml = unionml.cli:app"]},
 )
