@@ -6,3 +6,4 @@ fastapi
 pydantic
 typer
 mangum
+torch

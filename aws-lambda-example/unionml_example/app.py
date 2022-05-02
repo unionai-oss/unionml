@@ -3,57 +3,45 @@ from typing import List
 import pandas as pd
 from fastapi import FastAPI
 from mangum import Mangum
-from sklearn.datasets import load_breast_cancer
+from sklearn.datasets import load_digits
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
 from unionml import Dataset, Model
 
-dataset = Dataset(
-    targets=["target"],
-    test_size=0.2,
-    shuffle=True,
-    random_state=123,
-)
-model = Model(
-    name="breast_cancer",
-    init=LogisticRegression,
-    hyperparameter_config={"C": float, "max_iter": int},
-    dataset=dataset,
-)
+dataset = Dataset(name="digits_dataset", test_size=0.2, shuffle=True, targets=["target"])
+model = Model(name="digits_classifier", init=LogisticRegression, dataset=dataset)
 
-# attach Flyte remote backend
-# model.remote(
-#     config_file_path="config/config-sandbox.yaml",
-#     project="flytesnacks",
-#     domain="development",
-# )
+@dataset.reader
+def reader() -> pd.DataFrame:
+    return load_digits(as_frame=True).frame
 
-# serve the model with FastAPI
+
+@model.trainer
+def trainer(estimator: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> LogisticRegression:
+    return estimator.fit(features, target.squeeze())
+
+
+@model.predictor
+def predictor(estimator: LogisticRegression, features: pd.DataFrame) -> List[float]:
+    return [float(x) for x in estimator.predict(features)]
+
+
+@model.evaluator
+def evaluator(estimator: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> float:
+    return float(accuracy_score(target.squeeze(), predictor(estimator, features)))
+
+
 app = FastAPI()
 model.serve(app)
-
 # Mangum offers an adapter for running ASGI applications in AWS Lambda to handle API Gateway.
 lambda_handler = Mangum(app)
 
 
-@dataset.reader
-def reader(sample_frac: float = 1.0, random_state: int = 123) -> pd.DataFrame:
-    return load_breast_cancer(as_frame=True).frame.sample(frac=sample_frac, random_state=random_state)
+if __name__ == "__main__":
+    model_object, metrics = model.train(hyperparameters={"C": 1.0, "max_iter": 1000})
+    predictions = model.predict(features=load_digits(as_frame=True).frame.sample(5, random_state=42))
+    print(model_object, metrics, predictions, sep="\n")
 
-
-@model.trainer
-def trainer(model: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> LogisticRegression:
-    return model.fit(features, target.squeeze())
-
-
-@model.predictor
-def predictor(model: LogisticRegression, features: pd.DataFrame) -> List[float]:
-    """Generate predictions from a model."""
-    return [float(x) for x in model.predict_proba(features)[:, 1]]
-
-
-@model.evaluator
-def evaluator(model: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> float:
-    predictions = model.predict(features)
-    return accuracy_score(target.squeeze(), predictions)
+    # save model to a file, using joblib as the default serialization format
+    model.save("/tmp/model_object.joblib")
