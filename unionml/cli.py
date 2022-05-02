@@ -90,9 +90,9 @@ def serve_command():
     callback = fn.callback
 
     def custom_callback(**kwargs):
-        if os.getenv("unionml_MODEL_PATH"):
+        if os.getenv("UNIONML_MODEL_PATH"):
             typer.echo(
-                f"unionml_MODEL_PATH environment variable is set to {os.getenv('unionml_MODEL_PATH')}. "
+                f"UNIONML_MODEL_PATH environment variable is set to {os.getenv('UNIONML_MODEL_PATH')}. "
                 "Please unset this variable before running `unionml serve`.",
                 err=True,
             )
@@ -103,7 +103,7 @@ def serve_command():
             if not model_path.exists():
                 typer.echo(f"Model path {model_path} not found.", err=True)
                 raise typer.Exit(code=1)
-            os.environ["unionml_MODEL_PATH"] = str(model_path)
+            os.environ["UNIONML_MODEL_PATH"] = str(model_path)
         return callback(**kwargs)
 
     fn.callback = custom_callback
