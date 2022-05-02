@@ -1,0 +1,11 @@
+.
+-e file:.#egg=unionml
+
+furo
+jupytext
+myst-nb
+sphinx
+sphinx-copybutton
+sphinx-panels
+sphinx-prompt
+sphinx-tabs

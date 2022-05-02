@@ -1,0 +1,10 @@
+-c requirements.txt
+
+black
+flake8
+flytekitplugins-sqlalchemy
+pre_commit
+pytest
+torch
+types-requests
+uvicorn

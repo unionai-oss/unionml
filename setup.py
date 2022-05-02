@@ -10,9 +10,10 @@ setup(
     author_email="info@union.ai",
     packages=find_packages(exclude=["tests*"]),
     install_requires=[
+        "dataclasses_json",
         "docker",
         "fastapi",
-        "flytekit>=0.32.6",
+        "flytekit>=1.0.0",
         "gitpython",
         "joblib",
         "numpy",
