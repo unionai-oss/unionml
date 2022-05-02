@@ -12,6 +12,7 @@ from unionml import Dataset, Model
 dataset = Dataset(name="digits_dataset", test_size=0.2, shuffle=True, targets=["target"])
 model = Model(name="digits_classifier", init=LogisticRegression, dataset=dataset)
 
+
 @dataset.reader
 def reader() -> pd.DataFrame:
     return load_digits(as_frame=True).frame
@@ -34,6 +35,7 @@ def evaluator(estimator: LogisticRegression, features: pd.DataFrame, target: pd.
 
 app = FastAPI()
 model.serve(app)
+
 # Mangum offers an adapter for running ASGI applications in AWS Lambda to handle API Gateway.
 lambda_handler = Mangum(app)
 
