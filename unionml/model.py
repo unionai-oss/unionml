@@ -11,6 +11,7 @@ from typing import IO, Any, Callable, Dict, List, NamedTuple, Optional, Tuple, T
 import joblib
 import sklearn
 from dataclasses_json import dataclass_json
+from fastapi import FastAPI
 from flytekit import Workflow
 from flytekit.configuration import Config
 from flytekit.core.tracker import TrackedInstance
@@ -392,11 +393,11 @@ class Model(TrackedInstance):
     def load(self, file, *args, **kwargs):
         return self._loader(file, *args, **kwargs)
 
-    def serve(self, app):
+    def serve(self, app: FastAPI, remote: bool = False):
         """Create a FastAPI serving app."""
         from unionml.fastapi import serving_app
 
-        serving_app(self, app)
+        serving_app(self, app, remote=remote)
 
     def remote(
         self,
@@ -497,7 +498,7 @@ class Model(TrackedInstance):
         from unionml import remote
 
         app_version = app_version or remote.get_app_version()
-        model_artifact = remote.get_latest_model_artifact(self, app_version)
+        model_artifact = remote.get_model_artifact(self, app_version)
 
         if (features is not None and len(reader_kwargs) > 0) or (features is None and len(reader_kwargs) == 0):
             raise ValueError("You must provide only one of `features` or `reader_kwargs`")

@@ -87,7 +87,7 @@ def test_fastapi_app_no_model():
     # doesn't have a model_artifact attribute set yet
     with contextmanager(_app)("sklearn", port="8001"):
         prediction_response = requests.post(
-            "http://127.0.0.1:8001/predict?local=True",
+            "http://127.0.0.1:8001/predict",
             json={"features": features.sample(n_samples, random_state=42).to_dict(orient="records")},
         )
-        assert prediction_response.json() == {"detail": "trained model not found"}
+        assert prediction_response.json()["detail"].startswith("Model artifact path not specified")

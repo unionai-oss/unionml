@@ -71,7 +71,7 @@ features = digits.frame[digits.feature_names]
 
 
 prediction_response = requests.post(
-    "https://abcdefghij.execute-api.us-east-2.amazonaws.com/Prod/predict?local=True",
+    "https://abcdefghij.execute-api.us-east-2.amazonaws.com/Prod/predict",
     json={"features": features.sample(5, random_state=42).to_dict(orient="records")},
 )
 
