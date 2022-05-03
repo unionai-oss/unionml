@@ -1,6 +1,8 @@
 import json
 
 import pytest
+import requests
+from sklearn.datasets import load_digits
 from unionml_example import app
 
 
@@ -8,8 +10,12 @@ from unionml_example import app
 def apigw_event():
     """Generates API GW Event"""
 
+    digits = load_digits(as_frame=True)
+    features = digits.frame[digits.feature_names]
+    features = features.sample(3, random_state=99).to_dict(orient="records")
+
     return {
-        "body": '{"hyperparameters":{"C":1.0,"max_iter":10},"sample_frac":1.0,"random_state":123}',
+        "body": f'{{"features":{json.dumps(features)}}}',
         "resource": "/{proxy+}",
         "requestContext": {
             "resourceId": "123456",
@@ -54,22 +60,17 @@ def apigw_event():
             "CloudFront-Forwarded-Proto": "https",
             "Accept-Encoding": "gzip, deflate, sdch",
         },
-        "pathParameters": {"proxy": "/train"},
+        "pathParameters": {"proxy": "/predict"},
         "httpMethod": "POST",
         "stageVariables": {"baz": "qux"},
-        "path": "/train",
+        "path": "/predict",
     }
 
 
-def test_lambda_handler(apigw_event):
-
+def test_lambda_handler(monkeypatch, apigw_event):
+    monkeypatch.setenv("unionml_MODEL_PATH", "./tests/unit/model_object.joblib")
     ret = app.lambda_handler(apigw_event, "")
-    data = json.loads(ret["body"])
+    predictions = json.loads(ret["body"])
 
     assert ret["statusCode"] == 200
-    expected_data = {
-        "object": "LogisticRegression(max_iter=10.0)",
-        "metrics": {"train": 0.9208791208791208, "test": 0.9298245614035088},
-        "flyte_execution_id": None,
-    }
-    assert expected_data == data
+    assert predictions == [8.0, 8.0, 0.0]
