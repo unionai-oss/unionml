@@ -8,7 +8,7 @@ can realize the true benefits of `unionml` by deploying your workflows to a prod
 
 <!-- TODO: add few bullet points on benefits, with links to flyte docs -->
 
-- {ref}`Flyte Sandbox Cluster<flyte_sandbox>`: To get a feel for how deployment works locally, first deploy your app workflows to a Flyte Sandbox, which you can learn more about [here](https://docs.flyte.org/en/latest/deployment/sandbox.html).
+- {ref}`Flyte Demo Cluster<flyte_demo>`: To get a feel for how deployment works locally, first deploy your app workflows to a Flyte Sandbox, which you can learn more about [here](https://docs.flyte.org/en/latest/deployment/sandbox.html).
 
 <!-- TODO: union.ai playground deployment guide -->
 
@@ -16,5 +16,5 @@ can realize the true benefits of `unionml` by deploying your workflows to a prod
 ---
 hidden: true
 ---
-flyte_sandbox
+flyte_demo
 ```

@@ -1,6 +1,6 @@
-(flyte_sandbox)=
+(flyte_demo)=
 
-# Flyte Sandbox
+# Flyte Demo Cluster
 
 In {ref}`Local Training and Prediction <local_app>` we ran our training and prediction
 functions locally by:
@@ -24,68 +24,16 @@ maintain data processing machine learning workloads.
 
 In this guide, we'll:
 
-1. Spin up a Flyte sandbox, which is a standalone, minimal Flyte cluster that you can create
-   on your individual laptop or workstation.
+1. Spin up a demo Flyte cluster, which is a standalone, minimal Flyte cluster that you can
+   create on your individual laptop or workstation.
 2. Configure digit classification `unionml` app to use the Flyte sandbox as the compute
    backend for our training and prediction workload.
 
+## Prerequisites
 
-## Initialize a Flyte Sandbox
-
-Install [`flytectl`](https://docs.flyte.org/projects/flytectl/en/latest/index.html),
-the commandline interface for Flyte.
-
-````{tabs}
-
-   ```{tab} Brew (OSX)
-
-      ```{prompt} bash
-      ---
-      prompts: $
-      ---
-
-      brew install flyteorg/homebrew-tap/flytectl
-      ```
-
-   ```
-
-   ```{tab} Curl
-
-      ```{prompt} bash
-      ---
-      prompts: $
-      ---
-
-      curl -sL https://ctl.flyte.org/install | sudo bash -s -- -b /usr/local/bin # You can change path from /usr/local/bin to any file system path
-export PATH=$(pwd)/bin:$PATH # Only required if user used different path then /usr/local/bin
-
-      ```
-
-   ```
-
-````
-
-Then in your app directory, run:
-
-```{prompt} bash
----
-prompts: $
----
-
-flytectl sandbox start --source .
-```
-
-```{note}
-The ``--source .`` flag will initialize the Flyte sandbox a Docker container
-with the source files of your app mounted. This is so that your app's workflows
-can be compiled and registered directly in the Flyte sandbox.
-```
-
-```{note}
-Having trouble getting Flyte sandbox to start? See the [troubleshooting guide](https://docs.flyte.org/en/latest/community/troubleshoot.html#troubleshooting-guide)
-```
-
-We should now be able to go to `http://localhost:30081/console` on your browser to see the Flyte UI.
+First, install [Docker](https://docs.docker.com/get-docker/) and
+[`flytectl`](https://docs.flyte.org/projects/flytectl/en/latest/index.html#installation),
+the command-line interface for Flyte.
 
 
 ## Deploy App Workflows
@@ -99,7 +47,7 @@ To make these computations scalable, reproducible, and auditable, we can seriali
 our workflows and register them to a Flyte cluster, in this case a local Flyte sandbox.
 
 Going back to our digit classification app, let's assume that we have a `unionml`
-app in an `app/main.py` file. We can use the `unionml` command-line tool to easily deploy
+app in an `app.py` file. We can use the `unionml` command-line tool to easily deploy
 our app workflows.
 
 ````{dropdown} See app source
@@ -108,28 +56,9 @@ our app workflows.
    ```
 
 ````
+### Creating a Dockerfile
 
-### Configuration
-
-Create a file called `flyte.config`, then add the following configuration settings:
-
-```{code-block} ini
-[sdk]
-workflow_packages=app.main
-
-[platform]
-url=localhost:30081
-insecure=true
-
-[aws]
-endpoint=http://localhost:30084
-access_key_id=minio
-secret_access_key=miniostorage
-```
-
-### Dockerfile
-
-Flyte relies on [Docker](https://www.docker.com/) to package up all of your app's
+UnionML relies on [Docker](https://www.docker.com/) to package up all of your app's
 source code and dependencies. Create a `Dockerfile` for your app with the following
 contents:
 
@@ -158,16 +87,65 @@ RUN pip install -r /root/requirements.txt
 COPY . /root
 ```
 
-### `unionml deploy`
+### Configuring the Remote Backend
 
-To deploy run:
+All you need to get your `unionml` app for deployment is to configure it with the
+Docker registry and image name that you want to use to package you app, as well as the
+Flyte project and domain you want to use hosting your app's microservices.
+
+Add the following code anywhere in your app script:
+
+```{literalinclude} ../../tests/integration/sklearn_app/remote_config.py
+---
+lines: 3-10
+---
+```
+
+```{important}
+We're set the `config_file_path` argument to
+`Path.home() / ".flyte" / "config-sandbox.yaml"`, which was created automatically when
+we invoked `flytectl demo start`.
+
+Under the hood, `unionml` will handle the Docker build process locally, bypassing the
+need to push your app image to a remote registry.
+```
+
+## Initialize a Flyte Sandbox
+
+Then in your app directory, run:
 
 ```{prompt} bash
 ---
 prompts: $
 ---
 
-unionml deploy app.main:model
+flytectl demo start --source .
+```
+
+```{note}
+The `--source .` flag will initialize the Flyte demo cluster in a docker container with your app files
+mounted inside. This is so that your app's workflows can be serialized and registered directly in the
+Flyte sandbox.
+```
+
+We should now be able to go to `http://localhost:30080/console` on your browser to see the Flyte UI.
+
+## UnionML CLI
+
+The `unionml` python package ships with the `unionml` cli, which we use to deploy the model and
+invoke the training/prediction microservices that are automatically compiled by the `Dataset` and
+`Model` objects.
+
+### `unionml deploy`
+
+To deploy, run:
+
+```{prompt} bash
+---
+prompts: $
+---
+
+unionml deploy app:model
 ```
 
 ```{note}
@@ -188,7 +166,7 @@ Train a model given some hyperparameters:
 prompts: $
 ---
 
-unionml train app.main:model -i '{"hyperparameters": {"C": 1.0, "max_iter": 1000}, "sample_frac": 1.0, "random_state": 123}'
+unionml train app:model -i '{"hyperparameters": {"C": 1.0, "max_iter": 1000}}'
 ```
 
 ### `unionml predict`
@@ -200,5 +178,11 @@ Generate predictions with json data:
 prompts: $
 ---
 
-unionml predict app.main:model -f <path-to-json-file>
+unionml predict app:model -f <path-to-json-file>
+```
+
+Where `<path-to-json-file>` is a json file containing feature data that's compatible with the model.
+
+```{note}
+Currently, only json records data that can be converted to a pandas DataFrame is supported.
 ```

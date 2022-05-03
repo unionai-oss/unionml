@@ -41,17 +41,19 @@ def train(
     train_inputs = {}
     if inputs:
         train_inputs.update(json.loads(inputs))
-    model_artifact = model.remote_train(app_version, **train_inputs)
+    execution = model.remote_train(app_version, **train_inputs)
+    model.remote_load(execution)
+    assert model.artifact is not None
     typer.echo("[unionml] training completed with model artifacts:")
-    typer.echo(f"[unionml] model object: {model_artifact.model_object}")
-    typer.echo(f"[unionml] model metrics: {model_artifact.metrics}")
+    typer.echo(f"[unionml] model object: {model.artifact.model_object}")
+    typer.echo(f"[unionml] model metrics: {model.artifact.metrics}")
 
 
 @app.command()
 def predict(
     app: str,
     inputs: str = typer.Option(None, "--inputs", "-i", help="inputs"),
-    features: Path = typer.Option(None, "--features", "-f", help="hyperparameters"),
+    features: Path = typer.Option(None, "--features", "-f", help="generate predictions for this feature"),
     app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
 ):
     """Generate prediction."""
@@ -66,7 +68,7 @@ def predict(
             features = json.load(f)
         prediction_inputs.update({"features": model._dataset.get_features(features)})
 
-    predictions = model.remote_predict(app_version, **prediction_inputs)
+    predictions = model.remote_predict(app_version, wait=True, **prediction_inputs)
     typer.echo(f"[unionml] predictions: {predictions}")
 
 

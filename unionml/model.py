@@ -58,11 +58,12 @@ class Model(TrackedInstance):
         self._loader = self._default_loader
 
         # properties needed for deployment
-        self._remote: Optional[FlyteRemote] = None
         self._image_name: Optional[str] = None
         self._config_file_path: Optional[str] = None
         self._registry: Optional[str] = None
         self._dockerfile: Optional[str] = None
+        self._project: Optional[str] = None
+        self._domain: Optional[str] = None
 
         if self._dataset.name is None:
             self._dataset.name = f"{self.name}.dataset"
@@ -411,10 +412,15 @@ class Model(TrackedInstance):
         self._registry = registry
         self._image_name = image_name
         self._dockerfile = dockerfile
-        self._remote = FlyteRemote(
+        self._project = project
+        self._domain = domain
+
+    @property
+    def _remote(self) -> Optional[FlyteRemote]:
+        return FlyteRemote(
             config=Config.auto(config_file=self._config_file_path),
-            default_project=project,
-            default_domain=domain,
+            default_project=self._project,
+            default_domain=self._domain,
         )
 
     def remote_deploy(self):
@@ -428,26 +434,26 @@ class Model(TrackedInstance):
         # default image is set correctly. This can be simplified after flytekit config improvements
         # are merged: https://github.com/flyteorg/flytekit/pull/857
         os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
-        self._remote = FlyteRemote(
+        _new_remote = FlyteRemote(
             config=Config.auto(config_file=self._config_file_path),
-            default_project=self._remote._default_project,
-            default_domain=self._remote._default_domain,
+            default_project=self._project,
+            default_domain=self._domain,
         )
 
-        remote.create_project(self._remote, self._remote._default_project)
-        if self._remote.config.platform.endpoint.startswith("localhost"):
+        remote.create_project(_new_remote, self._project)
+        if _new_remote.config.platform.endpoint.startswith("localhost"):
             # assume that a localhost flyte_admin_url means that we want to use Flyte sandbox
             remote.sandbox_docker_build(self, image)
         else:
             remote.docker_build_push(self, image)
 
-        args = [self._remote._default_project, self._remote._default_domain, version]
+        args = [_new_remote._default_project, _new_remote._default_domain, version]
         for wf in [
             self.train_workflow(),
             self.predict_workflow(),
             self.predict_from_features_workflow(),
         ]:
-            remote.deploy_wf(wf, self._remote, image, *args)
+            remote.deploy_wf(wf, _new_remote, image, *args)
 
     def remote_train(
         self,
@@ -465,7 +471,7 @@ class Model(TrackedInstance):
             train_wf,
             inputs={
                 "hyperparameters": self.hyperparameter_type(**({} if hyperparameters is None else hyperparameters)),
-                **{**reader_kwargs, **trainer_kwargs},  # type: ignore
+                **{**reader_kwargs, **({} if trainer_kwargs is None else trainer_kwargs)},  # type: ignore
             },
             project=self._remote.default_project,
             domain=self._remote.default_domain,

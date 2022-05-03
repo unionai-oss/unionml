@@ -1,0 +1,12 @@
+dataclasses_json
+docker
+fastapi
+flytekit>=1.0.0
+gitpython
+joblib
+numpy
+pandas
+pydantic
+sklearn
+typer
+uvicorn
