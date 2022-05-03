@@ -44,29 +44,38 @@ CloudFormation outputs from deployed stack
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Outputs
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Key                 unionmlFunctionIamRole
-Description         Implicit IAM Role created for unionml function
-Value               arn:aws:iam::...
-
-Key                 unionmlFunction
+Key                 UnionmlFunction
 Description         unionml Lambda Function ARN
-Value               arn:aws:lambda:...
+Value               arn:aws:lambda:us-east-42:12345:function:unionml-lambda-example-UnionmlFunction-xyz
 
-Key                 unionmlApi
+Key                 UnionmlApi
 Description         API Gateway endpoint URL for Prod stage for unionml function
-Value               https://abcdefghij.execute-api.us-east-2.amazonaws.com/Prod/unionml/
+Value               https://abcdefghij.execute-api.us-east-42.amazonaws.com/Prod/
+
+Key                 UnionmlFunctionIamRole
+Description         Implicit IAM Role created for unionml function
+Value               arn:aws:iam::1234:role/unionml-lambda-example-UnionmlFunctionRole-ABCD
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Successfully created/updated stack - unionml-example in us-east-2
 ```
 
-Note the value of `unionmlApi`. You'll be able to hit the API Gateway running your unionml app. For example, in order to hit the `predict` endpoint you can run:
+Note the value of `UnionmlApi`. You'll be able to hit the API Gateway running your unionml app. For example, in order to hit the `predict` endpoint you can run:
 
-``` bash
-unionml-aws-lambda-example$ curl -v -X POST \
-    -H "Content-Type: application/json" \
-    -d '{"inputs": {"sample_frac": 0.01, "random_state": 43}}' \
-    "https://abcdefghij.execute-api.us-east-2.amazonaws.com/Prod/predict?local=True&model_source=local"
+``` python
+import requests
+from sklearn.datasets import load_digits
+
+digits = load_digits(as_frame=True)
+features = digits.frame[digits.feature_names]
+
+
+prediction_response = requests.post(
+    "https://abcdefghij.execute-api.us-east-2.amazonaws.com/Prod/predict?local=True",
+    json={"features": features.sample(5, random_state=42).to_dict(orient="records")},
+)
+
+print(prediction_response.text)
 ```
 
 ## Use the SAM CLI to build and test locally
