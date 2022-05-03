@@ -1,7 +1,6 @@
 import json
 
 import pytest
-import requests
 from sklearn.datasets import load_digits
 from unionml_example import app
 
