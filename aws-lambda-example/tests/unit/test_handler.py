@@ -68,7 +68,7 @@ def apigw_event():
 
 
 def test_lambda_handler(monkeypatch, apigw_event):
-    monkeypatch.setenv("unionml_MODEL_PATH", "./tests/unit/model_object.joblib")
+    monkeypatch.setenv("UNIONML_MODEL_PATH", "./tests/unit/model_object.joblib")
     ret = app.lambda_handler(apigw_event, "")
     predictions = json.loads(ret["body"])
 
