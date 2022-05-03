@@ -43,7 +43,7 @@ def serving_app(model: Model, app: FastAPI):
         features: Optional[List[Dict[str, Any]]] = Body(None),
     ) -> PredictParams:
         # TODO: load a model from a flytebackend here
-        model_path = os.getenv("unionml_MODEL_PATH")
+        model_path = os.getenv("UNIONML_MODEL_PATH")
         if model_path:
             model.artifact = ModelArtifact(model.load(model_path))
         return PredictParams(model, model._remote, local, model_version, inputs, features)

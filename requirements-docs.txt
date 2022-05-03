@@ -1,3 +1,6 @@
+-e file:.#egg=unionml
+-r requirements-dev.txt
+
 furo
 jupytext
 myst-nb

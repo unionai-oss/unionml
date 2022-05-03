@@ -1,7 +1,7 @@
 dataclasses_json
 docker
 fastapi
-flytekit>=0.30.3
+flytekit>=1.0.0
 gitpython
 joblib
 numpy
