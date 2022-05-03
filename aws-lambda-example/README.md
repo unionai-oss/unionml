@@ -46,7 +46,7 @@ Outputs
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Key                 UnionmlFunction
 Description         unionml Lambda Function ARN
-Value               arn:aws:lambda:us-east-42:12345:function:unionml-lambda-example-UnionmlFunction-xyz
+Value               arn:aws:lambda:...
 
 Key                 UnionmlApi
 Description         API Gateway endpoint URL for Prod stage for unionml function
@@ -54,7 +54,7 @@ Value               https://abcdefghij.execute-api.us-east-42.amazonaws.com/Prod
 
 Key                 UnionmlFunctionIamRole
 Description         Implicit IAM Role created for unionml function
-Value               arn:aws:iam::1234:role/unionml-lambda-example-UnionmlFunctionRole-ABCD
+Value               arn:aws:iam::...
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Successfully created/updated stack - unionml-example in us-east-2
