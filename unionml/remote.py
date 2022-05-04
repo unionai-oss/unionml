@@ -100,31 +100,39 @@ def deploy_wf(wf, remote: FlyteRemote, image: str, project: str, domain: str, ve
     remote.register_workflow(wf, serialization_settings, version)
 
 
-def get_latest_model_artifact(model: Model, app_version: typing.Optional[str] = None) -> ModelArtifact:
+def get_model_artifact(
+    model: Model,
+    app_version: typing.Optional[str] = None,
+    model_version: typing.Optional[str] = "latest",
+) -> ModelArtifact:
     if model._remote is None:
         raise RuntimeError("You need to configure the remote client with the `Model.remote` method")
 
-    app_version = get_app_version()
+    app_version = app_version or get_app_version()
     train_wf = model._remote.fetch_workflow(
         model._remote._default_project,
         model._remote._default_domain,
         model.train_workflow_name,
         app_version,
     )
-    [latest_training_execution, *_], _ = model._remote.client.list_executions_paginated(
-        train_wf.id.project,
-        train_wf.id.domain,
-        limit=1,
-        filters=[
-            filters.Equal("launch_plan.name", train_wf.id.name),
-            filters.Equal("phase", "SUCCEEDED"),
-        ],
-        sort_by=Sort("created_at", Sort.Direction.DESCENDING),
-    )
-    latest_training_execution = FlyteWorkflowExecution.promote_from_model(latest_training_execution)
-    model._remote.sync(latest_training_execution)
-
-    return ModelArtifact(
-        latest_training_execution.outputs["model_object"],
-        latest_training_execution.outputs["metrics"],
-    )
+    if model_version is not None and model_version != "latest":
+        execution = model._remote.fetch_execution(
+            project=train_wf.id.project,
+            domain=train_wf.id.domain,
+            name=model_version,
+        )
+    else:
+        [execution, *_], _ = model._remote.client.list_executions_paginated(
+            train_wf.id.project,
+            train_wf.id.domain,
+            limit=1,
+            filters=[
+                filters.Equal("launch_plan.name", train_wf.id.name),
+                filters.Equal("phase", "SUCCEEDED"),
+            ],
+            sort_by=Sort("created_at", Sort.Direction.DESCENDING),
+        )
+        execution = FlyteWorkflowExecution.promote_from_model(execution)
+    model.remote_load(execution)
+    assert model.artifact is not None
+    return model.artifact

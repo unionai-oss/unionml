@@ -119,6 +119,8 @@ You may notice a few things about the code example above:
     type as the return annotation of the `model.evaluator`, which in this case is a `float`.
 - The `model.predict` method accepts a `features` keyword argument containing the features
   of the same type defined in the `model.predictor` function.
+- At the end of the file we save the model object to a file called `/tmp/model_object.joblib`. This is
+  simply an `sklearn` base estimator that you know and love!
 ```
 
 ## Serve with FastAPI
@@ -137,7 +139,7 @@ app = FastAPI()
 model.serve(app)
 ```
 
-`model.serve` will take the `FastAPI` app and automatically create `/train/` and `/predict/` endpoints that you can
+`model.serve` will take the `FastAPI` app and automatically create a `/predict/` endpoint that you can
 invoke with HTTP requests.
 
 Start the server with `unionml serve`:
@@ -145,40 +147,31 @@ Start the server with `unionml serve`:
 ```{prompt} bash
 :prompts: $
 
-unionml main:app --reload
+unionml serve main:app --model-path /tmp/model_object.joblib --reload
 ```
 
-Once the server's started, you can use the Python `requests` library or any other HTTP library for training
-and prediction:
+```{note}
+The `--model-path` option points to a local file containing the serialized model object that
+we created above when we executed the `unionml` app script.
+```
+
+Once the server's started, you can use the Python `requests` library or any other HTTP library
+to get predictions from input features:
 
 ```{code-block} python
 import requests
 
-# train a model
-requests.post(
-    "http://127.0.0.1:8000/train?local=True",
-    json={
-        "hyperparameters": {"C": 1.0, "max_iter": 1000},
-        "sample_frac": 1.0,
-        "random_state": 123,
-    },
-)
-
 # generate predictions
 requests.get(
-    "http://127.0.0.1:8000/predict?local=True",
+    "http://127.0.0.1:8000/predict",
     json={"features": load_digits(as_frame=True).frame.sample(5, random_state=42).to_dict(orient="records")},
 )
 ```
 
-```{warning}
-The `local=True` query parameter in the `/train` and `/predict` endpoint invocations
-means that computation is being done on the app server itself, which, in this case,
-is probably your laptop 💻.
-
-This is fine for debugging, but it probably won't do in production, where the memory and
-compute resource requirements are likely to exceed the resources available on the app
-server.
+```{note}
+The `/predict` endpoint computation is being done on the app server itself, which, in this case, is probably
+your laptop 💻. You'll need to ensure that your prediction server has the resources needed to load the model
+into memory and generate predictions.
 ```
 
 ## Next
