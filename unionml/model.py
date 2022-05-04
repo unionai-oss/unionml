@@ -64,6 +64,7 @@ class Model(TrackedInstance):
         self._dockerfile: Optional[str] = None
         self._project: Optional[str] = None
         self._domain: Optional[str] = None
+        self.__remote__: Optional[FlyteRemote] = None
 
         if self._dataset.name is None:
             self._dataset.name = f"{self.name}.dataset"
@@ -417,11 +418,19 @@ class Model(TrackedInstance):
 
     @property
     def _remote(self) -> Optional[FlyteRemote]:
-        return FlyteRemote(
-            config=Config.auto(config_file=self._config_file_path),
+        if self.__remote__ is not None:
+            return self.__remote__
+
+        config = Config.auto(config_file=self._config_file_path)
+        if config.platform.endpoint.startswith("localhost"):
+            config = Config.for_sandbox()
+
+        self.__remote__ = FlyteRemote(
+            config=config,
             default_project=self._project,
             default_domain=self._domain,
         )
+        return self.__remote__
 
     def remote_deploy(self):
         """Deploy model services to a Flyte backend."""
@@ -459,6 +468,7 @@ class Model(TrackedInstance):
     ) -> Union[ModelArtifact, FlyteWorkflowExecution]:
         if self._remote is None:
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
+
         train_wf = self._remote.fetch_workflow(name=self.train_workflow_name, version=app_version)
         execution = self._remote.execute(
             train_wf,
@@ -545,11 +555,12 @@ class Model(TrackedInstance):
             execution = self.remote_wait(execution)
             print("Done.")
 
-        self.artifact = ModelArtifact(
-            execution.outputs["model_object"],
-            execution.outputs["hyperparameters"],
-            execution.outputs["metrics"],
-        )
+        with self._remote.remote_context():
+            self.artifact = ModelArtifact(
+                execution.outputs["model_object"],
+                execution.outputs["hyperparameters"],
+                execution.outputs["metrics"],
+            )
 
     def _default_init(self, hyperparameters: dict) -> Any:
         if self._init_callable is None:
