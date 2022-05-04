@@ -430,30 +430,23 @@ class Model(TrackedInstance):
         version = remote.get_app_version()
         image = remote.get_image_fqn(self, version, self._image_name)
 
-        # FlyteRemote needs to be re-instantiated after setting this environment variable so that the workflow's
-        # default image is set correctly. This can be simplified after flytekit config improvements
-        # are merged: https://github.com/flyteorg/flytekit/pull/857
         os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
-        _new_remote = FlyteRemote(
-            config=Config.auto(config_file=self._config_file_path),
-            default_project=self._project,
-            default_domain=self._domain,
-        )
+        _remote = self._remote
 
-        remote.create_project(_new_remote, self._project)
-        if _new_remote.config.platform.endpoint.startswith("localhost"):
+        remote.create_project(_remote, self._project)
+        if _remote.config.platform.endpoint.startswith("localhost"):
             # assume that a localhost flyte_admin_url means that we want to use Flyte sandbox
             remote.sandbox_docker_build(self, image)
         else:
             remote.docker_build_push(self, image)
 
-        args = [_new_remote._default_project, _new_remote._default_domain, version]
+        args = [_remote._default_project, _remote._default_domain, version]
         for wf in [
             self.train_workflow(),
             self.predict_workflow(),
             self.predict_from_features_workflow(),
         ]:
-            remote.deploy_wf(wf, _new_remote, image, *args)
+            remote.deploy_wf(wf, _remote, image, *args)
 
     def remote_train(
         self,
@@ -551,6 +544,7 @@ class Model(TrackedInstance):
             print(f"Waiting for execution {execution.id.name} to complete...")
             execution = self.remote_wait(execution)
             print("Done.")
+
         self.artifact = ModelArtifact(
             execution.outputs["model_object"],
             execution.outputs["hyperparameters"],
