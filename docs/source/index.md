@@ -3,7 +3,7 @@
 </h1>
 
 <div style="font-size: 1.5em; color: #777;">
-The microframework for building and deploying machine learning services.
+   The easiest way to build and deploy machine learning microservices
 </div>
 
 <br>
@@ -17,11 +17,15 @@ Deployment Guide <deploying>
 Contributing <contributing>
 ```
 
-`unionml` is a framework for building end-to-end machine learning services.
+**UnionML** is an open source MLOps framework that aims to reduce the boilerplate and friction
+that comes with building and deploying models to production.
 
-It's built on top of [flyte](https://docs.flyte.org/en/latest/) and
-[flytekit](https://docs.flyte.org/projects/flytekit/en/latest/) to provide a high-level
-interface for model training and prediction in batch and streaming contexts.
+You can create **UnionML Apps** by defining a few core methods that are automatically bundled
+into ML microservices, starting with model training and offline and online prediction.
+
+Built on top of [Flyte](https://docs.flyte.org/en/latest/), UnionML provides a high-level
+interface for productionizing your ML models so that you can focus on curating a better dataset
+and improving your models.
 
 # Installation
 
@@ -29,9 +33,9 @@ interface for model training and prediction in batch and streaming contexts.
 pip install unionml
 ```
 
-# Getting Started
+# Quickstart
 
-## Create a `unionml` App
+## Create a Minimal UnionML App
 
 A `unionml` app requires two core components: a `Dataset` and a `Model`.
 
