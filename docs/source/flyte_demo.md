@@ -7,7 +7,7 @@ functions locally by:
 
 1. Executing our `unionml` app as python module by calling the `model.train` and
    `model.predict` methods.
-2. Starting a FastAPI server and invoking the `/train` and `/predict` endpoints using
+2. Starting a FastAPI server and invoking `/predict` endpoint using
    the `requests` library.
 
 ```{note}
