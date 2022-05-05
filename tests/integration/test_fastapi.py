@@ -36,8 +36,9 @@ def _wait_to_exist(port):
     [
         ("sklearn", "LogisticRegression", check_is_fitted),
         ("pytorch", "PytorchModel", None),
+        ("keras", "Sequential", None),
     ],
-    ids=["sklearn", "pytorch"],
+    ids=["sklearn", "pytorch", "keras"],
 )
 def test_module(ml_framework, model_cls_name, model_checker):
     module_vars = runpy.run_module(f"tests.integration.{ml_framework}_app.quickstart", run_name="__main__")
@@ -57,8 +58,9 @@ def test_module(ml_framework, model_cls_name, model_checker):
     [
         ("sklearn", "model.joblib"),
         ("pytorch", "model.pt"),
+        ("keras", "model.h5"),
     ],
-    ids=["sklearn", "pytorch"],
+    ids=["sklearn", "pytorch", "keras"],
 )
 def test_fastapi_app(ml_framework, filename, tmp_path):
     # run the quickstart module to train a model

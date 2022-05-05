@@ -51,9 +51,8 @@ def trainer(
     batch_size: int,
     n_epochs: int,
     learning_rate: float,
-    weight_decay: float
 ) -> PytorchModel:
-    opt = torch.optim.Adam(module.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    opt = torch.optim.Adam(module.parameters(), lr=learning_rate)
     for _ in range(n_epochs):
         for (X, y) in zip(
             torch.split(process_features(features), batch_size),
@@ -79,7 +78,7 @@ def evaluator(module: PytorchModel, features: pd.DataFrame, target: pd.DataFrame
 if __name__ == "__main__":
     model_object, metrics = model.train(
         hyperparameters={"in_dims": 64, "hidden_dims": 32, "out_dims": 10},
-        trainer_kwargs={"batch_size": 512, "n_epochs": 1000, "learning_rate": 0.0003, "weight_decay": 0.0001},
+        trainer_kwargs={"batch_size": 512, "n_epochs": 100, "learning_rate": 0.0003},
     )
     predictions = model.predict(features=load_digits(as_frame=True).frame.sample(5, random_state=42))
     print(model_object, metrics, predictions, sep="\n")

@@ -65,6 +65,16 @@ into their corresponding digit labels.
 
    ```
 
+   ```{group-tab} keras
+
+      ```{literalinclude} ../../tests/integration/keras_app/quickstart.py
+      ---
+      lines: 1-25
+      ---
+      ```
+
+   ```
+
 ````
 
 ## Define App Methods
@@ -98,7 +108,17 @@ core components for model training and prediction:
 
       ```{literalinclude} ../../tests/integration/pytorch_app/quickstart.py
       ---
-      lines: 39-77
+      lines: 39-75
+      ---
+      ```
+
+   ```
+
+   ```{group-tab} keras
+
+      ```{literalinclude} ../../tests/integration/keras_app/quickstart.py
+      ---
+      lines: 28-66
       ---
       ```
 
@@ -126,7 +146,17 @@ Invoke `model.train` to train a model and `model.predict` to generate prediction
 
       ```{literalinclude} ../../tests/integration/pytorch_app/quickstart.py
       ---
-      lines: 79-88
+      lines: 78-87
+      ---
+      ```
+
+   ```
+
+   ```{group-tab} keras
+
+      ```{literalinclude} ../../tests/integration/keras_app/quickstart.py
+      ---
+      lines: 69-78
       ---
       ```
 
@@ -158,11 +188,6 @@ endpoints with the `requests` library.
       unionml serve main:app --reload --model-path /tmp/model_object.joblib
       ```
 
-      Invoke the endpoints using the `requests` library
-
-      ```{literalinclude} ../../tests/integration/api_requests.py
-      ```
-
    ```
 
    ```{group-tab} pytorch
@@ -181,14 +206,32 @@ endpoints with the `requests` library.
       unionml serve main:app --reload --model-path /tmp/model_object.pt
       ```
 
-      Invoke the endpoints using the `requests` library
+   ```
 
-      ```{literalinclude} ../../tests/integration/api_requests.py
+   ```{group-tab} keras
+
+      Bind a FastAPI `app` to the `model` object with `model.serve`
+
+      ```{literalinclude} ../../tests/integration/keras_app/fastapi_app.py
+      ---
+      lines: 3-6
+      ---
+      ```
+
+      Start the server, assuming the `unionml` app is in a `main.py` script
+
+      ```{code-block} bash
+      unionml serve main:app --reload --model-path /tmp/model_object.h5
       ```
 
    ```
 
 ````
+
+Then you can invoke the endpoints using the `requests` library
+
+```{literalinclude} ../../tests/integration/api_requests.py
+```
 
 # What Next?
 

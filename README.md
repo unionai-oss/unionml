@@ -72,14 +72,12 @@ def trainer(
 ) -> LogisticRegression:
     return estimator.fit(features, target.squeeze())
 
-
 @model.predictor
 def predictor(
     estimator: LogisticRegression,
     features: pd.DataFrame
 ) -> List[float]:
     return [float(x) for x in estimator.predict(features)]
-
 
 @model.evaluator
 def evaluator(

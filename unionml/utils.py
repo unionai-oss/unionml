@@ -1,3 +1,4 @@
+import typing
 from functools import partial, wraps
 from inspect import Parameter, signature
 
@@ -56,3 +57,11 @@ def inner_task(
     output_task = task(wrapper, task_resolver=task_resolver, **task_kwargs)
     output_task._name = f"{unionml_obj.name}.{wrapper.__name__}"
     return output_task
+
+
+def is_pytorch_model(model_type: typing.Type):
+    return model_type.__bases__[0].__module__.startswith("torch")
+
+
+def is_keras_model(model_type: typing.Type):
+    return model_type.__bases__[0].__module__.startswith("keras")
