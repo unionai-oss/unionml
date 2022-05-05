@@ -97,3 +97,7 @@ By defining these four methods, you've created a minimal **UnionML App** that yo
 - [Execute locally](https://unionml.readthedocs.io/en/latest/index.html#train-and-predict-locally) to debug and iterate on your code.
 - [Serve Seamlessly with FastAPI](https://unionml.readthedocs.io/en/latest/index.html#serve-seamlessly-with-fastapi) for online prediction.
 - [Deploy on a Flyte Cluster](https://unionml.readthedocs.io/en/latest/deploying.html) to scale your model training and schedule offline prediction jobs.
+
+## Contributing
+
+All contributions are welcome 🤝 ! Check out the [contribution guide](https://unionml.readthedocs.io/en/latest/contributing.html) to learn more about how to contribute.
