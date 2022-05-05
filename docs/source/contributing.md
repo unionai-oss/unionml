@@ -1,6 +1,6 @@
 # Contributing
 
-👋 We are striving to build an open and inclusive community around UnionML. Whether you are a novice or
+We are striving to build an open and inclusive community around UnionML. Whether you are a novice or
 experienced software developer, data scientist, or machine learning practitioner, all contributions
 and suggestions are welcome!
 
@@ -10,7 +10,7 @@ There are many ways to contribute to this project:
 
 - 📖 **Improve the documentation**: See typos and grammatical errors? Open up a PR to fix them!
 - 🐞 **Report Bugfixes**: Coming up against unexpected behavior? [Open up an issue](https://github.com/unionai-oss/unionml/issues/new)!
-- 🙏 **Feature Requests**: Have ideas on a few features or how to improve an existing one? [Open up an issue](https://github.com/unionai-oss/unionml/issues/new)!
+- 🙏 **Feature Requests**: Have ideas on new features or improvements to an existing one? [Open up an issue](https://github.com/unionai-oss/unionml/issues/new)!
 - 🔧 **Pull Requests**: Pick up one of the issues in the [issue log](https://github.com/unionai-oss/unionml/issues) and submit a PR!
 
 ## Environment Setup

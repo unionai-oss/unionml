@@ -48,11 +48,15 @@ def get_app_version() -> str:
 
 def get_image_fqn(model: Model, version: str, image_name: typing.Optional[str] = None) -> str:
     image_name = IMAGE_NAME if image_name is None else image_name
-    return f"{model.registry}/{image_name}:{model.name.replace('_', '-')}-{version}"
+    if model.registry is None:
+        image_uri = image_name
+    else:
+        image_uri = f"{model.registry}/{image_name}"
+    return f"{image_uri}:{model.name.replace('_', '-')}-{version}"
 
 
 def sandbox_docker_build(model: Model, image_fqn: str):
-    logger.info("Building docker container in flyte sandbox.")
+    logger.info("Building docker container in flyte demo cluster.")
     client = docker.from_env()
     sandbox_container = None
     for container in client.containers.list():
@@ -61,32 +65,33 @@ def sandbox_docker_build(model: Model, image_fqn: str):
 
     if sandbox_container is None:
         raise RuntimeError(
-            "Cannot find Flyte Sandbox. Make sure to install flytectl and create a sandbox with "
-            "`flytectl sandbox start --source .`"
+            "Cannot find Flyte Demo Cluster. Make sure to install flytectl and create a sandbox with "
+            "`flytectl demo start --source .`"
         )
 
-    _, build_logs = sandbox_container.exec_run(["docker", "build", "/root", "--tag", image_fqn])
-    for line in build_logs.decode().splitlines():
-        logger.info(line)
+    _, build_logs = sandbox_container.exec_run(["docker", "build", "/root", "--tag", image_fqn], stream=True)
+    for line in build_logs:
+        logger.info(line.decode().strip())
 
 
 def docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Image:
+    if model.registry is None:
+        raise ValueError("You must specify a registry in `model.remote` when deploying to a remote cluster.")
+
     client = docker.from_env()
 
     logger.info(f"Building image: {image_fqn}")
-    image, build_logs = client.images.build(
+    build_logs = client.api.build(
         path=".",
         dockerfile=model.dockerfile,
         tag=image_fqn,
         rm=True,
     )
     for line in build_logs:
-        logger.info(line)
+        logger.info(line.decode().strip())
 
-    for line in client.api.push(image.tags[0], stream=True, decode=True):
+    for line in client.api.push(image_fqn, stream=True, decode=True):
         logger.info(line)
-
-    return image
 
 
 def deploy_wf(wf, remote: FlyteRemote, image: str, project: str, domain: str, version: str):

@@ -59,11 +59,13 @@ class Model(TrackedInstance):
         self._loader = self._default_loader
 
         # properties needed for deployment
-        self._remote: Optional[FlyteRemote] = None
         self._image_name: Optional[str] = None
         self._config_file_path: Optional[str] = None
         self._registry: Optional[str] = None
         self._dockerfile: Optional[str] = None
+        self._project: Optional[str] = None
+        self._domain: Optional[str] = None
+        self.__remote__: Optional[FlyteRemote] = None
 
         if self._dataset.name is None:
             self._dataset.name = f"{self.name}.dataset"
@@ -412,11 +414,24 @@ class Model(TrackedInstance):
         self._registry = registry
         self._image_name = image_name
         self._dockerfile = dockerfile
-        self._remote = FlyteRemote(
-            config=Config.auto(config_file=self._config_file_path),
-            default_project=project,
-            default_domain=domain,
+        self._project = project
+        self._domain = domain
+
+    @property
+    def _remote(self) -> Optional[FlyteRemote]:
+        if self.__remote__ is not None:
+            return self.__remote__
+
+        config = Config.auto(config_file=self._config_file_path)
+        if config.platform.endpoint.startswith("localhost"):
+            config = Config.for_sandbox()
+
+        self.__remote__ = FlyteRemote(
+            config=config,
+            default_project=self._project,
+            default_domain=self._domain,
         )
+        return self.__remote__
 
     def remote_deploy(self):
         """Deploy model services to a Flyte backend."""
@@ -425,30 +440,23 @@ class Model(TrackedInstance):
         version = remote.get_app_version()
         image = remote.get_image_fqn(self, version, self._image_name)
 
-        # FlyteRemote needs to be re-instantiated after setting this environment variable so that the workflow's
-        # default image is set correctly. This can be simplified after flytekit config improvements
-        # are merged: https://github.com/flyteorg/flytekit/pull/857
         os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
-        self._remote = FlyteRemote(
-            config=Config.auto(config_file=self._config_file_path),
-            default_project=self._remote._default_project,
-            default_domain=self._remote._default_domain,
-        )
+        _remote = self._remote
 
-        remote.create_project(self._remote, self._remote._default_project)
-        if self._remote.config.platform.endpoint.startswith("localhost"):
+        remote.create_project(_remote, self._project)
+        if _remote.config.platform.endpoint.startswith("localhost"):
             # assume that a localhost flyte_admin_url means that we want to use Flyte sandbox
             remote.sandbox_docker_build(self, image)
         else:
             remote.docker_build_push(self, image)
 
-        args = [self._remote._default_project, self._remote._default_domain, version]
+        args = [_remote._default_project, _remote._default_domain, version]
         for wf in [
             self.train_workflow(),
             self.predict_workflow(),
             self.predict_from_features_workflow(),
         ]:
-            remote.deploy_wf(wf, self._remote, image, *args)
+            remote.deploy_wf(wf, _remote, image, *args)
 
     def remote_train(
         self,
@@ -461,12 +469,13 @@ class Model(TrackedInstance):
     ) -> Union[ModelArtifact, FlyteWorkflowExecution]:
         if self._remote is None:
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
+
         train_wf = self._remote.fetch_workflow(name=self.train_workflow_name, version=app_version)
         execution = self._remote.execute(
             train_wf,
             inputs={
                 "hyperparameters": self.hyperparameter_type(**({} if hyperparameters is None else hyperparameters)),
-                **{**reader_kwargs, **trainer_kwargs},  # type: ignore
+                **{**reader_kwargs, **({} if trainer_kwargs is None else trainer_kwargs)},  # type: ignore
             },
             project=self._remote.default_project,
             domain=self._remote.default_domain,
@@ -546,11 +555,13 @@ class Model(TrackedInstance):
             print(f"Waiting for execution {execution.id.name} to complete...")
             execution = self.remote_wait(execution)
             print("Done.")
-        self.artifact = ModelArtifact(
-            execution.outputs["model_object"],
-            execution.outputs["hyperparameters"],
-            execution.outputs["metrics"],
-        )
+
+        with self._remote.remote_context():
+            self.artifact = ModelArtifact(
+                execution.outputs["model_object"],
+                execution.outputs["hyperparameters"],
+                execution.outputs["metrics"],
+            )
 
     def _default_init(self, hyperparameters: dict) -> Any:
         if self._init_callable is None:
