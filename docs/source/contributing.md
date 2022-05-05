@@ -10,7 +10,7 @@ There are many ways to contribute to this project:
 
 - 📖 **Improve the documentation**: See typos and grammatical errors? Open up a PR to fix them!
 - 🐞 **Report Bugfixes**: Coming up against unexpected behavior? [Open up an issue](https://github.com/unionai-oss/unionml/issues/new)!
-- 🙏 **Feature Requests**: Have ideas on new features or improvements to an existing one? [Open up an issue](https://github.com/unionai-oss/unionml/issues/new)!
+- 🙏 **Feature Requests**: Have ideas on new features or improvements? [Open up an issue](https://github.com/unionai-oss/unionml/issues/new)!
 - 🔧 **Pull Requests**: Pick up one of the issues in the [issue log](https://github.com/unionai-oss/unionml/issues) and submit a PR!
 
 ## Environment Setup
