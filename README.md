@@ -20,7 +20,7 @@
 
 
 **UnionML** is an open source MLOps framework that aims to reduce the boilerplate and friction
-that comes with building and deploying models to production.
+that comes with building models and deploying them to production.
 
 You can create **UnionML Apps** by defining a few core methods that are automatically bundled
 into ML microservices, starting with model training and offline and online prediction.
