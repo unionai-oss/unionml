@@ -89,9 +89,10 @@ COPY . /root
 
 ### Configuring the Remote Backend
 
-All you need to get your `unionml` app for deployment is to configure it with the
-Docker registry and image name that you want to use to package you app, as well as the
-Flyte project and domain you want to use hosting your app's microservices.
+All you need to do to get your `unionml` app ready for deployment is to configure it with:
+
+1. The Docker registry and image name that you want to use to package your app
+2. The Flyte project and domain you want to use hosting your app's microservices.
 
 Add the following code anywhere in your app script:
 
