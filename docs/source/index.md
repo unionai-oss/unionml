@@ -178,7 +178,7 @@ endpoints with the `requests` library.
 
       ```{literalinclude} ../../tests/integration/sklearn_app/fastapi_app.py
       ---
-      lines: 3-6
+      lines: 1,4-6
       ---
       ```
 
@@ -196,7 +196,7 @@ endpoints with the `requests` library.
 
       ```{literalinclude} ../../tests/integration/pytorch_app/fastapi_app.py
       ---
-      lines: 3-6
+      lines: 1,4-6
       ---
       ```
 
@@ -214,7 +214,7 @@ endpoints with the `requests` library.
 
       ```{literalinclude} ../../tests/integration/keras_app/fastapi_app.py
       ---
-      lines: 3-6
+      lines: 1,4-6
       ---
       ```
 
