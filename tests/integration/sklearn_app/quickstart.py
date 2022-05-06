@@ -32,7 +32,7 @@ def evaluator(estimator: LogisticRegression, features: pd.DataFrame, target: pd.
 
 
 if __name__ == "__main__":
-    model_object, metrics = model.train(hyperparameters={"C": 1.0, "max_iter": 1000})
+    model_object, metrics = model.train(hyperparameters={"C": 1.0, "max_iter": 100})
     predictions = model.predict(features=load_digits(as_frame=True).frame.sample(5, random_state=42))
     print(model_object, metrics, predictions, sep="\n")
 

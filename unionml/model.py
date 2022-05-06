@@ -19,7 +19,7 @@ from flytekit.remote import FlyteRemote
 from flytekit.remote.executions import FlyteWorkflowExecution
 
 from unionml.dataset import Dataset
-from unionml.utils import inner_task
+from unionml.utils import inner_task, is_keras_model, is_pytorch_model
 
 
 @dataclass
@@ -578,18 +578,23 @@ class Model(TrackedInstance):
         *args,
         **kwargs,
     ) -> Any:
-        import torch
-
+        init = self._init_callable if self._init == self._default_init else self._init or self._init_callable
+        model_type = init if inspect.isclass(init) else signature(init).return_annotation if init is not None else init
         hyperparameters = asdict(hyperparameters) if is_dataclass(hyperparameters) else hyperparameters
         if isinstance(model_obj, sklearn.base.BaseEstimator):
-            return joblib.dump({"model_state": model_obj, "hyperparameters": hyperparameters}, file, *args, **kwargs)
-        elif isinstance(model_obj, torch.nn.Module):
+            return joblib.dump({"model_obj": model_obj, "hyperparameters": hyperparameters}, file, *args, **kwargs)
+        elif is_pytorch_model(model_type):
+            import torch
+
             torch.save(
-                {"model_state": model_obj.state_dict(), "hyperparameters": hyperparameters},
+                {"model_obj": model_obj.state_dict(), "hyperparameters": hyperparameters},
                 file,
                 *args,
                 **kwargs,
             )
+            return file
+        elif is_keras_model(model_type):
+            model_obj.save(file, *args, **kwargs)
             return file
 
         raise NotImplementedError(
@@ -597,19 +602,23 @@ class Model(TrackedInstance):
         )
 
     def _default_loader(self, file: Union[str, os.PathLike, IO], *args, **kwargs) -> Any:
-        import torch
-
         init = self._init_callable if self._init == self._default_init else self._init or self._init_callable
         model_type = init if inspect.isclass(init) else signature(init).return_annotation if init is not None else init
 
         if issubclass(model_type, sklearn.base.BaseEstimator):
             deserialized_model = joblib.load(file, *args, **kwargs)
-            return deserialized_model["model_state"]
-        elif issubclass(model_type, torch.nn.Module):
+            return deserialized_model["model_obj"]
+        elif is_pytorch_model(model_type):
+            import torch
+
             deserialized_model = torch.load(file, *args, **kwargs)
             model = model_type(**deserialized_model["hyperparameters"])
-            model.load_state_dict(deserialized_model["model_state"])
+            model.load_state_dict(deserialized_model["model_obj"])
             return model
+        elif is_keras_model(model_type):
+            from tensorflow import keras
+
+            return keras.models.load_model(file)
 
         raise NotImplementedError(
             f"Default loader not defined for type {model_type}. Use the Model.loader decorator to define one."
