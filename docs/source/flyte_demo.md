@@ -103,7 +103,7 @@ lines: 3-10
 ```
 
 ```{important}
-We're set the `config_file_path` argument to
+We've set the `config_file_path` argument to
 `Path.home() / ".flyte" / "config.yaml"`, which was created automatically when
 we invoked `flytectl demo start`.
 
