@@ -1,0 +1,5 @@
+git+https://github.com/unionai-oss/unionml@main
+fastapi
+pandas
+requests
+sklearn

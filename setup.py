@@ -12,6 +12,9 @@ setup(
     author="unionai-oss",
     author_email="info@union.ai",
     packages=find_packages(exclude=["tests*"]),
+    package_data={
+        "templates": ["*"],
+    },
     install_requires=install_requires,
     entry_points={"console_scripts": ["unionml = unionml.cli:app"]},
 )

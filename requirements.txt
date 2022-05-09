@@ -1,3 +1,5 @@
+click
+cookiecutter
 dataclasses_json
 docker
 fastapi
