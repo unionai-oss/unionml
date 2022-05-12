@@ -437,8 +437,8 @@ class Model(TrackedInstance):
         """Deploy model services to a Flyte backend."""
         from unionml import remote
 
-        version = remote.get_app_version()
-        image = remote.get_image_fqn(self, version, self._image_name)
+        app_version = remote.get_app_version()
+        image = remote.get_image_fqn(self, app_version, self._image_name)
 
         os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
         _remote = self._remote
@@ -450,7 +450,7 @@ class Model(TrackedInstance):
         else:
             remote.docker_build_push(self, image)
 
-        args = [_remote._default_project, _remote._default_domain, version]
+        args = [_remote._default_project, _remote._default_domain, app_version]
         for wf in [
             self.train_workflow(),
             self.predict_workflow(),
@@ -470,6 +470,9 @@ class Model(TrackedInstance):
         if self._remote is None:
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
 
+        from unionml import remote
+
+        app_version = app_version or remote.get_app_version()
         train_wf = self._remote.fetch_workflow(name=self.train_workflow_name, version=app_version)
         execution = self._remote.execute(
             train_wf,

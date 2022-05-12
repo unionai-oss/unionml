@@ -4,6 +4,7 @@ import copy
 import json
 import os
 import sys
+from enum import Enum
 from pathlib import Path
 
 import click
@@ -22,10 +23,20 @@ IMAGE_PREFIX = "unionml"
 FLYTE_SANDBOX_CONTAINER_NAME = "flyte-sandbox"
 
 
+class AppTemplate(str, Enum):
+    basic = "basic"
+    basic_aws_lambda = "basic-aws-lambda"
+
+
 @app.command()
 def init(
     app_name: str,
-    template: str = typer.Option("basic", "--template", "-t", help="template to use for initializing your app."),
+    template: AppTemplate = typer.Option(
+        AppTemplate.basic,
+        "--template",
+        "-t",
+        help="template to use for initializing your app.",
+    ),
     overwrite: bool = typer.Option(
         False,
         "--overwrite",
@@ -37,7 +48,7 @@ def init(
         "app_name": app_name,
     }
     cookiecutter(
-        str(Path(__file__).parent / "templates" / template),
+        str(Path(__file__).parent / "templates" / template.value),
         no_input=True,
         overwrite_if_exists=overwrite,
         extra_context=config,

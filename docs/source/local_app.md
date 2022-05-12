@@ -113,6 +113,8 @@ You may notice a few things about the code example above:
   simply an `sklearn` base estimator that you know and love!
 ```
 
+(serving_fastapi)=
+
 ## Serve with FastAPI
 
 `unionml` integrates with [FastAPI](https://fastapi.tiangolo.com/) to make model serving super easy. Simply

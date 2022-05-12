@@ -46,13 +46,13 @@ def get_app_version() -> str:
     return commit.hexsha
 
 
-def get_image_fqn(model: Model, version: str, image_name: typing.Optional[str] = None) -> str:
+def get_image_fqn(model: Model, app_version: str, image_name: typing.Optional[str] = None) -> str:
     image_name = IMAGE_NAME if image_name is None else image_name
     if model.registry is None:
         image_uri = image_name
     else:
         image_uri = f"{model.registry}/{image_name}"
-    return f"{image_uri}:{model.name.replace('_', '-')}-{version}"
+    return f"{image_uri}:{model.name.replace('_', '-')}-{app_version}"
 
 
 def sandbox_docker_build(model: Model, image_fqn: str):

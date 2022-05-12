@@ -1,8 +1,8 @@
 import json
 
+import app
 import pytest
 from sklearn.datasets import load_digits
-from unionml_example import app
 
 
 @pytest.fixture()
@@ -14,7 +14,7 @@ def apigw_event():
     features = features.sample(3, random_state=99).to_dict(orient="records")
 
     return {
-        "body": f'{{"features":{json.dumps(features)}}}',
+        "body": json.dumps({"features": features}),
         "resource": "/{proxy+}",
         "requestContext": {
             "resourceId": "123456",
@@ -61,17 +61,12 @@ def apigw_event():
         },
         "pathParameters": {"proxy": "/predict"},
         "httpMethod": "POST",
-        "stageVariables": {"baz": "qux"},
         "path": "/predict",
     }
 
 
 def test_lambda_handler(monkeypatch, apigw_event):
-    monkeypatch.setenv("UNIONML_MODEL_PATH", "./tests/unit/model_object.joblib")
-    import ipdb
-
-    ipdb.set_trace()
-    print(json.dumps(apigw_event, indent=4))
+    monkeypatch.setenv("UNIONML_MODEL_PATH", "./model_object.joblib")
     ret = app.lambda_handler(apigw_event, "")
     predictions = json.loads(ret["body"])
 
