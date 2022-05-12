@@ -26,7 +26,7 @@ model = Model(
 model.remote(
     registry="ghcr.io/unionai-oss",
     dockerfile="Dockerfile",
-    config_file_path="config/config-remote.yaml",
+    config_file="config/config-remote.yaml",
     project="unionml",
     domain="development",
 )

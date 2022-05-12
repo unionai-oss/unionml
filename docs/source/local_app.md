@@ -25,7 +25,7 @@ Local interaction with `Model` objects are mainly useful for local development, 
 unit testing of your `unionml` app.
 ```
 
-Here's our complete `unionml` app for digit classification in a `main.py` script:
+Here's our complete `unionml` app for digit classification in a `app.py` script:
 
 ```{code-cell}
 from typing import List
@@ -38,19 +38,9 @@ from sklearn.metrics import accuracy_score
 from unionml import Dataset, Model
 
 
-dataset = Dataset(
-    name="digits_dataset",
-    test_size=0.2,
-    shuffle=True,
-    random_state=42,
-    targets=["target"],
-)
+dataset = Dataset(name="digits_dataset", test_size=0.2, shuffle=True, targets=["target"])
+model = Model(name="digits_classifier", init=LogisticRegression, dataset=dataset)
 
-model = Model(
-    name="digits_classifier",
-    init=LogisticRegression,
-    dataset=dataset
-)
 
 @dataset.reader
 def reader(sample_frac: float = 1.0, random_state: int = 12345) -> pd.DataFrame:
@@ -76,7 +66,7 @@ def evaluator(estimator: LogisticRegression, features: pd.DataFrame, target: pd.
 ## Execute as a Python Module
 
 We can then invoke the `model.train` method to train the sklearn estimator and `model.predict`
-to generate predictions. Then invoke the app script with `python main.py`:
+to generate predictions. Then invoke the app script with `python app.py`:
 
 ```{code-cell}
 :tags: [remove-cell]
@@ -126,7 +116,7 @@ You may notice a few things about the code example above:
 ## Serve with FastAPI
 
 `unionml` integrates with [FastAPI](https://fastapi.tiangolo.com/) to make model serving super easy. Simply
-create a `FastAPI` app and pass it into `model.serve` in the `main.py` script:
+create a `FastAPI` app and pass it into `model.serve` in the `app.py` script:
 
 ```{code-cell}
 from fastapi import FastAPI
@@ -147,7 +137,7 @@ Start the server with `unionml serve`:
 ```{prompt} bash
 :prompts: $
 
-unionml serve main:app --model-path /tmp/model_object.joblib --reload
+unionml serve app:app --model-path /tmp/model_object.joblib --reload
 ```
 
 ```{note}

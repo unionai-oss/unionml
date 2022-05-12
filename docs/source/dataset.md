@@ -2,6 +2,12 @@
 
 # Defining a Dataset
 
+In {ref}`Initializing a UnionML App <initialize>`, we created a UnionML app project,
+which contains an `app.py` script. In this guide, we'll learn how a `Dataset` is
+defined and how we can customize its behavior.
+
+## What's a UnionML Dataset?
+
 A `Dataset` is one of the core parts of a *`unionml` app*. You can think of
 it as a specification for a dataset's source in addition to a set of common
 machine-learning-specific abstractions, which we'll get into later in this guide.
@@ -11,13 +17,7 @@ First, let's define a dataset:
 ```{code-block} python
 from unionml import Dataset
 
-dataset = Dataset(
-    name="digits_dataset",
-    test_size=0.2,
-    shuffle=True,
-    random_state=42,
-    targets=["target"],
-)
+dataset = Dataset(name="digits_dataset", test_size=0.2, shuffle=True, targets=["target"])
 ```
 
 ```{note}

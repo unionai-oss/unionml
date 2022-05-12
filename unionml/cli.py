@@ -9,6 +9,7 @@ from pathlib import Path
 import click
 import typer
 import uvicorn
+from cookiecutter.main import cookiecutter
 
 from unionml.remote import get_model
 
@@ -19,6 +20,28 @@ app = typer.Typer()
 
 IMAGE_PREFIX = "unionml"
 FLYTE_SANDBOX_CONTAINER_NAME = "flyte-sandbox"
+
+
+@app.command()
+def init(
+    app_name: str,
+    template: str = typer.Option("basic", "--template", "-t", help="template to use for initializing your app."),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="overwrites an existing app if flag is set.",
+    ),
+):
+    """Initialize a UnionML project."""
+    config = {
+        "app_name": app_name,
+    }
+    cookiecutter(
+        str(Path(__file__).parent / "templates" / template),
+        no_input=True,
+        overwrite_if_exists=overwrite,
+        extra_context=config,
+    )
 
 
 @app.command()

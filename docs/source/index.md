@@ -35,7 +35,7 @@ pip install unionml
 
 # Quickstart
 
-## Create a Minimal UnionML App
+## A Minimal UnionML App
 
 A `unionml` app requires two core components: a `Dataset` and a `Model`.
 
