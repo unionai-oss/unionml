@@ -6,6 +6,7 @@
 ---
 hidden: true
 ---
+initialize
 dataset
 model
 local_app
@@ -23,6 +24,7 @@ A *`unionml` app* is composed of two objects: `Dataset` and `Model`. Together,
 they expose method decorator entrypoints that serve as the core building blocks of an end-to-end
 machine learning application. The following sections will show you how to:
 
+- {ref}`Initialize a UnionML App <initialize>`: quickly create a UnionML app with `unionml init`.
 - {ref}`Define a Dataset <dataset>`: specify where to *read* data from and how to *split* it into training and test
   sets, *parse* out features and targets, and *iterate* through batches of data.
 - {ref}`Bind a Model and Dataset <model>`: specify how to *initialize*, *train*, *evaluate*, and generate

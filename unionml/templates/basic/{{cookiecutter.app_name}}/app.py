@@ -36,7 +36,7 @@ def evaluator(estimator: LogisticRegression, features: pd.DataFrame, target: pd.
 # attach Flyte demo cluster metadata
 model.remote(
     dockerfile="Dockerfile",
-    config_file_path=str(Path.home() / ".flyte" / "config.yaml"),
+    config_file=str(Path.home() / ".flyte" / "config.yaml"),
     project="{{ cookiecutter.project_name }}",
     domain="development",
 )

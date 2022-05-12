@@ -26,7 +26,6 @@ FLYTE_SANDBOX_CONTAINER_NAME = "flyte-sandbox"
 def init(
     app_name: str,
     template: str = typer.Option("basic", "--template", "-t", help="template to use for initializing your app."),
-    venv: bool = typer.Option(False, help="whether or not to create a virtual environment for your app."),
     overwrite: bool = typer.Option(
         False,
         "--overwrite",
@@ -36,7 +35,6 @@ def init(
     """Initialize a UnionML project."""
     config = {
         "app_name": app_name,
-        "venv": venv,
     }
     cookiecutter(
         str(Path(__file__).parent / "templates" / template),

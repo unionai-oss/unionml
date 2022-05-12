@@ -25,19 +25,8 @@ from unionml import DatasetModel
 
 from sklearn.linear_model import LogisticRegression
 
-dataset = Dataset(
-    name="digits_dataset",
-    test_size=0.2,
-    shuffle=True,
-    random_state=42,
-    targets=["target"],
-)
-
-model = Model(
-    name="digits_classifier",
-    init=LogisticRegression,
-    dataset=dataset
-)
+dataset = Dataset(name="digits_dataset", test_size=0.2, shuffle=True, targets=["target"])
+model = Model(name="digits_classifier", init=LogisticRegression, dataset=dataset)
 ```
 
 ```{note}

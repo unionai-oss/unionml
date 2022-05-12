@@ -31,10 +31,9 @@ In this guide, we'll:
 
 ## Prerequisites
 
-First, install [Docker](https://docs.docker.com/get-docker/) and
-[`flytectl`](https://docs.flyte.org/projects/flytectl/en/latest/index.html#installation),
-the command-line interface for Flyte.
-
+First, install [`flytectl`](https://docs.flyte.org/projects/flytectl/en/latest/index.html#installation),
+the command-line interface for Flyte, and [Docker](https://docs.docker.com/get-docker/), making sure
+you have the Docker daemon running.
 
 ## Deploy App Workflows
 
@@ -44,76 +43,22 @@ A `unionml` app is composed of a `Dataset`, `Model`, and serving app component
 execution graphs that perform multiple steps of computation.
 
 To make these computations scalable, reproducible, and auditable, we can serialize
-our workflows and register them to a Flyte cluster, in this case a local Flyte sandbox.
+our workflows and register them to a Flyte cluster, in this case a local Flyte demo cluster.
 
-Going back to our digit classification app, let's assume that we have a `unionml`
-app in an `app.py` file. We can use the `unionml` command-line tool to easily deploy
-our app workflows.
+Going back to our digit classification app, let's assume that we've
+{ref}`initialized our app <initialize>` using the `unionml init my_app` command
+and have an `app.py` script with our digits classification model.
 
-````{dropdown} See app source
+````{dropdown} See app.py
 
-   ```{literalinclude} ../../tests/integration/sklearn_app/quickstart.py
+   ```{literalinclude} ../../unionml/templates/basic/{{cookiecutter.app_name}}/app.py
    ```
 
 ````
-### Creating a Dockerfile
 
-UnionML relies on [Docker](https://www.docker.com/) to package up all of your app's
-source code and dependencies. Create a `Dockerfile` for your app with the following
-contents:
+### Start a Local Flyte Demo Cluster
 
-```{code-block} docker
-FROM python:3.8-slim-buster
-
-WORKDIR /root
-ENV VENV /opt/venv
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
-ENV PYTHONPATH /root
-
-RUN apt-get update && apt-get install -y build-essential git-all
-
-# Install the AWS cli separately to prevent issues with boto being written over
-RUN pip3 install awscli
-
-RUN python3 -m venv ${VENV}
-ENV PATH="${VENV}/bin:$PATH"
-
-# Install Python dependencies
-COPY ./requirements.txt /root
-RUN pip install -r /root/requirements.txt
-
-# Copy the actual code
-COPY . /root
-```
-
-### Configuring the Remote Backend
-
-All you need to do to get your `unionml` app ready for deployment is to configure it with:
-
-1. The Docker registry and image name that you want to use to package your app
-2. The Flyte project and domain you want to use hosting your app's microservices.
-
-Add the following code anywhere in your app script:
-
-```{literalinclude} ../../tests/integration/sklearn_app/remote_config.py
----
-lines: 3-10
----
-```
-
-```{important}
-We've set the `config_file_path` argument to
-`Path.home() / ".flyte" / "config.yaml"`, which was created automatically when
-we invoked `flytectl demo start`.
-
-Under the hood, `unionml` will handle the Docker build process locally, bypassing the
-need to push your app image to a remote registry.
-```
-
-## Initialize a Flyte Sandbox
-
-Then in your app directory, run:
+To start a Flyte demo cluster, run the following in your app directory:
 
 ```{prompt} bash
 ---
@@ -130,6 +75,54 @@ Flyte sandbox.
 ```
 
 We should now be able to go to `http://localhost:30080/console` on your browser to see the Flyte UI.
+
+
+### The App Dockerfile
+
+UnionML relies on [Docker](https://www.docker.com/) to package up all of your app's
+source code and dependencies. The basic app template comes with a `Dockerfile`, which
+we can use to do this:
+
+````{dropdown} See Dockerfile
+
+   ```{literalinclude} ../../unionml/templates/basic/{{cookiecutter.app_name}}/Dockerfile
+   ---
+   language: docker
+   ---
+   ```
+
+````
+
+### Configuring the Remote Backend
+
+All you need to do to get your `unionml` app ready for deployment is to configure it with:
+
+1. The Docker registry and image name that you want to use to package your app
+2. The Flyte project and domain you want to use hosting your app's microservices.
+
+In the `app.py` script, you can see the following code that does just this:
+
+```{literalinclude} ../../tests/integration/sklearn_app/remote_config.py
+---
+lines: 5-10
+---
+```
+
+```{important}
+We've set the `config_file` argument to
+`Path.home() / ".flyte" / "config.yaml"`, which was created automatically when
+we invoked `flytectl demo start`.
+
+Under the hood, `unionml` will handle the Docker build process locally, bypassing the
+need to push your app image to a remote registry.
+```
+
+```{note}
+If you [manage your own Flyte cluster](https://docs.flyte.org/en/latest/deployment/index.html),
+you can deploy your UnionML app to it by pointing the `config_file` argument to your own
+`config.yaml` file. In this case, you'll also need to specify a Docker registry that you have push
+access to via the `model.remote(registry="...")` keyword argument.
+```
 
 ## UnionML CLI
 

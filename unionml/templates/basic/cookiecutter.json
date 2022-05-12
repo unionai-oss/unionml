@@ -1,5 +1,4 @@
 {
     "app_name": null,
-    "venv": null,
     "project_name": "{{ cookiecutter.app_name|replace('_', '-') }}"
 }

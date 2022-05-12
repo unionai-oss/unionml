@@ -60,7 +60,7 @@ class Model(TrackedInstance):
 
         # properties needed for deployment
         self._image_name: Optional[str] = None
-        self._config_file_path: Optional[str] = None
+        self._config_file: Optional[str] = None
         self._registry: Optional[str] = None
         self._dockerfile: Optional[str] = None
         self._project: Optional[str] = None
@@ -117,8 +117,8 @@ class Model(TrackedInstance):
         return self._hyperparameter_type
 
     @property
-    def config_file_path(self) -> Optional[str]:
-        return self._config_file_path
+    def config_file(self) -> Optional[str]:
+        return self._config_file
 
     @property
     def registry(self) -> Optional[str]:
@@ -406,11 +406,11 @@ class Model(TrackedInstance):
         registry: Optional[str] = None,
         image_name: str = None,
         dockerfile: str = "Dockerfile",
-        config_file_path: Optional[str] = None,
+        config_file: Optional[str] = None,
         project: Optional[str] = None,
         domain: Optional[str] = None,
     ):
-        self._config_file_path = config_file_path
+        self._config_file = config_file
         self._registry = registry
         self._image_name = image_name
         self._dockerfile = dockerfile
@@ -422,7 +422,7 @@ class Model(TrackedInstance):
         if self.__remote__ is not None:
             return self.__remote__
 
-        config = Config.auto(config_file=self._config_file_path)
+        config = Config.auto(config_file=self._config_file)
         if config.platform.endpoint.startswith("localhost"):
             config = Config.for_sandbox()
 
