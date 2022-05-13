@@ -5,7 +5,6 @@ from contextlib import contextmanager
 
 import pytest
 import requests
-from sklearn.datasets import load_digits
 from sklearn.utils.validation import check_is_fitted
 
 
@@ -14,8 +13,10 @@ def _app(ml_framework: str, *args, port: str = "8000"):
     process = subprocess.Popen(
         ["unionml", "serve", f"tests.integration.{ml_framework}_app.fastapi_app:app", "--port", port, *args],
         stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
-    _wait_to_exist(port)
+    if len(process.stderr.peek().decode()) == 0:  # type: ignore
+        _wait_to_exist(port)
     try:
         yield process
     finally:
@@ -81,15 +82,8 @@ def test_fastapi_app(ml_framework, filename, tmp_path):
 
 
 def test_fastapi_app_no_model():
-    digits = load_digits(as_frame=True)
-    features = digits.frame[digits.feature_names]
-    n_samples = 5
-
     # excluding the --model-path argument should raise an error since the unionml.Model object
     # doesn't have a model_artifact attribute set yet
-    with contextmanager(_app)("sklearn", port="8001"):
-        prediction_response = requests.post(
-            "http://127.0.0.1:8001/predict",
-            json={"features": features.sample(n_samples, random_state=42).to_dict(orient="records")},
-        )
-        assert prediction_response.json()["detail"].startswith("Model artifact path not specified")
+    with contextmanager(_app)("sklearn", port="8001") as process:
+        error_msg = process.stderr.read().decode().splitlines()[-1]
+        assert error_msg.startswith("ValueError: Model artifact path not specified")

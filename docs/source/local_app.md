@@ -113,7 +113,7 @@ You may notice a few things about the code example above:
   simply an `sklearn` base estimator that you know and love!
 ```
 
-(serving_fastapi)=
+(local_serving_fastapi)=
 
 ## Serve with FastAPI
 
@@ -175,4 +175,4 @@ machine learning services in the ☁️ cloud?
 `unionml` is coupled with [Flyte](https://docs.flyte.org/en/latest/), which is a scalable,
 reliable, and robust orchestration platform for data processing and machine learning. But before we
 deploy to the cloud, it's important to understand what a Flyte cluster is by
-{ref}`spinning up a Flyte Demo Cluster <flyte_demo>` locally.
+{ref}`spinning up a Flyte Cluster <flyte_cluster>` locally.

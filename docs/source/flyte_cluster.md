@@ -1,6 +1,6 @@
-(flyte_demo)=
+(flyte_cluster)=
 
-# Flyte Demo Cluster
+# Flyte Cluster
 
 In {ref}`Local Training and Prediction <local_app>` we ran our training and prediction
 functions locally by:
@@ -44,6 +44,8 @@ execution graphs that perform multiple steps of computation.
 
 To make these computations scalable, reproducible, and auditable, we can serialize
 our workflows and register them to a Flyte cluster, in this case a local Flyte demo cluster.
+
+### Initializing a Digits Classification App
 
 Going back to our digit classification app, let's assume that we've
 {ref}`initialized our app <initialize>` using the `unionml init my_app` command
@@ -117,11 +119,18 @@ Under the hood, `unionml` will handle the Docker build process locally, bypassin
 need to push your app image to a remote registry.
 ```
 
-```{note}
-If you [manage your own Flyte cluster](https://docs.flyte.org/en/latest/deployment/index.html),
-you can deploy your UnionML app to it by pointing the `config_file` argument to your own
-`config.yaml` file. In this case, you'll also need to specify a Docker registry that you have push
-access to via the `model.remote(registry="...")` keyword argument.
+### Managing your Own Flyte Cluster
+
+In this guide we're using the Flyte demo cluster that you can spin up on your local machine.
+However, if you want to access to full power of Flyte, scaling to larger compute clusters
+and accelerators for more data- and compute-heavy models, you can follow the
+[Flyte Deployment Guides](https://docs.flyte.org/en/latest/deployment/index.html).
+
+```{important}
+To point your UnionML app to your own Flyte cluster, specify a `config.yaml` file in the `config_file`
+argument that is properly configured to access that Flyte cluster. In this case, you'll also need to
+specify a Docker registry that you have push access to via the `model.remote(registry="...")` keyword
+argument.
 ```
 
 ## UnionML CLI
@@ -179,4 +188,56 @@ Where `<path-to-json-file>` is a json file containing feature data that's compat
 
 ```{note}
 Currently, only json records data that can be converted to a pandas DataFrame is supported.
+```
+
+
+## Programmatic API
+
+UnionML also provides a programmatic API to deploy your app and kick off training and prediction jobs
+that run on the Flyte cluster. We simply import the UnionML `Model` object into another python module:
+
+### `model.remote_deploy`
+
+```{code-block} python
+from app import model
+
+model.remote_deploy()
+```
+
+### `model.remote_train`
+
+```{code-block} python
+from unionml.model import ModelArtifact
+
+from app import model
+
+model_artifact: ModelArtifact = model.remote_train(
+    hyperparameters={"C": 1.0, "max_iter": 1000},
+)
+```
+
+The `model_artifact` output `NamedTuple` contains three attributes:
+- `model_object`: The actual trained model object, in this case an sklearn `BaseEstimator`.
+- `hyperparameters`: The hyperparameters used to train the model.
+- `metrics`: The metrics associated with the training and test set of the dataset used during training.
+
+```{note}
+By default, invoking `remote_train` is a blocking operation, i.e. the python process will wait until
+the Flyte backend completes training.
+```
+
+### `model.remote_predict`
+
+```{code-block} python
+from sklearn.datasets import load_digits
+
+from app import model
+
+features = load_digits(as_frame=True).frame.sample(5, random_state=42)
+predictions = model.remote_predict(features=features)
+```
+
+```{note}
+The `features` kwarg should be the same type as the output type of the `dataset.reader`
+function. In this case, that would be a `pandas.DataFrame`.
 ```

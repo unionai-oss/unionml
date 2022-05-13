@@ -106,6 +106,22 @@ def predict(
     typer.echo(f"[unionml] predictions: {predictions}")
 
 
+@app.command("list-model-versions")
+def list_model_versions(
+    app: str,
+    app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
+    limit: int = typer.Option(
+        10, "--limit", help="Maximum number of model versions to list, sorted in descending order of time of execution."
+    ),
+):
+    """List all model versions."""
+
+    typer.echo(f"[unionml] app: {app} - listing model versions for app version={app_version}")
+    model = get_model(app)
+    for model_version in model.remote_list_model_versions(app_version, limit):
+        typer.echo(f"- {model_version}")
+
+
 @app.callback()
 def callback():
     """unionml command-line tool."""

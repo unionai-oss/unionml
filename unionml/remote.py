@@ -141,3 +141,27 @@ def get_model_artifact(
     model.remote_load(execution)
     assert model.artifact is not None
     return model.artifact
+
+
+def list_model_versions(model: Model, app_version: typing.Optional[str] = None, limit: int = 10) -> typing.List[str]:
+    if model._remote is None:
+        raise RuntimeError("You need to configure the remote client with the `Model.remote` method")
+
+    app_version = app_version or get_app_version()
+    train_wf = model._remote.fetch_workflow(
+        model._remote._default_project,
+        model._remote._default_domain,
+        model.train_workflow_name,
+        app_version,
+    )
+    executions, _ = model._remote.client.list_executions_paginated(
+        train_wf.id.project,
+        train_wf.id.domain,
+        limit=limit,
+        filters=[
+            filters.Equal("launch_plan.name", train_wf.id.name),
+            filters.Equal("phase", "SUCCEEDED"),
+        ],
+        sort_by=Sort("created_at", Sort.Direction.DESCENDING),
+    )
+    return [x.id.name for x in executions]

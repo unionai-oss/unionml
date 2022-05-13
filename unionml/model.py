@@ -395,11 +395,11 @@ class Model(TrackedInstance):
     def load(self, file, *args, **kwargs):
         return self._loader(file, *args, **kwargs)
 
-    def serve(self, app: FastAPI, remote: bool = False):
+    def serve(self, app: FastAPI, remote: bool = False, model_version: str = "latest"):
         """Create a FastAPI serving app."""
         from unionml.fastapi import serving_app
 
-        serving_app(self, app, remote=remote)
+        serving_app(self, app, remote=remote, model_version=model_version)
 
     def remote(
         self,
@@ -461,7 +461,7 @@ class Model(TrackedInstance):
     def remote_train(
         self,
         app_version: str = None,
-        wait: bool = False,
+        wait: bool = True,
         *,
         hyperparameters: Optional[Dict[str, Any]] = None,
         trainer_kwargs: Optional[Dict[str, Any]] = None,
@@ -499,7 +499,7 @@ class Model(TrackedInstance):
     def remote_predict(
         self,
         app_version: str = None,
-        wait: bool = False,
+        wait: bool = True,
         *,
         features: Any = None,
         **reader_kwargs,
@@ -565,6 +565,19 @@ class Model(TrackedInstance):
                 execution.outputs["hyperparameters"],
                 execution.outputs["metrics"],
             )
+
+    def remote_list_model_versions(self, app_version: str = None, limit: int = 10) -> List[str]:
+        from unionml import remote
+
+        app_version = app_version or remote.get_app_version()
+        return remote.list_model_versions(self, app_version=app_version, limit=limit)
+
+    def remote_fetch_predictions(self, execution: FlyteWorkflowExecution) -> Any:
+        if self._remote is None:
+            raise ValueError("You must call `model.remote` to attach a remote backend to this model.")
+        execution = self._remote.wait(execution)
+        predictions, *_ = execution.outputs.values()
+        return predictions
 
     def _default_init(self, hyperparameters: dict) -> Any:
         if self._init_callable is None:
