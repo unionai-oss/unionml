@@ -1,6 +1,5 @@
 import json
 
-import app
 import pytest
 from sklearn.datasets import load_digits
 
@@ -66,8 +65,11 @@ def apigw_event():
 
 
 def test_lambda_handler(monkeypatch, apigw_event):
-    monkeypatch.setenv("UNIONML_MODEL_PATH", "./model_object.joblib")
-    ret = app.lambda_handler(apigw_event, "")
+    monkeypatch.setenv("UNIONML_MODEL_PATH", "./tests/unit/model_object.joblib")
+
+    from app import lambda_handler
+
+    ret = lambda_handler(apigw_event, "")
     predictions = json.loads(ret["body"])
 
     assert ret["statusCode"] == 200

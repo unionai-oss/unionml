@@ -2,7 +2,6 @@ import json
 
 import pytest
 from sklearn.datasets import load_digits
-from unionml_example import app
 
 
 @pytest.fixture()
@@ -68,10 +67,9 @@ def apigw_event():
 
 def test_lambda_handler(monkeypatch, apigw_event):
     monkeypatch.setenv("UNIONML_MODEL_PATH", "./tests/unit/model_object.joblib")
-    import ipdb
 
-    ipdb.set_trace()
-    print(json.dumps(apigw_event, indent=4))
+    from unionml_example import app
+
     ret = app.lambda_handler(apigw_event, "")
     predictions = json.loads(ret["body"])
 
