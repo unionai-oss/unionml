@@ -1,4 +1,5 @@
-unionml
+git+https://www.github.com/unionai-oss/unionml@main
+# unionml
 fastapi
 pandas
 requests

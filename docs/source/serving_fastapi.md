@@ -34,7 +34,7 @@ app = FastAPI()
 model.serve(app, remote=True, model_version="latest")
 ```
 
-And that's it 🙌!
+And that's it 🙌
 
 The `model_version` argument is `"latest"` by default, but you can serve other
 models by passing in the unique identifier of the Flyte execution that produced a specific

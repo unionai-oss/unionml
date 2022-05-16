@@ -37,11 +37,6 @@ def init(
         "-t",
         help="template to use for initializing your app.",
     ),
-    overwrite: bool = typer.Option(
-        False,
-        "--overwrite",
-        help="overwrites an existing app if flag is set.",
-    ),
 ):
     """Initialize a UnionML project."""
     config = {
@@ -50,7 +45,6 @@ def init(
     cookiecutter(
         str(Path(__file__).parent / "templates" / template.value),
         no_input=True,
-        overwrite_if_exists=overwrite,
         extra_context=config,
     )
 

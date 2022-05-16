@@ -85,5 +85,5 @@ def test_fastapi_app_no_model():
     # excluding the --model-path argument should raise an error since the unionml.Model object
     # doesn't have a model_artifact attribute set yet
     with contextmanager(_app)("sklearn", port="8001") as process:
-        error_msg = process.stderr.read().decode().splitlines()[-1]
+        error_msg = [line for line in process.stderr.read().decode().splitlines() if line != ""][-2]
         assert error_msg.startswith("ValueError: Model artifact path not specified")

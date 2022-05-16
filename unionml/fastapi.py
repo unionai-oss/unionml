@@ -1,7 +1,7 @@
 """Utilities for the FastAPI integration."""
 
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, NamedTuple, Optional, Union
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
@@ -11,19 +11,26 @@ from unionml.model import Model, ModelArtifact
 from unionml.remote import get_model_artifact
 
 
-def serving_app(model: Model, app: FastAPI, remote: bool = False, model_version: str = "latest"):
+class PredictParams(NamedTuple):
+    model_version: str
+    inputs: Optional[Union[Dict, BaseModel]]
+    features: Optional[List[Dict[str, Any]]]
 
-    model_path = os.getenv("UNIONML_MODEL_PATH")
-    if model.artifact is None:
-        if not remote:
-            if model.artifact is None and model_path is None:
-                raise ValueError(
-                    "Model artifact path not specified. Make sure to specify the unionml serve --model-path in "
-                    "the option when starting the unionml prediction service in local mode."
-                )
-            model.artifact = ModelArtifact(model.load(model_path))
-        else:
-            model.artifact = get_model_artifact(model, model_version=model_version)
+
+def serving_app(model: Model, app: FastAPI, remote: bool = False, model_version: str = "latest"):
+    @app.on_event("startup")
+    async def setup_model():
+        model_path = os.getenv("UNIONML_MODEL_PATH")
+        if model.artifact is None:
+            if not remote:
+                if model.artifact is None and model_path is None:
+                    raise ValueError(
+                        "Model artifact path not specified. Make sure to specify the unionml serve --model-path in "
+                        "the option when starting the unionml prediction service in local mode."
+                    )
+                model.artifact = ModelArtifact(model.load(model_path))
+            else:
+                model.artifact = get_model_artifact(model, model_version=model_version)
 
     @app.get("/", response_class=HTMLResponse)
     def root():

@@ -1,13 +1,13 @@
 (flyte_cluster)=
 
-# Flyte Cluster
+# Deploying to Flyte
 
 In {ref}`Local Training and Prediction <local_app>` we ran our training and prediction
 functions locally by:
 
-1. Executing our `unionml` app as python module by calling the `model.train` and
+1. Executing our `unionml` app as a python module by calling the `model.train` and
    `model.predict` methods.
-2. Starting a FastAPI server and invoking `/predict` endpoint using
+2. Starting a FastAPI server and invoking the `/predict` endpoint using
    the `requests` library.
 
 ```{note}
@@ -122,8 +122,8 @@ need to push your app image to a remote registry.
 ### Managing your Own Flyte Cluster
 
 In this guide we're using the Flyte demo cluster that you can spin up on your local machine.
-However, if you want to access to full power of Flyte, scaling to larger compute clusters
-and accelerators for more data- and compute-heavy models, you can follow the
+However, if you want to access to the full power of Flyte, e.g. scaling to larger compute
+clusters and gpu accelerators for more data- and compute-heavy models, you can follow the
 [Flyte Deployment Guides](https://docs.flyte.org/en/latest/deployment/index.html).
 
 ```{important}
@@ -131,6 +131,8 @@ To point your UnionML app to your own Flyte cluster, specify a `config.yaml` fil
 argument that is properly configured to access that Flyte cluster. In this case, you'll also need to
 specify a Docker registry that you have push access to via the `model.remote(registry="...")` keyword
 argument.
+
+To learn more about cluster configuration, see [here](https://docs.flyte.org/en/latest/deployment/cluster_config/index.html#deployment-cluster-config).
 ```
 
 ## UnionML CLI

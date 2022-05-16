@@ -1,4 +1,1 @@
-{
-    "app_name": null,
-    "project_name": "{{ cookiecutter.app_name|replace('_', '-') }}"
-}
+../common/cookiecutter.json
