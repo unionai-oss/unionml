@@ -1,5 +1,6 @@
 from setuptools import find_packages, setup
 
+
 __version__ = "0.0.0+dev0"
 
 with open("requirements.txt") as f:
