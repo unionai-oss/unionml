@@ -76,7 +76,7 @@ mounted inside. This is so that your app's workflows can be serialized and regis
 Flyte sandbox.
 ```
 
-We should now be able to go to `http://localhost:30080/console` on your browser to see the Flyte UI.
+We should now be able to go to `http://localhost:30080/console` on our browser to see the Flyte UI.
 
 
 ### The App Dockerfile
@@ -159,6 +159,12 @@ is the module name containing the `unionml` app and second section is the variab
 name pointing to the `unionml.Model` object.
 ```
 
+```{warning}
+The Flyte demo cluster may take a few seconds to create the resources required to run your
+workflows after running the `unionml deploy` command. If the commands below fail, retry
+them after a few seconds.
+```
+
 Now that your app workflows are deployed, you can run training and prediction jobs using
 the Flyte sandbox cluster:
 
@@ -183,14 +189,38 @@ Generate predictions with json data:
 prompts: $
 ---
 
-unionml predict app:model -f <path-to-json-file>
+unionml predict app:model -f data/sample_features.json
 ```
 
-Where `<path-to-json-file>` is a json file containing feature data that's compatible with the model.
+Where `data/sample_features.json` is a json file containing feature data that's compatible with the model.
 
 ```{note}
-Currently, only json records data that can be converted to a pandas DataFrame is supported.
+Currently, only json files that can be converted to a pandas DataFrame is supported.
 ```
+
+````{important}
+
+   You can also generate predictions by fetching data from the `dataset.reader` function. However,
+   this assumes that you've correctly factored your reader to get data from some arbitrary source.
+   For example, you can implement your reader function to get data from an s3_path:
+
+   ```{code-block} python
+   @dataset.reader
+   def reader(s3_path: str) -> pd.DataFrame:
+       return pandas.read_csv(s3_path)
+   ```
+
+   Then, you can generate predictions with the `--inputs` option:
+
+   ```{prompt} bash
+   ---
+   prompts: $
+   ---
+
+   unionml predict app:model --inputs '{"s3_path": "s3://my-bucket/path/to/data.csv"}'
+   ```
+
+````
 
 
 ## Programmatic API
@@ -243,3 +273,33 @@ predictions = model.remote_predict(features=features)
 The `features` kwarg should be the same type as the output type of the `dataset.reader`
 function. In this case, that would be a `pandas.DataFrame`.
 ```
+
+````{important}
+
+   Similar to the point about about generating predictions using the `@dataset.reader` function,
+   you can pass in the reader keyword arguments to the `model.remote_predict` method, assuming
+   your reader function looks like:
+
+   ```{code-block} python
+   @dataset.reader
+   def reader(s3_path: str) -> pd.DataFrame:
+       return pandas.read_csv(s3_path)
+   ```
+
+   You can generate predictions like so:
+
+   ```{prompt} bash
+   ---
+   prompts: $
+   ---
+
+   predictions = model.remote_predict(s3_path="s3://my-bucket/path/to/data.csv")
+   ```
+
+````
+
+# Next
+
+Now that you've deployed your UnionML app to a Flyte cluster to scale your training jobs
+and do batch prediction, let's see how we can serve these predictions in production
+in an online setting with {ref}`FastAPI <serving_fastapi>`.

@@ -499,6 +499,7 @@ class Model(TrackedInstance):
     def remote_predict(
         self,
         app_version: str = None,
+        model_version: str = None,
         wait: bool = True,
         *,
         features: Any = None,
@@ -510,18 +511,20 @@ class Model(TrackedInstance):
         from unionml import remote
 
         app_version = app_version or remote.get_app_version()
-        model_artifact = remote.get_model_artifact(self, app_version)
+        model_artifact = remote.get_model_artifact(self, app_version, model_version)
 
         if (features is not None and len(reader_kwargs) > 0) or (features is None and len(reader_kwargs) == 0):
             raise ValueError("You must provide only one of `features` or `reader_kwargs`")
 
-        inputs = {"model": model_artifact.model_object}
+        inputs = {"model_object": model_artifact.model_object}
         if features is None:
             workflow_name = self.predict_workflow_name
             inputs.update(reader_kwargs)
+            type_hints = {}
         else:
             workflow_name = self.predict_from_features_workflow_name
             inputs.update({"features": features})
+            type_hints = {"features": [*self._dataset.reader_return_type.values()][0]}
 
         predict_wf = self._remote.fetch_workflow(
             self._remote._default_project,
@@ -535,6 +538,7 @@ class Model(TrackedInstance):
             project=self._remote.default_project,
             domain=self._remote.default_domain,
             wait=wait,
+            type_hints=type_hints,
         )
         console_url = self._remote.generate_console_url(execution)
         print(

@@ -154,7 +154,7 @@ to get predictions from input features:
 import requests
 
 # generate predictions
-requests.get(
+requests.post(
     "http://127.0.0.1:8000/predict",
     json={"features": load_digits(as_frame=True).frame.sample(5, random_state=42).to_dict(orient="records")},
 )

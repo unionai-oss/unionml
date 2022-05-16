@@ -12,7 +12,7 @@ import typer
 import uvicorn
 from cookiecutter.main import cookiecutter
 
-from unionml.remote import get_model
+from unionml.remote import get_app_version, get_model
 
 sys.path.append(os.curdir)
 
@@ -69,8 +69,7 @@ def train(
     train_inputs = {}
     if inputs:
         train_inputs.update(json.loads(inputs))
-    execution = model.remote_train(app_version, **train_inputs)
-    model.remote_load(execution)
+    model.remote_train(app_version, **train_inputs)
     assert model.artifact is not None
     typer.echo("[unionml] training completed with model artifacts:")
     typer.echo(f"[unionml] model object: {model.artifact.model_object}")
@@ -83,6 +82,7 @@ def predict(
     inputs: str = typer.Option(None, "--inputs", "-i", help="inputs"),
     features: Path = typer.Option(None, "--features", "-f", help="generate predictions for this feature"),
     app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
+    model_version: str = typer.Option(None, "--model-version", "-m", help="model version"),
 ):
     """Generate prediction."""
     typer.echo(f"[unionml] app: {app} - generating predictions")
@@ -96,7 +96,7 @@ def predict(
             features = json.load(f)
         prediction_inputs.update({"features": model._dataset.get_features(features)})
 
-    predictions = model.remote_predict(app_version, wait=True, **prediction_inputs)
+    predictions = model.remote_predict(app_version, model_version, wait=True, **prediction_inputs)
     typer.echo(f"[unionml] predictions: {predictions}")
 
 
@@ -110,8 +110,9 @@ def list_model_versions(
 ):
     """List all model versions."""
 
-    typer.echo(f"[unionml] app: {app} - listing model versions for app version={app_version}")
     model = get_model(app)
+    app_version = app_version or get_app_version()
+    typer.echo(f"[unionml] app: {app} - listing model versions for app version={app_version}")
     for model_version in model.remote_list_model_versions(app_version, limit):
         typer.echo(f"- {model_version}")
 

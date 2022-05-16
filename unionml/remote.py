@@ -105,11 +105,11 @@ def deploy_wf(wf, remote: FlyteRemote, image: str, project: str, domain: str, ve
     remote.register_workflow(wf, serialization_settings, version)
 
 
-def get_model_artifact(
+def get_model_execution(
     model: Model,
     app_version: typing.Optional[str] = None,
     model_version: typing.Optional[str] = "latest",
-) -> ModelArtifact:
+) -> FlyteWorkflowExecution:
     if model._remote is None:
         raise RuntimeError("You need to configure the remote client with the `Model.remote` method")
 
@@ -138,6 +138,16 @@ def get_model_artifact(
             sort_by=Sort("created_at", Sort.Direction.DESCENDING),
         )
         execution = FlyteWorkflowExecution.promote_from_model(execution)
+    model._remote.sync(execution)
+    return execution
+
+
+def get_model_artifact(
+    model: Model,
+    app_version: typing.Optional[str] = None,
+    model_version: typing.Optional[str] = "latest",
+) -> ModelArtifact:
+    execution = get_model_execution(model, app_version, model_version)
     model.remote_load(execution)
     assert model.artifact is not None
     return model.artifact

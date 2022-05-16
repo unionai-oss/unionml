@@ -1,4 +1,4 @@
-git+https://www.github.com/unionai-oss/unionml@main
+git+https://www.github.com/unionai-oss/unionml@aws-lambda-docs
 # unionml
 fastapi
 pandas
