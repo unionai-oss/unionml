@@ -46,7 +46,7 @@ model.serve(app, remote=True, model_version="latest")
    model.remote_list_model_versions(limit=5)
    ```
 
-   Or you can use the `unionml` cli:
+   Or you can use the UnionML cli:
 
    ```{prompt} bash
    :prompts: $

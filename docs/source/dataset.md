@@ -8,7 +8,7 @@ defined and how we can customize its behavior.
 
 ## What's a UnionML Dataset?
 
-A `Dataset` is one of the core parts of a *`unionml` app*. You can think of
+A `Dataset` is one of the core parts of a *UnionML app*. You can think of
 it as a specification for a dataset's source in addition to a set of common
 machine-learning-specific abstractions, which we'll get into later in this guide.
 
@@ -121,4 +121,4 @@ def parser(data: pd.DataFrame, features: Optional[List[str]], targets: List[str]
 ## Next
 
 Now that we've defined a `Dataset`, we need to {ref}`Bind a Model and Dataset <model>` together
-to create our `unionml` app.
+to create our UnionML app.

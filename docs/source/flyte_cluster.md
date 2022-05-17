@@ -5,7 +5,7 @@
 In {ref}`Local Training and Prediction <local_app>` we ran our training and prediction
 functions locally by:
 
-1. Executing our `unionml` app as a python module by calling the `model.train` and
+1. Executing our UnionML app as a python module by calling the `model.train` and
    `model.predict` methods.
 2. Starting a FastAPI server and invoking the `/predict` endpoint using
    the `requests` library.
@@ -17,7 +17,7 @@ and light-weight models, this won't scale well to larger datasets and models. Fo
 we'll need to access cloud resources.
 ```
 
-`unionml` integrates tightly with [Flyte](https://docs.flyte.org/en/latest/), which is
+UnionML integrates tightly with [Flyte](https://docs.flyte.org/en/latest/), which is
 a data- and machine-learning-aware orchestration platform that leverages cloud services like
 [AWS](https://aws.amazon.com/) and [GCP](https://cloud.google.com/) to easily scale and
 maintain data processing machine learning workloads.
@@ -26,18 +26,18 @@ In this guide, we'll:
 
 1. Spin up a demo Flyte cluster, which is a standalone, minimal Flyte cluster that you can
    create on your individual laptop or workstation.
-2. Configure digit classification `unionml` app to use the Flyte sandbox as the compute
+2. Configure digit classification UnionML app to use the Flyte sandbox as the compute
    backend for our training and prediction workload.
 
 ## Prerequisites
 
-First, install [`flytectl`](https://docs.flyte.org/projects/flytectl/en/latest/index.html#installation),
-the command-line interface for Flyte, and [Docker](https://docs.docker.com/get-docker/), making sure
-you have the Docker daemon running.
+- Install [`flytectl`](https://docs.flyte.org/projects/flytectl/en/latest/index.html#installation),
+  the command-line interface for Flyte.
+- Install [Docker](https://docs.docker.com/get-docker/) and make sure you have the Docker daemon running.
 
 ## Deploy App Workflows
 
-A `unionml` app is composed of a `Dataset`, `Model`, and serving app component
+A UnionML app is composed of a `Dataset`, `Model`, and serving app component
 (e.g. `fastapi.FastAPI`). Under the hood, a `Model` object exposes
 `*_workflow` methods that return [`flytekit.workflow`](https://docs.flyte.org/projects/flytekit/en/latest/generated/flytekit.workflow.html#flytekit.workflow) objects, which are essentially
 execution graphs that perform multiple steps of computation.
@@ -97,7 +97,7 @@ we can use to do this:
 
 ### Configuring the Remote Backend
 
-All you need to do to get your `unionml` app ready for deployment is to configure it with:
+All you need to do to get your UnionML app ready for deployment is to configure it with:
 
 1. The Docker registry and image name that you want to use to package your app
 2. The Flyte project and domain you want to use hosting your app's microservices.
@@ -115,7 +115,7 @@ We've set the `config_file` argument to
 `Path.home() / ".flyte" / "config.yaml"`, which was created automatically when
 we invoked `flytectl demo start`.
 
-Under the hood, `unionml` will handle the Docker build process locally, bypassing the
+Under the hood, UnionML will handle the Docker build process locally, bypassing the
 need to push your app image to a remote registry.
 ```
 
@@ -137,7 +137,7 @@ To learn more about cluster configuration, see [here](https://docs.flyte.org/en/
 
 ## UnionML CLI
 
-The `unionml` python package ships with the `unionml` cli, which we use to deploy the model and
+The UnionML python package ships with the UnionML cli, which we use to deploy the model and
 invoke the training/prediction microservices that are automatically compiled by the `Dataset` and
 `Model` objects.
 
@@ -155,7 +155,7 @@ unionml deploy app:model
 
 ```{note}
 The first argument of `unionml deploy` should be a `:`-separated string whose first section
-is the module name containing the `unionml` app and second section is the variable
+is the module name containing the UnionML app and second section is the variable
 name pointing to the `unionml.Model` object.
 ```
 
