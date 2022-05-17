@@ -21,7 +21,7 @@ Resources:
             Path: /{proxy+}
             Method: post
     Metadata:
-      Dockerfile: Dockerfile
+      Dockerfile: Dockerfile.awslambda
       DockerContext: .
       DockerTag: python3.8-v1
 

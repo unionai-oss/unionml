@@ -1,4 +1,4 @@
-git+https://www.github.com/unionai-oss/unionml@unionml-init
+git+https://www.github.com/unionai-oss/unionml@aws-lambda-docs
 sklearn
 numpy
 pandas

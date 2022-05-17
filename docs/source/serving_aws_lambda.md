@@ -13,9 +13,20 @@ It can also emulate our application's build environment and API locally.
 
 To follow this guide, we'll need the following tools:
 
-- [jq](https://stedolan.github.io/jq/download/): for json file parsing convenience.
 - SAM CLI: [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
 - Docker: [Install Docker community edition](https://hub.docker.com/search/?type=edition&offering=community)
+
+````{important}
+
+    Assuming that we have our AWS [credentials configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html) correctly, we can do the following to log into the publis AWS Docker registry:
+
+    ```{prompt} bash
+    :prompts: $
+
+       aws ecr-public get-login-password --region <REGION> | \
+           docker login --username AWS --password-stdin public.ecr.aws/nuclyde
+    ```
+````
 
 ## Initialize a UnionML App for AWS Lambda
 
@@ -26,6 +37,8 @@ Initialize a UnionML app that supports serving for AWS Lambda:
 
 unionml init aws_lambda_app --template basic-aws-lambda
 ```
+
+(aws_lambda_build_test_locally)=
 
 ## Build and Test Locally
 
@@ -70,7 +83,6 @@ We can also emulate our application's API:
 :prompts: $
 
 sam local start-api
-curl -X post http://localhost:3000/predict
 ```
 
 Then in another terminal session run the following:
@@ -80,7 +92,7 @@ Then in another terminal session run the following:
 
 curl -X POST http://localhost:3000/predict \
     -H "Content-Type: application/json"  \
-    -d "$(cat events/event.json | jq '.["body"] | fromjson')"
+    -d "{\"features\": $(cat data/sample_features.json)}"
 ```
 
 ````{note}
@@ -102,8 +114,7 @@ curl -X POST http://localhost:3000/predict \
 
 Tests are defined in the `tests` folder in the app directory.
 
-Use pip to install the [pytest](https://docs.pytest.org/en/latest/) and run unit
-tests from our local machine.
+Use pip to install [pytest](https://docs.pytest.org/en/latest/) and run unit tests locally.
 
 ```{prompt} bash
 :prompts: $
@@ -112,9 +123,11 @@ pip install pytest
 python -m pytest tests
 ```
 
+(aws_lambda_deploy)=
+
 ## Deploying to AWS Lambda
 
-Once we're satisfied with our application's state, we can then build and deploy our it to AWS:
+Once we're satisfied with our application's state, we can then build and deploy it to AWS:
 
 ```{note}
 If you don't have an account on AWS, create one [here](https://aws.amazon.com/).
@@ -231,3 +244,55 @@ We can find more information and examples about filtering Lambda function logs i
 ### Additional Resources
 
 See the [AWS SAM developer guide](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html) for an introduction to SAM specification, the SAM CLI, and serverless application concepts.
+
+
+## Using a Model Trained on Flyte
+
+So far in this guide we've used a model that we trained locally. But what if we want to us a model
+that we trained on a Flyte cluster backend?
+
+The last section of this guide will show you how to do that. Recall that we ran our `app.py` script
+like so to generate a model object:
+
+```{prompt} bash
+:prompts: $
+
+python app.py
+```
+
+We can actually run the same steps that we went through in {ref}`Deploying to Flyte <flyte_cluster>`
+to train a model on our Flyte backend:
+
+```{prompt} bash
+:prompts: $
+
+flytectl demo start --source .
+unionml deploy app:model
+unionml train app:model -i '{"hyperparameters": {"C": 1.0, "max_iter": 1000}}'
+```
+
+In order to fetch the trained model, you can use `unionml fetch-model` to download and save the model object
+to your local directory:
+
+```{prompt} bash
+:prompts: $
+
+unionml fetch-model app:model --model-version latest --output-file model_object.joblib
+```
+
+This will create a `model_object.joblib` file in your app project directory, which is equivalent
+to the model object we created with `python app.py`.
+
+````{note}
+Recall that you can list all the current model versions of your app with
+
+   ```{prompt} bash
+   :prompts: $
+
+   unionml list-model-versions app:model
+   ```
+
+````
+
+From here, you can follow the steps from the {ref}`Build and Test Locally <aws_lambda_build_test_locally>`
+or {ref}`Deploy to AWS Lambda <aws_lambda_deploy>` sections to deploy this model to a serverless endpoint!

@@ -12,7 +12,7 @@ import typer
 import uvicorn
 from cookiecutter.main import cookiecutter
 
-from unionml.remote import get_app_version, get_model
+from unionml.remote import get_app_version, get_model, get_model_execution
 
 sys.path.append(os.curdir)
 
@@ -60,7 +60,7 @@ def deploy(app: str):
 @app.command()
 def train(
     app: str,
-    inputs: str = typer.Option(None, "--inputs", "-i", help="inputs to pass into training workflow"),
+    inputs: str = typer.Option(None, "--inputs", "-i", help="json string of inputs to pass into training workflow"),
     app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
 ):
     """Train a model."""
@@ -79,7 +79,7 @@ def train(
 @app.command()
 def predict(
     app: str,
-    inputs: str = typer.Option(None, "--inputs", "-i", help="inputs"),
+    inputs: str = typer.Option(None, "--inputs", "-i", help="json string of inputs tp pass into predict workflow"),
     features: Path = typer.Option(None, "--features", "-f", help="generate predictions for this feature"),
     app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
     model_version: str = typer.Option(None, "--model-version", "-m", help="model version"),
@@ -115,6 +115,26 @@ def list_model_versions(
     typer.echo(f"[unionml] app: {app} - listing model versions for app version={app_version}")
     for model_version in model.remote_list_model_versions(app_version, limit):
         typer.echo(f"- {model_version}")
+
+
+@app.command("fetch-model")
+def fetch_model(
+    app: str,
+    app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
+    model_version: str = typer.Option("latest", "--model-version", "-m", help="model version"),
+    output_file: str = typer.Option(None, "--output-file", "-o", help="output file path"),
+    kwargs: str = typer.Option(None, "--kwargs", help="json string of kwargs to pass into model.save"),
+):
+    """Fetch a model object from the remote backend."""
+    model = get_model(app)
+    app_version = app_version or get_app_version()
+    execution = get_model_execution(model, app_version, model_version=model_version)
+    model.remote_load(execution)
+    save_kwargs = {}
+    if kwargs is not None:
+        save_kwargs = json.loads(kwargs)
+    model.save(output_file, **save_kwargs)
+    typer.echo(f"[unionml] app: {app} - saving model version {execution.id.name} to {output_file}")
 
 
 @app.callback()

@@ -3,8 +3,10 @@
 This project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders:
 
 - `app.py`: The UnionML app code for digits classification.
-- `Dockerfile`: Dockerfile to package up the UnionML app for AWS Lambda serving.
+- `Dockerfile`: Dockerfile to package up the UnionML app for remote backend deployment.
+- `Dockerfile.awslambda`: Dockerfile to package up the UnionML prediction endpoint for AWS Lambda serving.
 - `events`: Invocation events that you can use to invoke the function.
+- `data`: Sample data used for invoking prediction endpoints.
 - `tests`: Unit tests for the application code.
 - `template.yaml`: A template that defines the application's AWS resources.
 
