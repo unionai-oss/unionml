@@ -27,7 +27,7 @@ repos:
   rev: v0.942
   hooks:
     - id: mypy
-      entry: mypy unionml tests example
+      entry: mypy unionml tests
       files: (^unionml/|^tests)
       exclude: (^docs/)
       pass_filenames: false

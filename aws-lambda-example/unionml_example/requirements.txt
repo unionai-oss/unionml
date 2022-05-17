@@ -1,9 +1,0 @@
-git+https://www.github.com/unionai-oss/unionml@unionml-init
-sklearn
-numpy
-pandas
-fastapi
-pydantic
-typer
-mangum
-torch

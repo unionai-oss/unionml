@@ -38,12 +38,3 @@ model.serve(app)
 
 # Mangum offers an adapter for running ASGI applications in AWS Lambda to handle API Gateway.
 lambda_handler = Mangum(app)
-
-
-if __name__ == "__main__":
-    model_object, metrics = model.train(hyperparameters={"C": 1.0, "max_iter": 1000})
-    predictions = model.predict(features=load_digits(as_frame=True).frame.sample(5, random_state=42))
-    print(model_object, metrics, predictions, sep="\n")
-
-    # save model to a file, using joblib as the default serialization format
-    model.save("/tmp/model_object.joblib")

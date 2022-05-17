@@ -43,11 +43,3 @@ jobs:
     - name: Unit tests with pytest
       run: |
         pytest tests/unit
-    - name: Run aws-lambda-example unit tests
-      run: |
-        pushd aws-lambda-example/
-        pip install -r unionml_example/requirements.txt
-        pip install -e ../
-        pip install pytest pytest-mock
-        pytest tests/unit
-        popd
