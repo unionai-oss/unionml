@@ -20,7 +20,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install setuptools wheel twine
       - name: Autobump version setup.py
-        id: bump setup.py
+        id: bump-setup-py
         run: |
           # from refs/tags/v1.2.3 get 1.2.3
           VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
@@ -28,7 +28,7 @@ jobs:
           grep "$PLACEHOLDER" "setup.py"
           sed -i "s#$PLACEHOLDER#__version__ = \"$VERSION\"#g" "setup.py"
       - name: Autobump version __init__.py
-        id: bump __init__.py
+        id: bump-init-py
         run: |
           # from refs/tags/v1.2.3 get 1.2.3
           VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
