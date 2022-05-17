@@ -13,7 +13,7 @@ setup(
     version=__version__,
     author="unionai-oss",
     author_email="info@union.ai",
-    description="The easiest way to build and deploy machine learning services.",
+    description="The easiest way to build and deploy machine learning microservices.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="Apache",
