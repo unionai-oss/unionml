@@ -2,19 +2,30 @@ from setuptools import find_packages, setup
 
 __version__ = "0.0.0+dev0"
 
+with open("README.md") as f:
+    long_description = f.read()
+
 with open("requirements.txt") as f:
     install_requires = [x.strip() for x in f.readlines()]
 
 setup(
     name="unionml",
     version=__version__,
-    description="The easiest way to build and deploy machine learning services.",
     author="unionai-oss",
     author_email="info@union.ai",
+    description="The easiest way to build and deploy machine learning services.",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    license="Apache",
+    keywords=["machine-learning", "artificial-intelligence", "microservices"],
+    data_files=[("", ["LICENSE"])],
     packages=find_packages(exclude=["tests*"]),
     package_data={
+        "unionml": ["py.typed"],
         "templates": ["*"],
     },
+    python_requires=">=3.7",
+    platforms="any",
     install_requires=install_requires,
     entry_points={"console_scripts": ["unionml = unionml.cli:app"]},
     classifiers=[
