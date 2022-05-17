@@ -19,9 +19,11 @@ You should see a new directory `my_app` with the following structure:
 
 ```{code-block} bash
 my_app
-├── Dockerfile          # docker image for packaging up your app for deployment
-├── app.py              # app script
-└── requirements.txt    # python dependencies for your app
+├── Dockerfile        # docker image for packaging up your app for deployment
+├── README.md         # app project readme
+├── app.py            # app script
+├── data              # directory containing sample feature data
+└── requirements.txt  # python dependencies for your app
 ```
 
 ## Create a Virtual Environment
@@ -38,13 +40,13 @@ pip install -r requirements.txt
 To make sure everything's working as expected, we can run `app.py` as a Python script:
 
 ```{code-block} bash
-python my_app.py
+python app.py
 ```
 
 ````{dropdown} Expected output
 
    ```{code-block}
-      LogisticRegression(max_iter=100.0)
+      LogisticRegression(max_iter=10000.0)
       {'train': 1.0, 'test': 0.9666666666666667}
       [6.0, 9.0, 3.0, 7.0, 2.0]
    ```

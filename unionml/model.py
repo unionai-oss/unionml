@@ -395,11 +395,11 @@ class Model(TrackedInstance):
     def load(self, file, *args, **kwargs):
         return self._loader(file, *args, **kwargs)
 
-    def serve(self, app: FastAPI, remote: bool = False):
+    def serve(self, app: FastAPI, remote: bool = False, model_version: str = "latest"):
         """Create a FastAPI serving app."""
         from unionml.fastapi import serving_app
 
-        serving_app(self, app, remote=remote)
+        serving_app(self, app, remote=remote, model_version=model_version)
 
     def remote(
         self,
@@ -437,8 +437,8 @@ class Model(TrackedInstance):
         """Deploy model services to a Flyte backend."""
         from unionml import remote
 
-        version = remote.get_app_version()
-        image = remote.get_image_fqn(self, version, self._image_name)
+        app_version = remote.get_app_version()
+        image = remote.get_image_fqn(self, app_version, self._image_name)
 
         os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
         _remote = self._remote
@@ -450,7 +450,7 @@ class Model(TrackedInstance):
         else:
             remote.docker_build_push(self, image)
 
-        args = [_remote._default_project, _remote._default_domain, version]
+        args = [_remote._default_project, _remote._default_domain, app_version]
         for wf in [
             self.train_workflow(),
             self.predict_workflow(),
@@ -461,7 +461,7 @@ class Model(TrackedInstance):
     def remote_train(
         self,
         app_version: str = None,
-        wait: bool = False,
+        wait: bool = True,
         *,
         hyperparameters: Optional[Dict[str, Any]] = None,
         trainer_kwargs: Optional[Dict[str, Any]] = None,
@@ -470,6 +470,9 @@ class Model(TrackedInstance):
         if self._remote is None:
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
 
+        from unionml import remote
+
+        app_version = app_version or remote.get_app_version()
         train_wf = self._remote.fetch_workflow(name=self.train_workflow_name, version=app_version)
         execution = self._remote.execute(
             train_wf,
@@ -496,7 +499,8 @@ class Model(TrackedInstance):
     def remote_predict(
         self,
         app_version: str = None,
-        wait: bool = False,
+        model_version: str = None,
+        wait: bool = True,
         *,
         features: Any = None,
         **reader_kwargs,
@@ -507,18 +511,20 @@ class Model(TrackedInstance):
         from unionml import remote
 
         app_version = app_version or remote.get_app_version()
-        model_artifact = remote.get_model_artifact(self, app_version)
+        model_artifact = remote.get_model_artifact(self, app_version, model_version)
 
         if (features is not None and len(reader_kwargs) > 0) or (features is None and len(reader_kwargs) == 0):
             raise ValueError("You must provide only one of `features` or `reader_kwargs`")
 
-        inputs = {"model": model_artifact.model_object}
+        inputs = {"model_object": model_artifact.model_object}
         if features is None:
             workflow_name = self.predict_workflow_name
             inputs.update(reader_kwargs)
+            type_hints = {}
         else:
             workflow_name = self.predict_from_features_workflow_name
             inputs.update({"features": features})
+            type_hints = {"features": [*self._dataset.reader_return_type.values()][0]}
 
         predict_wf = self._remote.fetch_workflow(
             self._remote._default_project,
@@ -532,6 +538,7 @@ class Model(TrackedInstance):
             project=self._remote.default_project,
             domain=self._remote.default_domain,
             wait=wait,
+            type_hints=type_hints,
         )
         console_url = self._remote.generate_console_url(execution)
         print(
@@ -562,6 +569,19 @@ class Model(TrackedInstance):
                 execution.outputs["hyperparameters"],
                 execution.outputs["metrics"],
             )
+
+    def remote_list_model_versions(self, app_version: str = None, limit: int = 10) -> List[str]:
+        from unionml import remote
+
+        app_version = app_version or remote.get_app_version()
+        return remote.list_model_versions(self, app_version=app_version, limit=limit)
+
+    def remote_fetch_predictions(self, execution: FlyteWorkflowExecution) -> Any:
+        if self._remote is None:
+            raise ValueError("You must call `model.remote` to attach a remote backend to this model.")
+        execution = self._remote.wait(execution)
+        predictions, *_ = execution.outputs.values()
+        return predictions
 
     def _default_init(self, hyperparameters: dict) -> Any:
         if self._init_callable is None:

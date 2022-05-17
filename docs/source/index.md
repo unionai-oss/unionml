@@ -236,3 +236,8 @@ Then you can invoke the endpoints using the `requests` library
 # What Next?
 
 Learn how to leverage the full power of `unionml` 🦾 in the {ref}`User Guide <user_guide>`
+
+
+```{admonition} Want to contribute?
+Check out the {ref}`Contributing Guide <contributing>`.
+```

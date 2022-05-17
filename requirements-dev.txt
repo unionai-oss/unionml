@@ -5,6 +5,7 @@ flake8
 flytekitplugins-sqlalchemy
 pre_commit
 pytest
+pytest-mock
 tensorflow
 torch
 types-requests

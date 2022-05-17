@@ -1,6 +1,9 @@
+from pathlib import Path
 from typing import List
 
 import pandas as pd
+from fastapi import FastAPI
+from mangum import Mangum
 from sklearn.datasets import load_digits
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
@@ -31,10 +34,26 @@ def evaluator(estimator: LogisticRegression, features: pd.DataFrame, target: pd.
     return float(accuracy_score(target.squeeze(), predictor(estimator, features)))
 
 
+# attach Flyte demo cluster metadata
+model.remote(
+    dockerfile="Dockerfile",
+    config_file=str(Path.home() / ".flyte" / "config.yaml"),
+    project="{{ cookiecutter.project_name }}",
+    domain="development",
+)
+
+# serve with FastAPI
+app = FastAPI()
+model.serve(app)
+
+# run ASGI applications in AWS Lambda to handle API Gateway using Mangum
+lambda_handler = Mangum(app)
+
+
 if __name__ == "__main__":
     model_object, metrics = model.train(hyperparameters={"C": 1.0, "max_iter": 10000})
     predictions = model.predict(features=load_digits(as_frame=True).frame.sample(5, random_state=42))
     print(model_object, metrics, predictions, sep="\n")
 
     # save model to a file, using joblib as the default serialization format
-    model.save("/tmp/model_object.joblib")
+    model.save("./model_object.joblib")

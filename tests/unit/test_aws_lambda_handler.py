@@ -2,7 +2,6 @@ import json
 
 import pytest
 from sklearn.datasets import load_digits
-from unionml_example import app
 
 
 @pytest.fixture()
@@ -66,9 +65,16 @@ def apigw_event():
     }
 
 
-def test_lambda_handler(monkeypatch, apigw_event):
-    monkeypatch.setenv("UNIONML_MODEL_PATH", "./tests/unit/model_object.joblib")
-    ret = app.lambda_handler(apigw_event, "")
+def test_lambda_handler(monkeypatch, apigw_event, tmpdir):
+    from tests.unit.aws_lambda_app.app import lambda_handler, model
+
+    model.train(hyperparameters={"C": 1.0, "max_iter": 1000})
+    model_path = tmpdir / "model_object.joblib"
+    model.save(str(model_path))
+
+    monkeypatch.setenv("UNIONML_MODEL_PATH", model_path)
+
+    ret = lambda_handler(apigw_event, "")
     predictions = json.loads(ret["body"])
 
     assert ret["statusCode"] == 200

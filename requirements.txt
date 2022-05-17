@@ -6,6 +6,7 @@ fastapi
 flytekit>=1.0.0
 gitpython
 joblib
+mangum
 numpy
 pandas
 pydantic

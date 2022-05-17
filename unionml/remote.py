@@ -46,13 +46,13 @@ def get_app_version() -> str:
     return commit.hexsha
 
 
-def get_image_fqn(model: Model, version: str, image_name: typing.Optional[str] = None) -> str:
+def get_image_fqn(model: Model, app_version: str, image_name: typing.Optional[str] = None) -> str:
     image_name = IMAGE_NAME if image_name is None else image_name
     if model.registry is None:
         image_uri = image_name
     else:
         image_uri = f"{model.registry}/{image_name}"
-    return f"{image_uri}:{model.name.replace('_', '-')}-{version}"
+    return f"{image_uri}:{model.name.replace('_', '-')}-{app_version}"
 
 
 def sandbox_docker_build(model: Model, image_fqn: str):
@@ -105,11 +105,11 @@ def deploy_wf(wf, remote: FlyteRemote, image: str, project: str, domain: str, ve
     remote.register_workflow(wf, serialization_settings, version)
 
 
-def get_model_artifact(
+def get_model_execution(
     model: Model,
     app_version: typing.Optional[str] = None,
     model_version: typing.Optional[str] = "latest",
-) -> ModelArtifact:
+) -> FlyteWorkflowExecution:
     if model._remote is None:
         raise RuntimeError("You need to configure the remote client with the `Model.remote` method")
 
@@ -138,6 +138,40 @@ def get_model_artifact(
             sort_by=Sort("created_at", Sort.Direction.DESCENDING),
         )
         execution = FlyteWorkflowExecution.promote_from_model(execution)
+    model._remote.sync(execution)
+    return execution
+
+
+def get_model_artifact(
+    model: Model,
+    app_version: typing.Optional[str] = None,
+    model_version: typing.Optional[str] = "latest",
+) -> ModelArtifact:
+    execution = get_model_execution(model, app_version, model_version)
     model.remote_load(execution)
     assert model.artifact is not None
     return model.artifact
+
+
+def list_model_versions(model: Model, app_version: typing.Optional[str] = None, limit: int = 10) -> typing.List[str]:
+    if model._remote is None:
+        raise RuntimeError("You need to configure the remote client with the `Model.remote` method")
+
+    app_version = app_version or get_app_version()
+    train_wf = model._remote.fetch_workflow(
+        model._remote._default_project,
+        model._remote._default_domain,
+        model.train_workflow_name,
+        app_version,
+    )
+    executions, _ = model._remote.client.list_executions_paginated(
+        train_wf.id.project,
+        train_wf.id.domain,
+        limit=limit,
+        filters=[
+            filters.Equal("launch_plan.name", train_wf.id.name),
+            filters.Equal("phase", "SUCCEEDED"),
+        ],
+        sort_by=Sort("created_at", Sort.Direction.DESCENDING),
+    )
+    return [x.id.name for x in executions]

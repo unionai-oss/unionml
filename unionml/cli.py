@@ -4,6 +4,7 @@ import copy
 import json
 import os
 import sys
+from enum import Enum
 from pathlib import Path
 
 import click
@@ -11,7 +12,7 @@ import typer
 import uvicorn
 from cookiecutter.main import cookiecutter
 
-from unionml.remote import get_model
+from unionml.remote import get_app_version, get_model, get_model_execution
 
 sys.path.append(os.curdir)
 
@@ -22,14 +23,19 @@ IMAGE_PREFIX = "unionml"
 FLYTE_SANDBOX_CONTAINER_NAME = "flyte-sandbox"
 
 
+class AppTemplate(str, Enum):
+    basic = "basic"
+    basic_aws_lambda = "basic-aws-lambda"
+
+
 @app.command()
 def init(
     app_name: str,
-    template: str = typer.Option("basic", "--template", "-t", help="template to use for initializing your app."),
-    overwrite: bool = typer.Option(
-        False,
-        "--overwrite",
-        help="overwrites an existing app if flag is set.",
+    template: AppTemplate = typer.Option(
+        AppTemplate.basic,
+        "--template",
+        "-t",
+        help="template to use for initializing your app.",
     ),
 ):
     """Initialize a UnionML project."""
@@ -37,9 +43,8 @@ def init(
         "app_name": app_name,
     }
     cookiecutter(
-        str(Path(__file__).parent / "templates" / template),
+        str(Path(__file__).parent / "templates" / template.value),
         no_input=True,
-        overwrite_if_exists=overwrite,
         extra_context=config,
     )
 
@@ -55,7 +60,7 @@ def deploy(app: str):
 @app.command()
 def train(
     app: str,
-    inputs: str = typer.Option(None, "--inputs", "-i", help="inputs to pass into training workflow"),
+    inputs: str = typer.Option(None, "--inputs", "-i", help="json string of inputs to pass into training workflow"),
     app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
 ):
     """Train a model."""
@@ -64,8 +69,7 @@ def train(
     train_inputs = {}
     if inputs:
         train_inputs.update(json.loads(inputs))
-    execution = model.remote_train(app_version, **train_inputs)
-    model.remote_load(execution)
+    model.remote_train(app_version, **train_inputs)
     assert model.artifact is not None
     typer.echo("[unionml] training completed with model artifacts:")
     typer.echo(f"[unionml] model object: {model.artifact.model_object}")
@@ -75,9 +79,10 @@ def train(
 @app.command()
 def predict(
     app: str,
-    inputs: str = typer.Option(None, "--inputs", "-i", help="inputs"),
+    inputs: str = typer.Option(None, "--inputs", "-i", help="json string of inputs tp pass into predict workflow"),
     features: Path = typer.Option(None, "--features", "-f", help="generate predictions for this feature"),
     app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
+    model_version: str = typer.Option(None, "--model-version", "-m", help="model version"),
 ):
     """Generate prediction."""
     typer.echo(f"[unionml] app: {app} - generating predictions")
@@ -91,8 +96,45 @@ def predict(
             features = json.load(f)
         prediction_inputs.update({"features": model._dataset.get_features(features)})
 
-    predictions = model.remote_predict(app_version, wait=True, **prediction_inputs)
+    predictions = model.remote_predict(app_version, model_version, wait=True, **prediction_inputs)
     typer.echo(f"[unionml] predictions: {predictions}")
+
+
+@app.command("list-model-versions")
+def list_model_versions(
+    app: str,
+    app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
+    limit: int = typer.Option(
+        10, "--limit", help="Maximum number of model versions to list, sorted in descending order of time of execution."
+    ),
+):
+    """List all model versions."""
+
+    model = get_model(app)
+    app_version = app_version or get_app_version()
+    typer.echo(f"[unionml] app: {app} - listing model versions for app version={app_version}")
+    for model_version in model.remote_list_model_versions(app_version, limit):
+        typer.echo(f"- {model_version}")
+
+
+@app.command("fetch-model")
+def fetch_model(
+    app: str,
+    app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
+    model_version: str = typer.Option("latest", "--model-version", "-m", help="model version"),
+    output_file: str = typer.Option(None, "--output-file", "-o", help="output file path"),
+    kwargs: str = typer.Option(None, "--kwargs", help="json string of kwargs to pass into model.save"),
+):
+    """Fetch a model object from the remote backend."""
+    model = get_model(app)
+    app_version = app_version or get_app_version()
+    execution = get_model_execution(model, app_version, model_version=model_version)
+    model.remote_load(execution)
+    save_kwargs = {}
+    if kwargs is not None:
+        save_kwargs = json.loads(kwargs)
+    model.save(output_file, **save_kwargs)
+    typer.echo(f"[unionml] app: {app} - saving model version {execution.id.name} to {output_file}")
 
 
 @app.callback()

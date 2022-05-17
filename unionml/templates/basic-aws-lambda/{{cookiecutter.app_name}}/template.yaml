@@ -21,8 +21,8 @@ Resources:
             Path: /{proxy+}
             Method: post
     Metadata:
-      Dockerfile: Dockerfile
-      DockerContext: ./unionml_example
+      Dockerfile: Dockerfile.awslambda
+      DockerContext: .
       DockerTag: python3.8-v1
 
 Outputs:

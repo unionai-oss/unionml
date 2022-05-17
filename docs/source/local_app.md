@@ -79,7 +79,7 @@ warnings.simplefilter("ignore")
 ```{code-cell}
 if __name__ == "__main__":
     model_object, metrics = model.train(
-        hyperparameters={"C": 1.0, "max_iter": 1000},
+        hyperparameters={"C": 1.0, "max_iter": 10000},
         sample_frac=1.0,
         random_state=12345,
     )
@@ -112,6 +112,8 @@ You may notice a few things about the code example above:
 - At the end of the file we save the model object to a file called `/tmp/model_object.joblib`. This is
   simply an `sklearn` base estimator that you know and love!
 ```
+
+(local_serving_fastapi)=
 
 ## Serve with FastAPI
 
@@ -152,7 +154,7 @@ to get predictions from input features:
 import requests
 
 # generate predictions
-requests.get(
+requests.post(
     "http://127.0.0.1:8000/predict",
     json={"features": load_digits(as_frame=True).frame.sample(5, random_state=42).to_dict(orient="records")},
 )
@@ -173,4 +175,4 @@ machine learning services in the ☁️ cloud?
 `unionml` is coupled with [Flyte](https://docs.flyte.org/en/latest/), which is a scalable,
 reliable, and robust orchestration platform for data processing and machine learning. But before we
 deploy to the cloud, it's important to understand what a Flyte cluster is by
-{ref}`spinning up a Flyte Demo Cluster <flyte_demo>` locally.
+{ref}`spinning up a Flyte Cluster <flyte_cluster>` locally.

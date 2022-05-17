@@ -1,9 +1,0 @@
-unionml>=0.0.1
-sklearn
-numpy
-pandas
-fastapi
-pydantic
-typer
-mangum
-torch

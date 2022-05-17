@@ -1,6 +1,9 @@
 git+https://www.github.com/unionai-oss/unionml@aws-lambda-docs
-# unionml
-fastapi
-pandas
-requests
 sklearn
+numpy
+pandas
+fastapi
+pydantic
+typer
+mangum
+torch
