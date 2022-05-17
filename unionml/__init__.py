@@ -23,3 +23,6 @@ flytekit_logger.addFilter(PickleFilter())
 
 flytekit_remote_logger = flytekit_logger.getChild("remote")
 flytekit_remote_logger.addFilter(FlyteRemoteFilter())
+
+
+__version__ = "0.0.0+dev0"
