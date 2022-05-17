@@ -18,7 +18,7 @@ and simple. Taking inspiration from web protocols, `unionml` asks the question:
 > Is it possible to define a standard set of functions/methods for machine learning that can be
 > reused in many different contexts, from model training to batch or streaming prediction?
 
-## `unionml` Apps
+## UnionML Apps
 
 A *`unionml` app* is composed of two objects: `Dataset` and `Model`. Together,
 they expose method decorator entrypoints that serve as the core building blocks of an end-to-end

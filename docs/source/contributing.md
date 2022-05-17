@@ -1,3 +1,5 @@
+(contributing)=
+
 # Contributing
 
 We are striving to build an open and inclusive community around UnionML. Whether you are a novice or

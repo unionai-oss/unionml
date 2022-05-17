@@ -79,7 +79,7 @@ warnings.simplefilter("ignore")
 ```{code-cell}
 if __name__ == "__main__":
     model_object, metrics = model.train(
-        hyperparameters={"C": 1.0, "max_iter": 1000},
+        hyperparameters={"C": 1.0, "max_iter": 10000},
         sample_frac=1.0,
         random_state=12345,
     )

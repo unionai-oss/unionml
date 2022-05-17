@@ -268,7 +268,7 @@ to train a model on our Flyte backend:
 
 flytectl demo start --source .
 unionml deploy app:model
-unionml train app:model -i '{"hyperparameters": {"C": 1.0, "max_iter": 1000}}'
+unionml train app:model -i '{"hyperparameters": {"C": 1.0, "max_iter": 10000}}'
 ```
 
 In order to fetch the trained model, you can use `unionml fetch-model` to download and save the model object
