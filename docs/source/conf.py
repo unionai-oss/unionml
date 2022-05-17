@@ -54,15 +54,25 @@ html_title = "UnionML"
 html_logo = "_static/images/union-logo.svg"
 html_favicon = "_static/images/union-logo.svg"
 
+announcement = """
+⭐️ UnionML is in Beta 🏗 &nbsp;! If you have questions, join the
+<a href='https://github.com/unionai-oss/unionml/discussions'>github discussions forum</a>
+or <a href='https://github.com/unionai-oss/unionml/issues'>file an issue</a>.
+"""
+
 html_theme_options = {
     "light_css_variables": {
         "color-brand-primary": "#e59f12",
         "color-brand-content": "#e59f12",
+        "color-announcement-background": "#F9BE44",
+        "color-announcement-text": "#535353",
     },
     "dark_css_variables": {
         "color-brand-primary": "#FDB51D",
         "color-brand-content": "#FDB51D",
+        "color-announcement-background": "#493100",
     },
+    "announcement": announcement,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,

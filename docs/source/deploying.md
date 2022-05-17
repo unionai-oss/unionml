@@ -16,8 +16,8 @@ model serving.
 
 ## Production Backend Deployment
 
-`unionml` uses `flytekit` under the hood to execute your training and prediction workflows locally, but you
-can benefit from the reproducibility and scalability benefits of `unionml` by deploying your workflows
+UnionML uses `flytekit` under the hood to execute your training and prediction workflows locally, but you
+can benefit from the reproducibility and scalability benefits of UnionML by deploying your workflows
 to a production-grade `flyte` cluster.
 
 - {ref}`Deploy to a Flyte Cluster<flyte_cluster>`: Deploy training and prediction services to a Flyte cluster.

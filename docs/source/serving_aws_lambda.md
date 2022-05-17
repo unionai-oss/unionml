@@ -13,19 +13,12 @@ It can also emulate our application's build environment and API locally.
 
 To follow this guide, we'll need the following tools:
 
-- SAM CLI: [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
-- Docker: [Install Docker community edition](https://hub.docker.com/search/?type=edition&offering=community)
+- An [AWS account](https://aws.amazon.com/) for Docker registry authentication.
+- SAM CLI: [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html).
+- Docker: [Install Docker community edition](https://hub.docker.com/search/?type=edition&offering=community).
 
 ````{important}
-
-    Assuming that we have our AWS [credentials configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html) correctly, we can do the following to log into the publis AWS Docker registry:
-
-    ```{prompt} bash
-    :prompts: $
-
-       aws ecr-public get-login-password --region <REGION> | \
-           docker login --username AWS --password-stdin public.ecr.aws/nuclyde
-    ```
+   We need to use Amazon ECR-based images so be sure to [authenticate to the AWS ECR registry](https://docs.aws.amazon.com/AmazonECR/latest/userguide/getting-started-cli.html#cli-authenticate-registry).
 ````
 
 ## Initialize a UnionML App for AWS Lambda
