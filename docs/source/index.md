@@ -17,15 +17,19 @@ Deployment Guide <deploying>
 Contributing <contributing>
 ```
 
-**UnionML** is an open source MLOps framework that aims to reduce the boilerplate and friction
-that comes with building models and deploying them to production.
+# Why?
 
-You can create **UnionML Apps** by defining a few core methods that are automatically bundled
-into ML microservices, starting with model training and offline/online prediction.
+**UnionML** is an open source MLOps framework that reduces the boilerplate, complexity,
+and friction that comes with building models and deploying them to production.
 
-Built on top of [Flyte](https://docs.flyte.org/en/latest/), UnionML provides a high-level
-interface for productionizing your ML models so that you can focus on curating a better dataset
-and improving your models.
+It aims to unify the ever-evolving ecosystem of machine learning and data tools into a single
+interface for expressing microservices as Python functions. You can create _UnionML Apps_ by defining
+a few core methods that are automatically bundled into _ML microservices_, starting with model training and
+offline/online prediction.
+
+Brought to you by the [Union.ai](https://www.union.ai/) team, UnionML is built on top of
+[Flyte](https://docs.flyte.org/en/latest/) to provide a high-level interface for productionizing
+your ML models so that you can focus on curating a better dataset and improving your models.
 
 # Installation
 
