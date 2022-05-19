@@ -1,3 +1,4 @@
+import json
 import random
 import typing
 from inspect import signature
@@ -8,13 +9,16 @@ from flytekit.core.python_function_task import PythonFunctionTask
 
 from unionml import Dataset
 
+N_SAMPLES = 100
+TEST_SIZE = 0.2
+
 
 @pytest.fixture(scope="function")
 def dataset():
     return Dataset(
         features=["x"],
         targets=["y"],
-        test_size=0.2,
+        test_size=TEST_SIZE,
         shuffle=True,
         random_state=123,
     )
@@ -28,13 +32,18 @@ def simple_reader():
     return _reader
 
 
-N_SAMPLES = 100
-
-
 @pytest.fixture(scope="function")
 def dict_dataset_reader():
     def _reader() -> typing.List[typing.Dict[str, int]]:
         return [{"x": i, "y": i * 2} for i in range(1, N_SAMPLES + 1)]
+
+    return _reader
+
+
+@pytest.fixture(scope="function")
+def reader_with_json_string_output(dict_dataset_reader):
+    def _reader() -> str:
+        return json.dumps(dict_dataset_reader())
 
     return _reader
 
@@ -62,6 +71,27 @@ def test_dataset_get_features(dataset):
 
     features = dataset.get_features(pd.DataFrame({"x": [1, 2, 3], "y": [4, 5, 6]}))
     assert features.equals(pd.DataFrame({"x": [1, 2, 3]}))
+
+
+def assert_training_data_expectations(training_data):
+    train_features, train_targets = training_data["train"]
+    test_features, test_targets = training_data["test"]
+
+    expected_test_size = int(N_SAMPLES * TEST_SIZE)
+
+    for train_split in (train_features, train_targets):
+        assert len(train_split) == N_SAMPLES - expected_test_size
+
+    for test_split in (test_features, test_targets):
+        assert len(test_split) == expected_test_size
+
+    for _features in (train_features, test_features):
+        assert all("x" in example for example in _features)
+        assert all("y" not in example for example in _features)
+
+    for _targets in (train_targets, test_targets):
+        assert all("x" not in example for example in _targets)
+        assert all("y" in example for example in _targets)
 
 
 def test_dataset_custom_splitter_parser(dataset, dict_dataset_reader):
@@ -95,23 +125,22 @@ def test_dataset_custom_splitter_parser(dataset, dict_dataset_reader):
 
     dataset_task = dataset.dataset_task()
     raw_data = dataset_task.task_function()
-    data = dataset.get_data(raw_data)
+    training_data = dataset.get_data(raw_data)
+    assert_training_data_expectations(training_data)
 
-    train_features, train_targets = data["train"]
-    test_features, test_targets = data["test"]
 
-    expected_test_size = int(N_SAMPLES * 0.2)
+def test_dataset_custom_loader(dataset: Dataset, reader_with_json_string_output):
+    dataset.reader(reader_with_json_string_output)
 
-    for train_split in (train_features, train_targets):
-        assert len(train_split) == N_SAMPLES - expected_test_size
+    @dataset.loader
+    def loader(data: str) -> pd.DataFrame:
+        return pd.DataFrame(json.loads(data))
 
-    for test_split in (test_features, test_targets):
-        assert len(test_split) == expected_test_size
+    training_data = dataset.get_data(dataset._reader())
+    assert_training_data_expectations(training_data)
 
-    for _features in (train_features, test_features):
-        assert all("x" in example for example in _features)
-        assert all("y" not in example for example in _features)
 
-    for _targets in (train_targets, test_targets):
-        assert all("x" not in example for example in _targets)
-        assert all("y" in example for example in _targets)
+def test_dataset_feature_transformer(dataset: Dataset):
+    @dataset.feature_transformer
+    def feature_transformer(features: typing.List[typing.Dict[str, int]]) -> pd.DataFrame:
+        return pd.DataFrame(features)

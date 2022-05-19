@@ -57,8 +57,7 @@ def serving_app(model: Model, app: FastAPI, remote: bool = False, model_version:
         workflow_inputs: Dict[str, Any] = {}
         if model._dataset.reader_return_type is not None:
             # convert raw features to whatever the output type of the reader is.
-            (_, feature_type), *_ = model._dataset.reader_return_type.items()
-            features = feature_type(features)
+            features = model._dataset._feature_transformer(features)
         workflow_inputs.update(inputs if inputs else {"features": features})
 
         return model.predict(**workflow_inputs)

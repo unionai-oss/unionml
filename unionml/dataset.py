@@ -11,7 +11,8 @@ from sklearn.model_selection import train_test_split
 
 from unionml.utils import inner_task
 
-D = TypeVar("D")
+R = TypeVar("R")  # raw data
+D = TypeVar("D")  # model-ready data
 
 
 class Dataset(TrackedInstance):
@@ -34,9 +35,11 @@ class Dataset(TrackedInstance):
         self._random_state = random_state
 
         # default component functions
+        self._loader = self._default_loader
         self._splitter = self._default_splitter
         self._parser = self._default_parser
-        self._feature_loader = self._default_feature_loader
+        self._parser_feature_key: int = 0  # assume that first element of parser tuple output contains features
+        self._feature_transformer = self._default_feature_transformer
 
         self._reader = None
         self._reader_input_types: Optional[List[Parameter]] = None
@@ -51,20 +54,21 @@ class Dataset(TrackedInstance):
         self._reader_task_kwargs = reader_task_kwargs
         return fn
 
+    def loader(self, fn):
+        self._loader = fn
+        return fn
+
     def splitter(self, fn):
-        # TODO: make sure function signature matches expected signature:
-        # - splitter(data, test_size, shuffle, random_state)
         self._splitter = fn
         return fn
 
-    def parser(self, fn):
-        # TODO: make sure function signature matches expected signature:
-        # - parser(data, features, targets)
+    def parser(self, fn, feature_key: int = 0):
         self._parser = fn
+        self._parser_feature_key = feature_key
         return fn
 
-    def feature_loader(self, fn):
-        self._feature_loader = fn
+    def feature_transformer(self, fn):
+        self._feature_transformer = fn
         return fn
 
     @property
@@ -118,7 +122,8 @@ class Dataset(TrackedInstance):
         return f"{self.name}.features"
 
     def get_data(self, raw_data):
-        splits = self._splitter(raw_data, **self.splitter_kwargs)
+        data = self._loader(raw_data)
+        splits = self._splitter(data, **self.splitter_kwargs)
         if len(splits) == 1:
             return {"train": self._parser(splits[0], **self.parser_kwargs)}
 
@@ -132,9 +137,8 @@ class Dataset(TrackedInstance):
         }
 
     def get_features(self, data):
-        data_type = signature(self._reader).return_annotation
-        parsed_data = self._parser(data_type(data), self._features, self._targets)
-        return self._feature_loader(*parsed_data)
+        parsed_data = self._parser(self._loader(data), self._features, self._targets)
+        return parsed_data[self._parser_feature_key]
 
     @property
     def reader_input_types(self) -> Optional[List[Parameter]]:
@@ -185,6 +189,12 @@ class Dataset(TrackedInstance):
     ) -> "Dataset":
         return cls._from_flytekit_task(task, *args, **kwargs)
 
+    def _default_loader(self, data: R) -> R:
+        [(_, data_type)] = self.reader_return_type.items()
+        if data_type is pd.DataFrame:
+            return pd.DataFrame(data)
+        return data
+
     def _default_splitter(
         self,
         data: D,
@@ -208,5 +218,17 @@ class Dataset(TrackedInstance):
             target_data = pd.DataFrame()
         return data[features], target_data
 
-    def _default_feature_loader(self, *data: Tuple[D, ...]) -> D:
-        return cast(D, data[0])
+    def _default_feature_transformer(self, features: R) -> D:
+        msg = (
+            f"Data type {type(features)} not recognized for feature transformation. Implement a feature "
+            "transformation function with the @dataset.feature_transformer decorator."
+        )
+        [(_, data_type)] = self.reader_return_type.items()
+        if isinstance(features, pd.DataFrame):
+            return features
+        elif data_type is pd.DataFrame and isinstance(features, (list, dict)):
+            try:
+                return pd.DataFrame(features)
+            except (TypeError, ValueError) as exc:
+                raise TypeError(msg) from exc
+        raise TypeError(msg)

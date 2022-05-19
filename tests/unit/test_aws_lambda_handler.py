@@ -3,6 +3,8 @@ import json
 import pytest
 from sklearn.datasets import load_digits
 
+from tests.unit.aws_lambda_app.app import lambda_handler, model
+
 
 @pytest.fixture()
 def apigw_event():
@@ -66,7 +68,6 @@ def apigw_event():
 
 
 def test_lambda_handler(monkeypatch, apigw_event, tmpdir):
-    from tests.unit.aws_lambda_app.app import lambda_handler, model
 
     model.train(hyperparameters={"C": 1.0, "max_iter": 1000})
     model_path = tmpdir / "model_object.joblib"
