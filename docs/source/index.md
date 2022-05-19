@@ -20,7 +20,11 @@ Contributing <contributing>
 # Why?
 
 **UnionML** is an open source MLOps framework that reduces the boilerplate, complexity,
-and friction that comes with building models and deploying them to production.
+and friction that comes with building models and deploying them to production. Taking inspiration from
+web protocols, UnionML asks the question:
+
+> Is it possible to define a standard set of functions/methods for machine learning that can be
+> reused in many different contexts, from model training to prediction?
 
 It aims to unify the ever-evolving ecosystem of machine learning and data tools into a single
 interface for expressing microservices as Python functions. You can create _UnionML Apps_ by defining
@@ -280,7 +284,7 @@ Then you can invoke the endpoints using the `requests` library, e.g. in a separa
 
 # What Next?
 
-Learn how to leverage the full power of UnionML 🦾 in the {ref}`User Guide <user_guide>`
+Learn how to leverage the full power of UnionML 🦾 in the {ref}`User Guide <user_guide>`.
 
 
 ```{admonition} Want to contribute?

@@ -64,13 +64,33 @@ def test_dataset_task(dataset, simple_reader):
     assert dataset_task.python_interface.outputs["data"] == reader_ret_type
 
 
-def test_dataset_get_features(dataset):
+def test_dataset_get_features_default(dataset):
     @dataset.reader
     def reader() -> pd.DataFrame:
-        pass
+        ...
 
     features = dataset.get_features(pd.DataFrame({"x": [1, 2, 3], "y": [4, 5, 6]}))
     assert features.equals(pd.DataFrame({"x": [1, 2, 3]}))
+
+
+def test_dataset_get_features_custom(dataset: Dataset):
+    @dataset.reader
+    def reader() -> pd.DataFrame:
+        ...
+
+    @dataset.feature_loader
+    def feature_loader(serialized_features: str) -> pd.DataFrame:
+        return pd.DataFrame(json.loads(serialized_features))
+
+    @dataset.feature_transformer
+    def feature_transformer(raw_features: pd.DataFrame) -> pd.DataFrame:
+        return (raw_features - raw_features.mean()) / raw_features.std()
+
+    data = pd.DataFrame({"x": [1, 2, 3], "y": [4, 5, 6]})
+    features = dataset.get_features(data.to_json(orient="records"))
+
+    expected = ((data - data.mean()) / data.std())[["x"]]
+    assert features.equals(expected)
 
 
 def assert_training_data_expectations(training_data):
@@ -136,11 +156,5 @@ def test_dataset_custom_loader(dataset: Dataset, reader_with_json_string_output)
     def loader(data: str) -> pd.DataFrame:
         return pd.DataFrame(json.loads(data))
 
-    training_data = dataset.get_data(dataset._reader())
+    training_data = dataset.get_data(dataset._reader())  # type: ignore
     assert_training_data_expectations(training_data)
-
-
-def test_dataset_feature_transformer(dataset: Dataset):
-    @dataset.feature_transformer
-    def feature_transformer(features: typing.List[typing.Dict[str, int]]) -> pd.DataFrame:
-        return pd.DataFrame(features)

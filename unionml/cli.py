@@ -92,8 +92,6 @@ def predict(
     if inputs:
         prediction_inputs.update(json.loads(inputs))
     elif features:
-        with features.open() as f:
-            features = json.load(f)
         prediction_inputs.update({"features": model._dataset.get_features(features)})
 
     predictions = model.remote_predict(app_version, model_version, wait=True, **prediction_inputs)

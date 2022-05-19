@@ -1,8 +1,10 @@
 """Dataset class for defining data source, splitting, parsing, and iteration."""
 
+import json
 from functools import partial
 from inspect import Parameter, signature
-from typing import Dict, List, NamedTuple, Optional, Tuple, Type, TypeVar, cast
+from pathlib import Path
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, TypeVar, cast
 
 import pandas as pd
 from flytekit.core.tracker import TrackedInstance
@@ -39,15 +41,16 @@ class Dataset(TrackedInstance):
         self._splitter = self._default_splitter
         self._parser = self._default_parser
         self._parser_feature_key: int = 0  # assume that first element of parser tuple output contains features
+        self._feature_loader = self._default_feature_loader
         self._feature_transformer = self._default_feature_transformer
 
         self._reader = None
         self._reader_input_types: Optional[List[Parameter]] = None
         self._reader_return_type: Optional[Dict[str, Type]] = None
-        self._labeller = None
         self._dataset_task = None
 
     def reader(self, fn=None, **reader_task_kwargs):
+        """Register a reader function for getting data from some external source."""
         if fn is None:
             return partial(self.reader, **reader_task_kwargs)
         self._reader = fn
@@ -55,19 +58,45 @@ class Dataset(TrackedInstance):
         return fn
 
     def loader(self, fn):
+        """Register an optional loader function for loading data into memory for model training.
+
+        This function should take the output of the reader function and return the data structure needed
+        for model training.
+        """
         self._loader = fn
         return fn
 
     def splitter(self, fn):
+        """Register an optional splitter function that partitions data into training and test sets."""
         self._splitter = fn
         return fn
 
     def parser(self, fn, feature_key: int = 0):
+        """Register an optional parser function that produces a tuple of features and targets."""
         self._parser = fn
         self._parser_feature_key = feature_key
         return fn
 
+    def feature_loader(self, fn):
+        """Register an optional feature loader that loads data from some serialized format into raw features.
+
+        This function handles prediction cases in two contexts:
+        1. When the `unionml predict` cli command is invoked with the --features flag.
+        2. When the FastAPI app `/predict/` endpoint is invoked with features passed in as JSON or string encoding.
+
+        And it should return the data structure needed for model training.
+        """
+        self._feature_loader = fn
+        return fn
+
     def feature_transformer(self, fn):
+        """Register an optional feature transformer that performs pre-processing on features before prediction.
+
+        This function handles prediction cases in three contexts:
+        1. When the `unionml predict` cli command is invoked with the --features flag.
+        2. When the FastAPI app `/predict/` endpoint is invoked with features passed in as JSON or string encoding.
+        3. When the `model.predict` or `model.remote_predict` functions are invoked.
+        ."""
         self._feature_transformer = fn
         return fn
 
@@ -136,9 +165,10 @@ class Dataset(TrackedInstance):
             "test": test_data,
         }
 
-    def get_features(self, data):
-        parsed_data = self._parser(self._loader(data), self._features, self._targets)
-        return parsed_data[self._parser_feature_key]
+    def get_features(self, features):
+        parsed_data = self._parser(self._feature_loader(features), self._features, self._targets)
+        features = parsed_data[self._parser_feature_key]
+        return self._feature_transformer(features)
 
     @property
     def reader_input_types(self) -> Optional[List[Parameter]]:
@@ -218,17 +248,19 @@ class Dataset(TrackedInstance):
             target_data = pd.DataFrame()
         return data[features], target_data
 
-    def _default_feature_transformer(self, features: R) -> D:
-        msg = (
-            f"Data type {type(features)} not recognized for feature transformation. Implement a feature "
-            "transformation function with the @dataset.feature_transformer decorator."
-        )
+    def _default_feature_loader(self, features: Any) -> R:
+        if isinstance(features, Path):
+            with features.open() as f:
+                features = json.load(f)
+
         [(_, data_type)] = self.reader_return_type.items()
-        if isinstance(features, pd.DataFrame):
-            return features
-        elif data_type is pd.DataFrame and isinstance(features, (list, dict)):
-            try:
-                return pd.DataFrame(features)
-            except (TypeError, ValueError) as exc:
-                raise TypeError(msg) from exc
-        raise TypeError(msg)
+        if data_type is pd.DataFrame:
+            return pd.DataFrame(features)
+        return features
+
+    def _default_feature_transformer(self, features: R) -> D:
+        """
+        By default this is just a pass-through function. The user can choose to override it with
+        the `@dataset.feature_transformer` decorator.
+        """
+        return cast(D, features)
