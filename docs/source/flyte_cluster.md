@@ -2,21 +2,6 @@
 
 # Deploying to Flyte
 
-In {ref}`Local Training and Prediction <local_app>` we ran our training and prediction
-functions locally by:
-
-1. Executing our UnionML app as a python module by calling the `model.train` and
-   `model.predict` methods.
-2. Starting a FastAPI server and invoking the `/predict` endpoint using
-   the `requests` library.
-
-```{note}
-In the previous guides, we used our individual workstation to do the heavy lifting of
-model training and prediction. While this might work well for prototyping, small datasets,
-and light-weight models, this won't scale well to larger datasets and models. For that,
-we'll need to access cloud resources.
-```
-
 UnionML integrates tightly with [Flyte](https://docs.flyte.org/en/latest/), which is
 a data- and machine-learning-aware orchestration platform that leverages cloud services like
 [AWS](https://aws.amazon.com/) and [GCP](https://cloud.google.com/) to easily scale and
