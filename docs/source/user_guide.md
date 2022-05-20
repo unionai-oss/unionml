@@ -29,5 +29,5 @@ machine learning application. The following sections will show you how to:
   sets, *parse* out features and targets, and *iterate* through batches of data.
 - {ref}`Bind a Model and Dataset <model>`: specify how to *initialize*, *train*, *evaluate*, and generate
   *predictions* from a model given a `Dataset`.
-- {ref}`Train and Predict Locally <local_app>`: do training and prediction using a UnionML as a regular
+- {ref}`Train and Predict Locally <local_app>`: perform training and prediction using a UnionML as a regular
   python script, then serve a `FastAPI` app for prediction.
