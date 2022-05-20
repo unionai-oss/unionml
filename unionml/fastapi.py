@@ -43,7 +43,7 @@ def serving_app(model: Model, app: FastAPI, remote: bool = False, model_version:
     @app.post("/predict")
     async def predict(
         inputs: Optional[Union[Dict[str, Any], BaseModel]] = Body(None),
-        features: Optional[Union[List[Dict[str, Any]], str]] = Body(None),
+        features: Optional[List[Dict[str, Any]]] = Body(None),
     ):
         if inputs is None and features is None:
             raise HTTPException(status_code=500, detail="inputs or features must be supplied.")
