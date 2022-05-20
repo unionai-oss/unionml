@@ -59,6 +59,7 @@ from typing import List
 
 import pandas as pd
 from sklearn.datasets import load_digits
+from sklearn.metrics import accuracy_score
 
 @dataset.reader
 def reader() -> pd.DataFrame:
