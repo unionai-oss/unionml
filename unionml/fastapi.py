@@ -1,7 +1,7 @@
 """Utilities for the FastAPI integration."""
 
 import os
-from typing import Any, Dict, List, NamedTuple, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
@@ -9,12 +9,6 @@ from pydantic import BaseModel
 
 from unionml.model import Model, ModelArtifact
 from unionml.remote import get_model_artifact
-
-
-class PredictParams(NamedTuple):
-    model_version: str
-    inputs: Optional[Union[Dict, BaseModel]]
-    features: Optional[List[Dict[str, Any]]]
 
 
 def serving_app(model: Model, app: FastAPI, remote: bool = False, model_version: str = "latest"):
@@ -57,8 +51,7 @@ def serving_app(model: Model, app: FastAPI, remote: bool = False, model_version:
         workflow_inputs: Dict[str, Any] = {}
         if model._dataset.reader_return_type is not None:
             # convert raw features to whatever the output type of the reader is.
-            (_, feature_type), *_ = model._dataset.reader_return_type.items()
-            features = feature_type(features)
+            features = model._dataset.get_features(features)
         workflow_inputs.update(inputs if inputs else {"features": features})
 
         return model.predict(**workflow_inputs)

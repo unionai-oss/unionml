@@ -1,8 +1,10 @@
 """Dataset class for defining data source, splitting, parsing, and iteration."""
 
+import json
 from functools import partial
 from inspect import Parameter, signature
-from typing import Dict, List, NamedTuple, Optional, Tuple, Type, TypeVar, cast
+from pathlib import Path
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, TypeVar, cast
 
 import pandas as pd
 from flytekit.core.tracker import TrackedInstance
@@ -11,7 +13,8 @@ from sklearn.model_selection import train_test_split
 
 from unionml.utils import inner_task
 
-D = TypeVar("D")
+R = TypeVar("R")  # raw data
+D = TypeVar("D")  # model-ready data
 
 
 class Dataset(TrackedInstance):
@@ -34,37 +37,67 @@ class Dataset(TrackedInstance):
         self._random_state = random_state
 
         # default component functions
+        self._loader = self._default_loader
         self._splitter = self._default_splitter
         self._parser = self._default_parser
+        self._parser_feature_key: int = 0  # assume that first element of parser tuple output contains features
         self._feature_loader = self._default_feature_loader
+        self._feature_transformer = self._default_feature_transformer
 
         self._reader = None
         self._reader_input_types: Optional[List[Parameter]] = None
         self._reader_return_type: Optional[Dict[str, Type]] = None
-        self._labeller = None
         self._dataset_task = None
 
     def reader(self, fn=None, **reader_task_kwargs):
+        """Register a reader function for getting data from some external source."""
         if fn is None:
             return partial(self.reader, **reader_task_kwargs)
         self._reader = fn
         self._reader_task_kwargs = reader_task_kwargs
         return fn
 
+    def loader(self, fn):
+        """Register an optional loader function for loading data into memory for model training.
+
+        This function should take the output of the reader function and return the data structure needed
+        for model training.
+        """
+        self._loader = fn
+        return fn
+
     def splitter(self, fn):
-        # TODO: make sure function signature matches expected signature:
-        # - splitter(data, test_size, shuffle, random_state)
+        """Register an optional splitter function that partitions data into training and test sets."""
         self._splitter = fn
         return fn
 
-    def parser(self, fn):
-        # TODO: make sure function signature matches expected signature:
-        # - parser(data, features, targets)
+    def parser(self, fn, feature_key: int = 0):
+        """Register an optional parser function that produces a tuple of features and targets."""
         self._parser = fn
+        self._parser_feature_key = feature_key
         return fn
 
     def feature_loader(self, fn):
+        """Register an optional feature loader that loads data from some serialized format into raw features.
+
+        This function handles prediction cases in two contexts:
+        1. When the `unionml predict` cli command is invoked with the --features flag.
+        2. When the FastAPI app `/predict/` endpoint is invoked with features passed in as JSON or string encoding.
+
+        And it should return the data structure needed for model training.
+        """
         self._feature_loader = fn
+        return fn
+
+    def feature_transformer(self, fn):
+        """Register an optional feature transformer that performs pre-processing on features before prediction.
+
+        This function handles prediction cases in three contexts:
+        1. When the `unionml predict` cli command is invoked with the --features flag.
+        2. When the FastAPI app `/predict/` endpoint is invoked with features passed in as JSON or string encoding.
+        3. When the `model.predict` or `model.remote_predict` functions are invoked.
+        ."""
+        self._feature_transformer = fn
         return fn
 
     @property
@@ -118,7 +151,8 @@ class Dataset(TrackedInstance):
         return f"{self.name}.features"
 
     def get_data(self, raw_data):
-        splits = self._splitter(raw_data, **self.splitter_kwargs)
+        data = self._loader(raw_data)
+        splits = self._splitter(data, **self.splitter_kwargs)
         if len(splits) == 1:
             return {"train": self._parser(splits[0], **self.parser_kwargs)}
 
@@ -131,10 +165,10 @@ class Dataset(TrackedInstance):
             "test": test_data,
         }
 
-    def get_features(self, data):
-        data_type = signature(self._reader).return_annotation
-        parsed_data = self._parser(data_type(data), self._features, self._targets)
-        return self._feature_loader(*parsed_data)
+    def get_features(self, features):
+        parsed_data = self._parser(self._feature_loader(features), self._features, self._targets)
+        features = parsed_data[self._parser_feature_key]
+        return self._feature_transformer(features)
 
     @property
     def reader_input_types(self) -> Optional[List[Parameter]]:
@@ -185,6 +219,12 @@ class Dataset(TrackedInstance):
     ) -> "Dataset":
         return cls._from_flytekit_task(task, *args, **kwargs)
 
+    def _default_loader(self, data: R) -> R:
+        [(_, data_type)] = self.reader_return_type.items()
+        if data_type is pd.DataFrame:
+            return pd.DataFrame(data)
+        return data
+
     def _default_splitter(
         self,
         data: D,
@@ -208,5 +248,19 @@ class Dataset(TrackedInstance):
             target_data = pd.DataFrame()
         return data[features], target_data
 
-    def _default_feature_loader(self, *data: Tuple[D, ...]) -> D:
-        return cast(D, data[0])
+    def _default_feature_loader(self, features: Any) -> R:
+        if isinstance(features, Path):
+            with features.open() as f:
+                features = json.load(f)
+
+        [(_, data_type)] = self.reader_return_type.items()
+        if data_type is pd.DataFrame:
+            return pd.DataFrame(features)
+        return features
+
+    def _default_feature_transformer(self, features: R) -> D:
+        """
+        By default this is just a pass-through function. The user can choose to override it with
+        the `@dataset.feature_transformer` decorator.
+        """
+        return cast(D, features)

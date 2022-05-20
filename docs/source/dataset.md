@@ -33,13 +33,16 @@ In the above code snippet you might notice a few things:
   and test sets, while `random_state` makes this shuffling process deterministic.
 ```
 
-## `Dataset` Functions
-
-By default, the `Dataset` object understands how to work with `pandas.DataFrame` objects,
-so in this section we'll assume that we're working with one.
+## Core `Dataset` Functions
 
 In this toy example, we'll use the sklearn [digits](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_digits.html#sklearn.datasets.load_digits)
 as our dataset.
+
+```{important}
+By default, the `Dataset` class understands how to work with `pandas.DataFrame` objects,
+so in this section we'll assume that we're working with one. If you would like built-in support
+for other data structures, please [create an issue](https://github.com/unionai-oss/unionml/issues/new)!
+```
 
 ### `reader`
 
@@ -59,6 +62,56 @@ def reader(sample_frac: float = 1.0, random_state: int = 12345) -> pd.DataFrame:
 
 Notice how we can define any arbitrary set of arguments. In this case, we can choose to
 sample the digits dataset to produce a subset of data.
+
+### `loader`
+
+The `loader` function should specify how to load the output of the `reader` function into memory.
+Since the `Dataset` class knows how to handle `pandas.DataFrame`s, defining the `loader` function
+is optional if you're working with them.
+
+However, suppose that we refactor our reader function so that it returns a parquet file. This
+is where the [Flyte Type System](https://docs.flyte.org/projects/cookbook/en/latest/auto/core/type_system/flyte_python_types.html#sphx-glr-auto-core-type-system-flyte-python-types-py) comes in handy.
+We can use [FlyteFile](https://docs.flyte.org/projects/flytekit/en/latest/generated/flytekit.types.file.FlyteFile.html#flytekit.types.file.FlyteFile) as the output annotation of the `reader` like so:
+
+```{code-block} python
+import pandas as pd
+from flytekit.types.file import FlyteFile
+from sklearn.datasets import load_digits
+
+@dataset.reader
+def reader(sample_frac: float = 1.0, random_state: int = 12345) -> FlyteFile:
+    data = load_digits(as_frame=True).frame
+    output_path = "./digits.parquet"
+    data.to_parquet(output_path)
+    return FlyteFile(path=output_path)
+```
+
+Then to read the file back into memory, we specify our loader:
+
+```{code-block} python
+@dataset.loader
+def loader(data: FlyteFile) -> pd.DataFrame
+    with open(data) as f:
+        return pd.from_parquet(f)
+```
+
+```{admonition} Why do we need two separate steps?
+:class: important
+
+When using UnionML-supported data structures (such as `pandas.DataFrame`s and other supported
+[Flyte Types](https://docs.flyte.org/projects/cookbook/en/latest/auto/core/type_system/flyte_python_types.html#sphx-glr-auto-core-type-system-flyte-python-types-py)), it automatically
+understands how to handle the serialization/deserialization across the data reading and
+model training functions.
+
+For unrecognized types, UnionML will use [Pickle Type](https://docs.flyte.org/projects/cookbook/en/latest/auto/core/type_system/flyte_pickle.html#sphx-glr-auto-core-type-system-flyte-pickle-py) as the
+fallback, which is not guaranteed to work across different versions of Python or different
+versions of your package dependencies.
+
+With that context, there are two cases where you want to define a `reader` and `loader` function:
+
+1. When the most natural way of storing a dataset is in files or a directory structure.
+2. When you don't want to use pickle as the data transfer format between data reading and model training.
+```
 
 ### `splitter`
 
@@ -117,6 +170,52 @@ def parser(data: pd.DataFrame, features: Optional[List[str]], targets: List[str]
         features = [col for col in data if col not in targets]
     return data[features], data[targets]
 ```
+
+## `Dataset` Functions for Prediction
+
+The following functions define behavior for prediction across multiple use cases.
+
+### `feature_loader`
+
+Similar to the `loader` function, the `feature_loader` function handles the loading data into memory
+from a file or from some raw data format.
+
+The default feature loader is equivalent to the following:
+
+```{code-block} python
+import json
+from typing import Any, Dict, List, Union
+from pathlib import Path
+
+RawFeatures = List[Dict[str, Any]]
+
+@dataset.feature_loader
+def feature_loader(features: Union[Path, RawFeatures]) -> pd.DataFrame:
+    if isinstance(features, Path):
+        # handle case where `features` input is a filepath
+        with features.open() as f:
+            features: RawFeatures = json.load(f)
+    return pd.DataFrame(features)
+```
+
+Note that this function handles the case where the input is a file path or a list
+of dictionary records.
+
+### `feature_transformer`
+
+The `feature_transformer` function handles additional processing steps performed on the
+output of `feature_loader` in case you want to do some stateless transforms, like normalizing
+the values of your feature data based on static parameters.
+
+For example, suppose we received an image in the form of a dataframe, where pixel values are
+in the range 0 to 256. To normalize the data to be between 0 and 1, we'd specify a function like this:
+
+```{code-block} python
+@dataset.feature_transformer
+def feature_transformer(data: pd.DataFrame) -> pd.DataFrame:
+    return data / 255
+```
+
 
 ## Next
 
