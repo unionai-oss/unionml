@@ -34,7 +34,7 @@ app = FastAPI()
 model.serve(app, remote=True, model_version="latest")
 ```
 
-```{important}
+````{important}
 
    The `model_version` argument is `"latest"` by default, but you can serve other
    models by passing in the unique identifier of the Flyte execution that produced a specific
@@ -54,7 +54,7 @@ model.serve(app, remote=True, model_version="latest")
    unionml list-model-versions app:model --limit 5
    ```
 
-```
+````
 
 Then start the server:
 
