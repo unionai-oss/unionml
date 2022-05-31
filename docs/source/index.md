@@ -17,6 +17,14 @@ Deployment Guide <deploying>
 Contributing <contributing>
 ```
 
+```{toctree}
+---
+hidden: true
+caption: Tutorials
+---
+Computer Vision <computer_vision>
+```
+
 # Why?
 
 **UnionML** is an open source MLOps framework that reduces the boilerplate, complexity,

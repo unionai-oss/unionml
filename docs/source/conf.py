@@ -87,3 +87,5 @@ html_css_files = [
 nb_custom_formats = {
     ".py": ["jupytext.reads", {"fmt": ".py:percent"}],
 }
+
+nb_execution_mode = "force"

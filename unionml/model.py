@@ -378,6 +378,8 @@ class Model(TrackedInstance):
         features: Any = None,
         **reader_kwargs,
     ):
+        if features is None and not reader_kwargs:
+            raise ValueError("At least one of features or **reader_kwargs needs to be provided")
         if self.artifact is None:
             raise RuntimeError(
                 "ModelArtifact not found. You must train a model first with the `train` method before generating "

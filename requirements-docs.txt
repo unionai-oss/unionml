@@ -2,6 +2,7 @@
 -r requirements-dev.txt
 
 furo
+gradio
 jupytext
 myst-nb
 sphinx
@@ -9,3 +10,5 @@ sphinx-copybutton
 sphinx-panels
 sphinx-prompt
 sphinx-tabs
+tqdm
+transformers
