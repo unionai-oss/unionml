@@ -1,5 +1,6 @@
 """Convert myst markdown to ipython notebook."""
 
+import hashlib
 import os
 from pathlib import Path
 
@@ -13,10 +14,14 @@ CODE_CELL_MARKER = "<!-- ipynb:{code-cell} -->"
 CODE_CELL_DIRECTIVE = "```{code-cell} python"
 
 
-def make_cell_ids_deterministic(notebook: NotebookNode) -> NotebookNode:
+def convert_notebook_str(notebook_str: str) -> NotebookNode:
     """Makes notebook cell ids deterministic."""
+    notebook = jupytext.reads(notebook_str, fmt="myst")
+    notebook_hash = hashlib.md5(notebook_str.encode())
     for i, cell in enumerate(notebook.cells):
-        cell.id = str(i)
+        cell_id = notebook_hash.copy()
+        cell_id.update(str(i).encode())
+        cell.id = cell_id.hexdigest()
     return notebook
 
 
@@ -34,8 +39,7 @@ def main(file: Path, output_path: Path):
         else:
             notebook_str.append(curr)
     notebook_str = "".join(notebook_str)
-    notebook = make_cell_ids_deterministic(jupytext.reads(notebook_str, fmt="myst"))
-    jupytext.write(notebook, output_path, fmt="ipynb")
+    jupytext.write(convert_notebook_str(notebook_str), output_path, fmt="ipynb")
 
 
 if __name__ == "__main__":
