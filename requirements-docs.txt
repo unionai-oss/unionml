@@ -3,6 +3,7 @@
 
 furo
 gradio
+joblib
 jupytext
 myst-nb
 sphinx

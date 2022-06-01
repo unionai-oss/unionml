@@ -368,14 +368,15 @@ model.train(
 
 And now the moment of truth 🙌
 
-To create a `gradio` widget, simply pass in the `model.predict` method into the `gradio.Interface` object:
+To create a `gradio` widget, we can simply use the `model.predict` method into the
+`gradio.Interface` object using a `lambda` function to handle the `None` case when we press
+the `clear` button on the widget:
 
 <!-- ipynb:{code-cell} -->
 ```{code-block} python
 import gradio as gr
 
 gr.Interface(
-    # handle case when you hit the "clear" button, which invokes the function with `None`
     fn=lambda img: img if img is None else model.predict(img),
     inputs="sketchpad",
     outputs="label",

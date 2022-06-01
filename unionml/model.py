@@ -343,6 +343,9 @@ class Model(TrackedInstance):
         model_param, *_ = predictor_sig.parameters.values()
         model_param = model_param.replace(name="model_object")
 
+        # assume that feature_loader has only a single input
+        # data_param = self._dataset.feature_loader_input_types[0].replace(name="features")
+
         # assume that reader_return_type is a dict with only a single entry
         [(_, data_arg_type)] = self._dataset.reader_return_type.items()
         data_param = Parameter("features", kind=Parameter.KEYWORD_ONLY, annotation=data_arg_type)
