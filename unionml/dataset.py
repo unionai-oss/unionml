@@ -186,10 +186,6 @@ class Dataset(TrackedInstance):
             "reader_return_type is not defined. Please define a @dataset.reader function with an output annotation."
         )
 
-    @property
-    def feature_loader_input_types(self) -> List[Parameter]:
-        return [*signature(self._feature_loader).parameters.values()]
-
     @classmethod
     def _from_flytekit_task(
         cls,

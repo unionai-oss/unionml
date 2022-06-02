@@ -25,6 +25,12 @@ it is to create a single-script UnionML app.
 This tutorial is adapted from this [sklearn guide](https://scikit-learn.org/stable/auto_examples/linear_model/plot_sparse_logistic_regression_mnist.html).
 ```
 
+```{code-cell} ipython3
+:tags: [colab-deps, remove-cell]
+
+!pip install pandas sklearn unionml
+```
+
 First let's import our dependencies and create the UnionML `Dataset` and `Model`
 objects:
 

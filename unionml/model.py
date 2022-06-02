@@ -343,9 +343,6 @@ class Model(TrackedInstance):
         model_param, *_ = predictor_sig.parameters.values()
         model_param = model_param.replace(name="model_object")
 
-        # assume that feature_loader has only a single input
-        # data_param = self._dataset.feature_loader_input_types[0].replace(name="features")
-
         # assume that reader_return_type is a dict with only a single entry
         [(_, data_arg_type)] = self._dataset.reader_return_type.items()
         data_param = Parameter("features", kind=Parameter.KEYWORD_ONLY, annotation=data_arg_type)
@@ -357,7 +354,7 @@ class Model(TrackedInstance):
             **self._predict_task_kwargs,
         )
         def predict_from_features_task(model_object, features):
-            return self._predictor(model_object, self._dataset.get_features(features))
+            return self._predictor(model_object, features)
 
         self._predict_from_features_task = predict_from_features_task
         return predict_from_features_task
@@ -390,7 +387,10 @@ class Model(TrackedInstance):
             )
         if features is None:
             return self.predict_workflow()(model_object=self.artifact.model_object, **reader_kwargs)
-        return self.predict_from_features_workflow()(model_object=self.artifact.model_object, features=features)
+        return self.predict_from_features_workflow()(
+            model_object=self.artifact.model_object,
+            features=self._dataset.get_features(features),
+        )
 
     def save(self, file, *args, **kwargs):
         if self.artifact is None:
@@ -528,7 +528,7 @@ class Model(TrackedInstance):
             type_hints = {}
         else:
             workflow_name = self.predict_from_features_workflow_name
-            inputs.update({"features": features})
+            inputs.update({"features": self._dataset.get_features(features)})
             type_hints = {"features": [*self._dataset.reader_return_type.values()][0]}
 
         predict_wf = self._remote.fetch_workflow(
