@@ -4,5 +4,6 @@
 ---
 hidden: true
 ---
+tutorials/mnist
 tutorials/quickdraw
 ```

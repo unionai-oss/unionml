@@ -19,6 +19,16 @@ def convert_notebook_str(notebook_str: str) -> NotebookNode:
     notebook = jupytext.reads(notebook_str, fmt="myst")
     notebook_hash = hashlib.md5(notebook_str.encode())
     for i, cell in enumerate(notebook.cells):
+        if cell.get("metadata", {}).get("tags"):
+            # convert markdown code block to code cell in the ipynb
+            cell.update(
+                {
+                    "cell_type": "code",
+                    # remove ``` lines in the beginning and end of block
+                    "source": "\n".join(cell["source"].split("\n")[1:-1]).strip(),
+                    "outputs": [],
+                }
+            )
         cell_id = notebook_hash.copy()
         cell_id.update(str(i).encode())
         cell.id = cell_id.hexdigest()
@@ -28,17 +38,7 @@ def convert_notebook_str(notebook_str: str) -> NotebookNode:
 def main(file: Path, output_path: Path):
     """Convert a myst markdown file to a jupyter notebook."""
     with open(file) as f:
-        lines = [*f.readlines()]
-
-    notebook_str = []
-    for curr, prev in zip(lines, [None] + lines[:-1]):
-        if curr.startswith(CODE_CELL_MARKER):
-            continue
-        if prev is not None and prev.startswith(CODE_CELL_MARKER):
-            notebook_str.append(f"""{CODE_CELL_DIRECTIVE}\n""")
-        else:
-            notebook_str.append(curr)
-    notebook_str = "".join(notebook_str)
+        notebook_str = f.read()
     jupytext.write(convert_notebook_str(notebook_str), output_path, fmt="ipynb")
 
 

@@ -33,9 +33,16 @@ This tutorial is adapted from this [gradio guide](https://gradio.app/building_a_
 and you can find the original notebook [here](https://github.com/nateraw/quickdraw-pytorch).
 ```
 
+```{code-cell} ipython3
+:tags: [remove-cell]
+
+!pip install gradio numpy tqdm requests torch transformers unionml
+```
+
 First let's import everything we need:
 
 ```{code-cell} ipython3
+import math
 from typing import List, Optional
 
 import urllib.request
@@ -43,7 +50,6 @@ from tqdm.auto import tqdm
 from pathlib import Path
 import requests
 import torch
-import math
 import numpy as np
 ```
 
@@ -209,7 +215,7 @@ from datetime import datetime
 def train_quickdraw(module: nn.Module, dataset: QuickDrawDataset, num_epochs: int, batch_size: int):
     timestamp = datetime.now().strftime('%Y-%m-%d-%H%M%S')
     training_args = TrainingArguments(
-        output_dir=f'./.tmp/outputs_20k_{timestamp}',
+        output_dir=f'~/.tmp/outputs_20k_{timestamp}',
         save_strategy='epoch',
         report_to=['tensorboard'],
         logging_strategy='steps',
@@ -372,8 +378,9 @@ To create a `gradio` widget, we can simply use the `model.predict` method into t
 `gradio.Interface` object using a `lambda` function to handle the `None` case when we press
 the `clear` button on the widget:
 
-<!-- ipynb:{code-cell} -->
++++ {"tags": ["ipynb-code-cell"]}
 ```{code-block} python
+
 import gradio as gr
 
 gr.Interface(

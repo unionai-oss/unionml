@@ -84,8 +84,5 @@ html_css_files = [
     "css/custom.css",
 ]
 
-nb_custom_formats = {
-    ".py": ["jupytext.reads", {"fmt": ".py:percent"}],
-}
-
-nb_execution_mode = "force"
+nb_execution_mode = "cache"
+nb_execution_timeout = 600

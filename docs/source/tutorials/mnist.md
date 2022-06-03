@@ -11,24 +11,24 @@ kernelspec:
   name: python3
 ---
 
-# MNIST: Hand-written Digits Classification
+# MNIST: Digits Classification
 
 The MNIST dataset is considered to be the "hello world" example of machine
 learning. In that same spirit, we'll be making the "hello world" UnionML app
 using this dataset and a simple linear classifier with
 [sklearn](https://scikit-learn.org/stable/index.html).
 
-Because modeling this dataset is such a well-worn path, we'll see just how easy
-it is to create a single-script UnionML app.
+With this dataset, we'll see just how easy it is to create a single-script UnionML app.
 
 ```{note}
 This tutorial is adapted from this [sklearn guide](https://scikit-learn.org/stable/auto_examples/linear_model/plot_sparse_logistic_regression_mnist.html).
 ```
 
-```{code-cell} ipython3
-:tags: [colab-deps, remove-cell]
 
-!pip install pandas sklearn unionml
+```{code-cell} ipython3
+:tags: [remove-cell]
+
+!pip install gradio pandas sklearn unionml
 ```
 
 First let's import our dependencies and create the UnionML `Dataset` and `Model`
@@ -66,7 +66,7 @@ fetch_openml_cached = memory.cache(fetch_openml)
 Next, we define our core UnionML app functions:
 
 ```{code-cell} ipython3
-@dataset.reader
+@dataset.reader(cache=True, cache_version="1")
 def reader() -> pd.DataFrame:
     dataset = fetch_openml_cached(
         "mnist_784",
@@ -88,7 +88,7 @@ def init(hyperparameters: dict) -> Pipeline:
     return estimator.set_params(**hyperparameters)
 
 
-@model.trainer
+@model.trainer(cache=True, cache_version="1")
 def trainer(
     estimator: Pipeline,
     features: pd.DataFrame,
@@ -114,7 +114,7 @@ def evaluator(
     return float(accuracy_score(target.squeeze(), estimator.predict(features)))
 ```
 
-### Training a Model Locally
+## Training a Model Locally
 
 Then we can train our model locally:
 
@@ -123,14 +123,14 @@ estimator, metrics = model.train(
     hyperparameters={
         "classifier__penalty": "l2",
         "classifier__C": 0.1,
-        "classifier__max_iter": 10000,
+        "classifier__max_iter": 1000,
     }
 )
 features = reader().sample(5, random_state=42).drop(["class"], axis="columns")
 print(estimator, metrics, sep="\n")
 ```
 
-### Serving on a Gradio Widget
+## Serving on a Gradio Widget
 
 Finally, let's create a `gradio` widget by simply using the `model.predict` method into
 the `gradio.Interface` object.
@@ -154,8 +154,9 @@ def feature_loader(data: np.ndarray) -> pd.DataFrame:
 We also need to take care to handle the `None` case when we press
 the `clear` button on the widget using a `lambda` function:
 
-<!-- ipynb:{code-cell} -->
-```{code-cell} ipython3
++++ {"tags": ["ipynb-code-cell"]}
+```{code-block} python
+
 import gradio as gr
 
 gr.Interface(
