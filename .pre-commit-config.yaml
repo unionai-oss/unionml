@@ -39,6 +39,6 @@ repos:
     name: convert myst markdown to jupyter notebooks
     language: system
     entry: python -m scripts.myst_to_ipynb
-    args: [docs/source/tutorials, -o, docs/notebooks]
+    args: [docs/tutorials, -o, docs/notebooks, -d, docs/source/tutorials]
     pass_filenames: false
     always_run: true
