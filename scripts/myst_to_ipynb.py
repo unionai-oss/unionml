@@ -7,27 +7,32 @@ from pathlib import Path
 import jupytext
 from nbformat import NotebookNode
 
+COLAB_BADGE = "https://colab.research.google.com/assets/colab-badge.svg"
+COLAB_URL = "https://colab.research.google.com"
+REPO_URL = "github/unionai-oss/unionml/blob/main"
 
-def convert_notebook_str(notebook_str: str) -> NotebookNode:
+
+def create_or_replace_cell_badge(cell: NotebookNode, output_path: str) -> NotebookNode:
+    """Prepends a badge to the beginning of the cell."""
+    badge = f"[![Open In Colab]({COLAB_BADGE})]({COLAB_URL}/{REPO_URL}/{output_path})"
+    cell.update({"source": badge})
+    return cell
+
+
+def convert_notebook_str(
+    output_path: Path,
+    notebook_str: str,
+) -> NotebookNode:
     """Makes notebook cell ids deterministic."""
     notebook = jupytext.reads(notebook_str, fmt="myst")
     notebook_hash = hashlib.md5(notebook_str.encode())
     for i, cell in enumerate(notebook.cells):
-        if "ipynb-code-cell" in cell.get("metadata", {}).get("tags", []):
-            # convert markdown code block to code cell in the ipynb
-            cell.update(
-                {
-                    "cell_type": "code",
-                    # remove ``` lines in the beginning and end of block
-                    "source": "\n".join(cell["source"].split("\n")[1:-1]).strip(),
-                    "outputs": [],
-                    "execution_count": None,
-                    "metadata": {},
-                }
-            )
+        tags = cell.get("metadata", {}).get("tags", [])
+        if "add-colab-badge" in tags:
+            create_or_replace_cell_badge(cell, output_path)
         cell_id = notebook_hash.copy()
         cell_id.update(str(i).encode())
-        cell.id = cell_id.hexdigest()
+        cell.update({"id": cell_id.hexdigest()})
     return notebook
 
 
@@ -35,7 +40,9 @@ def main(file: Path, output_path: Path):
     """Convert a myst markdown file to a jupyter notebook."""
     with open(file) as f:
         notebook_str = f.read()
-    jupytext.write(convert_notebook_str(notebook_str), output_path, fmt="ipynb")
+    notebook = convert_notebook_str(output_path, notebook_str)
+    jupytext.write(notebook, file, fmt="myst")
+    jupytext.write(notebook, output_path, fmt="ipynb")
 
 
 if __name__ == "__main__":

@@ -13,6 +13,12 @@ kernelspec:
 
 # QuickDraw: A Pictionary App
 
++++ {"tags": ["add-colab-badge"]}
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/unionai-oss/unionml/blob/main/docs/notebooks/quickdraw.ipynb)
+
++++
+
 In this example, we'll see how to create pictionary app that uses the
 [QuickDraw](https://github.com/googlecreativelab/quickdraw-dataset) dataset
 to train a convolutional neural net to predict the semantic label of a
@@ -33,15 +39,16 @@ This tutorial is adapted from this [gradio guide](https://gradio.app/building_a_
 and you can find the original notebook [here](https://github.com/nateraw/quickdraw-pytorch).
 ```
 
-```{code-cell} ipython3
+```{code-cell}
 :tags: [remove-cell]
 
+%%capture
 !pip install gradio numpy tqdm requests torch transformers unionml
 ```
 
 First let's import everything we need:
 
-```{code-cell} ipython3
+```{code-cell}
 import math
 from typing import List, Optional
 
@@ -56,7 +63,7 @@ import numpy as np
 Then let's implement some helper functions for downloading the quickdraw data and loading it
 into memory:
 
-```{code-cell} ipython3
+```{code-cell}
 CLASSES_URL = "https://raw.githubusercontent.com/googlecreativelab/quickdraw-dataset/master/categories.txt"
 DATASET_URL = "https://storage.googleapis.com/quickdraw_dataset/full/numpy_bitmap/"
 
@@ -101,7 +108,7 @@ def load_quickdraw_data(root: str = "./data", max_items_per_class: int = 5000):
 
 Next we implement the `QuickDrawDataset` using `torch.utils.data.Dataset`:
 
-```{code-cell} ipython3
+```{code-cell}
 class QuickDrawDataset(torch.utils.data.Dataset):
     def __init__(self, root, max_items_per_class=5000, class_limit=None):
         super().__init__()
@@ -144,7 +151,7 @@ handle the automatic batching of data during training.
 
 Now let's define the model architecture for our ConvNet:
 
-```{code-cell} ipython3
+```{code-cell}
 from torch import nn
 
 def init_model(num_classes: int) -> nn.Module:
@@ -170,7 +177,7 @@ kernel size of 3, Relu layers for its non-linear activation operator, and max-po
 
 Next, let's create a subclass of `transformers.Trainer` to implement a custom loss function:
 
-```{code-cell} ipython3
+```{code-cell}
 from transformers import EvalPrediction, Trainer, TrainingArguments
 from transformers.modeling_utils import ModelOutput
 
@@ -188,7 +195,7 @@ class QuickDrawTrainer(Trainer):
 Then, let's define helper functions to compute the accuracy metric, which will be how we'll
 judge the performance of our model:
 
-```{code-cell} ipython3
+```{code-cell}
 # Adapted from: https://github.com/rwightman/pytorch-image-models/blob/master/timm/utils/metrics.py
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k."""
@@ -209,7 +216,7 @@ def quickdraw_compute_metrics(p: EvalPrediction):
 Finally, let's create a `train_quickdraw` function that will serve as the main entrypoint
 for training:
 
-```{code-cell} ipython3
+```{code-cell}
 from datetime import datetime
 
 def train_quickdraw(module: nn.Module, dataset: QuickDrawDataset, num_epochs: int, batch_size: int):
@@ -246,7 +253,6 @@ def train_quickdraw(module: nn.Module, dataset: QuickDrawDataset, num_epochs: in
     quickdraw_trainer.save_metrics("train", train_results.metrics)
     quickdraw_trainer.save_state()
     return module
-
 ```
 
 Why did we do through all of this trouble to implementing the dataset and model classes/functions
@@ -264,7 +270,7 @@ In the next section, we'll see that this pays dividends in terms of readability 
 Now that we have all the pieces we need to train our model, let's create the UnionML app. First we
 import what we need and define our `unionml.Dataset` and `unionml.Model` objects:
 
-```{code-cell} ipython3
+```{code-cell}
 from typing import Union
 
 import numpy as np
@@ -282,7 +288,7 @@ model = Model(name="quickdraw_classifier", init=init_model, dataset=dataset)
 
 Then, we implement the `reader` function, which returns a `QuickDrawDataset`:
 
-```{code-cell} ipython3
+```{code-cell}
 @dataset.reader(cache=True, cache_version="1")
 def reader(
     data_dir: str, max_examples_per_class: int = 1000, class_limit: int = 5
@@ -296,7 +302,7 @@ Next, we define the `trainer` function, using the `quickdraw_trainer` helper fun
 defined above and an `evaluator` function to let UnionML know how to evaluate the model
 on some partition of the data:
 
-```{code-cell} ipython3
+```{code-cell}
 @model.trainer(cache=True, cache_version="1")
 def trainer(
     module: nn.Module,
@@ -326,7 +332,7 @@ def evaluator(module: nn.Module, dataset: QuickDrawDataset) -> float:
 Because we expect to generate predictions from raw images in the form of a numpy array,
 we need to register a `feature_loader` function in the `dataset` object:
 
-```{code-cell} ipython3
+```{code-cell}
 @dataset.feature_loader
 def feature_loader(data: np.ndarray) -> torch.Tensor:
     return torch.tensor(data, dtype=torch.float32).unsqueeze(0).unsqueeze(0) / 255.0
@@ -334,7 +340,7 @@ def feature_loader(data: np.ndarray) -> torch.Tensor:
 
 Then we can define a `predictor` function that consumes the output of `feature_loader`:
 
-```{code-cell} ipython3
+```{code-cell}
 @model.predictor(cache=True, cache_version="1")
 def predictor(module: nn.Module, features: torch.Tensor) -> dict:
     module.eval()
@@ -355,7 +361,7 @@ a pictionary app in UnionML ⭐️
 Now let's train a model just using 10 classes, with 500 examples per class, for 1 epoch. This
 model won't perform that well, so feel free to change these numbers up in the code below:
 
-```{code-cell} ipython3
+```{code-cell}
 num_classes = 10
 max_examples_per_class = 500
 num_epochs = 1
@@ -378,8 +384,8 @@ To create a `gradio` widget, we can simply use the `model.predict` method into t
 `gradio.Interface` object using a `lambda` function to handle the `None` case when we press
 the `clear` button on the widget:
 
-+++ {"tags": ["ipynb-code-cell"]}
-```{code-block} python
+```{code-cell}
+:tags: [remove-output]
 
 import gradio as gr
 

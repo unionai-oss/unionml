@@ -21,7 +21,7 @@ Deployment Guide <deploying>
 hidden: true
 caption: Tutorials
 ---
-Tutorials Intro <tutorials_intro>
+Tutorials <tutorials_intro>
 Computer Vision <computer_vision>
 ```
 
@@ -307,5 +307,5 @@ Learn how to leverage the full power of UnionML 🦾 in the {ref}`User Guide <us
 ```{admonition} Want to contribute?
 :class: important
 
-Check out the {ref}`Contributing Guide <contributing>`.
+Check out the {ref}`Contributing Guide <contributing_guide>`.
 ```

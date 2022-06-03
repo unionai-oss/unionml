@@ -1,9 +1,15 @@
+(computer_vision)=
+
 # Computer Vision
+
+This section of the tutorials should you how to process image data to create
+predictive applications like digits classification 🔢 and pictionary 🖼!
 
 ```{toctree}
 ---
-hidden: true
+maxdepth: 1
 ---
+
 tutorials/mnist
 tutorials/quickdraw
 ```

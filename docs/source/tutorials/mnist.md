@@ -13,6 +13,12 @@ kernelspec:
 
 # MNIST: Digits Classification
 
++++ {"tags": ["add-colab-badge"]}
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/unionai-oss/unionml/blob/main/docs/notebooks/mnist.ipynb)
+
++++
+
 The MNIST dataset is considered to be the "hello world" example of machine
 learning. In that same spirit, we'll be making the "hello world" UnionML app
 using this dataset and a simple linear classifier with
@@ -24,17 +30,17 @@ With this dataset, we'll see just how easy it is to create a single-script Union
 This tutorial is adapted from this [sklearn guide](https://scikit-learn.org/stable/auto_examples/linear_model/plot_sparse_logistic_regression_mnist.html).
 ```
 
-
-```{code-cell} ipython3
+```{code-cell}
 :tags: [remove-cell]
 
+%%capture
 !pip install gradio pandas sklearn unionml
 ```
 
 First let's import our dependencies and create the UnionML `Dataset` and `Model`
 objects:
 
-```{code-cell} ipython3
+```{code-cell}
 from typing import List, Union
 
 import pandas as pd
@@ -55,7 +61,7 @@ model = Model(name="mnist_classifier", init=LogisticRegression, dataset=dataset)
 For convenience, we cache the dataset so that MNIST loading is faster upon subsequent calls
 to the `fetch_openml` function:
 
-```{code-cell} ipython3
+```{code-cell}
 from pathlib import Path
 from joblib import Memory
 
@@ -65,7 +71,7 @@ fetch_openml_cached = memory.cache(fetch_openml)
 
 Next, we define our core UnionML app functions:
 
-```{code-cell} ipython3
+```{code-cell}
 @dataset.reader(cache=True, cache_version="1")
 def reader() -> pd.DataFrame:
     dataset = fetch_openml_cached(
@@ -118,7 +124,7 @@ def evaluator(
 
 Then we can train our model locally:
 
-```{code-cell} ipython
+```{code-cell}
 estimator, metrics = model.train(
     hyperparameters={
         "classifier__penalty": "l2",
@@ -138,7 +144,7 @@ the `gradio.Interface` object.
 Before we do this, however, we want to define a `feature_loader` function to handle the raw input
 coming from the `gradio` widget:
 
-```{code-cell} ipython3
+```{code-cell}
 import numpy as np
 
 @dataset.feature_loader
@@ -154,8 +160,8 @@ def feature_loader(data: np.ndarray) -> pd.DataFrame:
 We also need to take care to handle the `None` case when we press
 the `clear` button on the widget using a `lambda` function:
 
-+++ {"tags": ["ipynb-code-cell"]}
-```{code-block} python
+```{code-cell}
+:tags: [remove-output]
 
 import gradio as gr
 
