@@ -1,4 +1,5 @@
 # Repo-specific ignore
+.ipynb_checkpoints
 flyte-package.tgz
 flyte-package
 .kube

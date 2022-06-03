@@ -14,7 +14,24 @@ hidden: true
 ---
 User Guide <user_guide>
 Deployment Guide <deploying>
-Contributing <contributing>
+```
+
+```{toctree}
+---
+hidden: true
+caption: Tutorials
+---
+Tutorials <tutorials_intro>
+Computer Vision <computer_vision>
+```
+
+```{toctree}
+---
+hidden: true
+caption: Contributing
+---
+
+Contributing Guide <contributing_guide>
 ```
 
 # Why?
@@ -290,5 +307,5 @@ Learn how to leverage the full power of UnionML 🦾 in the {ref}`User Guide <us
 ```{admonition} Want to contribute?
 :class: important
 
-Check out the {ref}`Contributing Guide <contributing>`.
+Check out the {ref}`Contributing Guide <contributing_guide>`.
 ```

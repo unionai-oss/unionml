@@ -173,7 +173,7 @@ class Dataset(TrackedInstance):
     @property
     def reader_input_types(self) -> Optional[List[Parameter]]:
         if self._reader and self._reader_input_types is None:
-            return [p for p in signature(self._reader).parameters]
+            return [*signature(self._reader).parameters.values()]
         return self._reader_input_types
 
     @property

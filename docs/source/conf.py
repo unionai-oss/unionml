@@ -10,7 +10,8 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
+import os
+
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
@@ -84,6 +85,9 @@ html_css_files = [
     "css/custom.css",
 ]
 
-nb_custom_formats = {
-    ".py": ["jupytext.reads", {"fmt": ".py:percent"}],
-}
+nb_execution_mode = "cache"
+nb_execution_timeout = 600
+
+if "READTHEDOCS" in os.environ:
+    # don't run the docs
+    nb_execution_excludepatterns = ["tutorials/*.md"]

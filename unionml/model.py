@@ -354,7 +354,7 @@ class Model(TrackedInstance):
             **self._predict_task_kwargs,
         )
         def predict_from_features_task(model_object, features):
-            return self._predictor(model_object, self._dataset.get_features(features))
+            return self._predictor(model_object, features)
 
         self._predict_from_features_task = predict_from_features_task
         return predict_from_features_task
@@ -378,6 +378,8 @@ class Model(TrackedInstance):
         features: Any = None,
         **reader_kwargs,
     ):
+        if features is None and not reader_kwargs:
+            raise ValueError("At least one of features or **reader_kwargs needs to be provided")
         if self.artifact is None:
             raise RuntimeError(
                 "ModelArtifact not found. You must train a model first with the `train` method before generating "
@@ -385,7 +387,10 @@ class Model(TrackedInstance):
             )
         if features is None:
             return self.predict_workflow()(model_object=self.artifact.model_object, **reader_kwargs)
-        return self.predict_from_features_workflow()(model_object=self.artifact.model_object, features=features)
+        return self.predict_from_features_workflow()(
+            model_object=self.artifact.model_object,
+            features=self._dataset.get_features(features),
+        )
 
     def save(self, file, *args, **kwargs):
         if self.artifact is None:
@@ -523,7 +528,7 @@ class Model(TrackedInstance):
             type_hints = {}
         else:
             workflow_name = self.predict_from_features_workflow_name
-            inputs.update({"features": features})
+            inputs.update({"features": self._dataset.get_features(features)})
             type_hints = {"features": [*self._dataset.reader_return_type.values()][0]}
 
         predict_wf = self._remote.fetch_workflow(

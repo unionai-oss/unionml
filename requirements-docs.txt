@@ -2,10 +2,14 @@
 -r requirements-dev.txt
 
 furo
+gradio
+joblib
 jupytext
-myst-nb
+myst-nb>=0.15.0
 sphinx
 sphinx-copybutton
 sphinx-panels
 sphinx-prompt
 sphinx-tabs
+tqdm
+transformers

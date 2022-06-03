@@ -1,6 +1,6 @@
-(contributing)=
+(contributing_guide)=
 
-# Contributing
+# Contributing Guide
 
 We are striving to build an open and inclusive community around UnionML. Whether you are a novice or
 experienced software developer, data scientist, or machine learning practitioner, all contributions
