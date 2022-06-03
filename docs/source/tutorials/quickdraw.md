@@ -112,14 +112,8 @@ Next we implement the `QuickDrawDataset` using `torch.utils.data.Dataset`:
 class QuickDrawDataset(torch.utils.data.Dataset):
     def __init__(self, root, max_items_per_class=5000, class_limit=None):
         super().__init__()
-        self.root = root
-        self.max_items_per_class = max_items_per_class
-        self.class_limit = class_limit
-
-        download_quickdraw_dataset(self.root, self.class_limit)
-        self.X, self.Y, self.classes = load_quickdraw_data(
-            self.root, self.max_items_per_class,
-        )
+        download_quickdraw_dataset(root, class_limit)
+        self.X, self.Y, self.classes = load_quickdraw_data(root, max_items_per_class)
 
     def __getitem__(self, idx):
         x = (self.X[idx] / 255.).astype(np.float32).reshape(1, 28, 28)
