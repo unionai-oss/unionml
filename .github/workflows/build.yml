@@ -43,3 +43,5 @@ jobs:
     - name: Unit tests with pytest
       run: |
         pytest tests/unit
+    - name: Build Docs
+      run: make docs
