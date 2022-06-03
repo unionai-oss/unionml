@@ -2,7 +2,7 @@
 -r requirements-dev.txt
 
 furo
-gradio
+gradio<=3.0.10
 joblib
 jupytext
 myst-nb>=0.15.0

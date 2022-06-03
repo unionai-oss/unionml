@@ -45,6 +45,22 @@ In the above code snippet you might notice a few things:
 Like the `Dataset` object, The `Model` object we defined above exposes three
 core functions required for model training, prediction, and evaluation.
 
+### `init`
+
+In the `Model` constructor you can note that the `init` argument takes either a class
+that is initialized to produce a model object, which will then be passed down to the
+`trainer` function as the first positional argument.
+
+In most cases this will suffice, but you can define a decorated `init`
+function that achieves the same thing, i.e. the difference is purely syntactic.
+The equivalent `init` function would be:
+
+```{code-block} python
+@model.init
+def init(hyperparameters: dict) -> LogisticRegression:
+    return LogisticRegression(**hyperparameters)
+```
+
 ### `trainer`
 
 The `trainer` function should contain all the logic for training a model from

@@ -34,7 +34,7 @@ This tutorial is adapted from this [sklearn guide](https://scikit-learn.org/stab
 :tags: [remove-cell]
 
 %%capture
-!pip install gradio pandas sklearn unionml
+!pip install 'gradio<=3.0.10' pandas sklearn unionml
 ```
 
 First let's import our dependencies and create the UnionML `Dataset` and `Model`
@@ -173,3 +173,8 @@ gr.Interface(
     allow_flagging="never",
 ).launch()
 ```
+
+You might notice that the model doesn't perform as well as you might expect...
+welcome to the world of machine learning practice! To obtain a better model given
+a fixed dataset, feel free to play around with te model hyperparameters or even
+switch up the model type/architecture that's defined in the `trainer` function.
