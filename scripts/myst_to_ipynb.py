@@ -25,11 +25,16 @@ def convert_notebook_str(
 ) -> NotebookNode:
     """Makes notebook cell ids deterministic."""
     notebook = jupytext.reads(notebook_str, fmt="myst")
-    notebook_hash = hashlib.md5(notebook_str.encode())
     for i, cell in enumerate(notebook.cells):
         tags = cell.get("metadata", {}).get("tags", [])
         if "add-colab-badge" in tags:
             create_or_replace_cell_badge(cell, output_path)
+
+    # get notebook hash based on updated cell content
+    myst_str = jupytext.writes(notebook, fmt="myst")
+    notebook_hash = hashlib.md5(myst_str.encode())
+
+    for i, cell in enumerate(notebook.cells):
         cell_id = notebook_hash.copy()
         cell_id.update(str(i).encode())
         cell.update({"id": cell_id.hexdigest()})
