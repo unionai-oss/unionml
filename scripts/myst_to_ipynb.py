@@ -7,12 +7,6 @@ from pathlib import Path
 import jupytext
 from nbformat import NotebookNode
 
-# This indicates where code-blocks should be convert to code-cells
-# when converted to ipynb format. This logic is for cells that should be
-# non-executable in the docs but executable in notebook form.
-CODE_CELL_MARKER = "<!-- ipynb:{code-cell} -->"
-CODE_CELL_DIRECTIVE = "```{code-cell} python"
-
 
 def convert_notebook_str(notebook_str: str) -> NotebookNode:
     """Makes notebook cell ids deterministic."""

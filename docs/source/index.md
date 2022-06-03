@@ -14,7 +14,6 @@ hidden: true
 ---
 User Guide <user_guide>
 Deployment Guide <deploying>
-Contributing <contributing>
 ```
 
 ```{toctree}
@@ -22,7 +21,17 @@ Contributing <contributing>
 hidden: true
 caption: Tutorials
 ---
+Tutorials Intro <tutorials_intro>
 Computer Vision <computer_vision>
+```
+
+```{toctree}
+---
+hidden: true
+caption: Contributing
+---
+
+Contributing Guide <contributing_guide>
 ```
 
 # Why?
