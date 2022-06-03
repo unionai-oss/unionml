@@ -13,7 +13,7 @@ def convert_notebook_str(notebook_str: str) -> NotebookNode:
     notebook = jupytext.reads(notebook_str, fmt="myst")
     notebook_hash = hashlib.md5(notebook_str.encode())
     for i, cell in enumerate(notebook.cells):
-        if cell.get("metadata", {}).get("tags"):
+        if "ipynb-code-cell" in cell.get("metadata", {}).get("tags", []):
             # convert markdown code block to code cell in the ipynb
             cell.update(
                 {
@@ -21,6 +21,8 @@ def convert_notebook_str(notebook_str: str) -> NotebookNode:
                     # remove ``` lines in the beginning and end of block
                     "source": "\n".join(cell["source"].split("\n")[1:-1]).strip(),
                     "outputs": [],
+                    "execution_count": None,
+                    "metadata": {},
                 }
             )
         cell_id = notebook_hash.copy()
