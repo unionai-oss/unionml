@@ -14,11 +14,11 @@ kernelspec:
 
 # Binding a Model and Dataset
 
-In {ref}`Defining a Dataset <dataset>` we saw how to create a minimal `Dataset`
+In {ref}`Defining a Dataset <dataset>` we saw how to create a minimal {class}`~unionml.dataset.Dataset`
 specification, which uses the sklearn [digits dataset](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_digits.html#sklearn.datasets.load_digits) and `pandas.DataFrame`
 as the underlying data container.
 
-Now let's define a `Model` and bind it with the `Dataset`.
+Now let's define a {class}`~unionml.model.Model` and bind it with the {class}`~unionml.dataset.Dataset`.
 
 ```{code-block} python
 from unionml import DatasetModel
@@ -42,14 +42,14 @@ In the above code snippet you might notice a few things:
 
 ## `Model` Functions
 
-Like the `Dataset` object, The `Model` object we defined above exposes three
+Like the `dataset` object, The `model` object we defined above exposes three
 core functions required for model training, prediction, and evaluation.
 
-### `init`
+### {meth}`~unionml.model.Model.init`
 
-In the `Model` constructor you can note that the `init` argument takes either a class
-that is initialized to produce a model object, which will then be passed down to the
-`trainer` function as the first positional argument.
+In the {class}`~unionml.model.Model` constructor you can note that the `init` argument
+takes either a class that is initialized to produce a model object, which will then be passed
+down to the `trainer` function as the first positional argument.
 
 In most cases this will suffice, but you can define a decorated `init`
 function that achieves the same thing, i.e. the difference is purely syntactic.
@@ -61,7 +61,7 @@ def init(hyperparameters: dict) -> LogisticRegression:
     return LogisticRegression(**hyperparameters)
 ```
 
-### `trainer`
+### {meth}`~unionml.model.Model.trainer`
 
 The `trainer` function should contain all the logic for training a model from
 scratch or a previously saved model checkpoint.
@@ -80,7 +80,7 @@ In this example, the function body simply invokes the sklearn API standard `.fit
 training, however you can implement any arbitrary training logic in the `trainer` function.
 ```
 
-### `predictor`
+### {meth}`~unionml.model.Model.predictor`
 
 The `predictor` function takes an `estimator` object and `features` dataframe as inputs
 and generates a `List` of `float`s representing the predicted digit that the features
@@ -94,7 +94,7 @@ def predictor(estimator: LogisticRegression, features: pd.DataFrame) -> List[flo
     return [float(x) for x in estimator.predict(features)]
 ```
 
-### `evaluator`
+### {meth}`~unionml.model.Model.evaluator`
 
 Finally, we need to specify how to evaluate an `estimator` given `features` and a `target`.
 In this case, we'll just use the sklearn [`accuracy_score`](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.accuracy_score.html) function.
@@ -113,5 +113,5 @@ Since `predictor` is just a python function, we can use it inside the `evaluator
 
 ## Next
 
-Now that we've defined a `Dataset` and `Model` and bound them together, let's see how
-we can perform {ref}`Local Training and Prediction <local_app>`.
+Now that we've defined a {class}`~unionml.dataset.Dataset` and {class}`~unionml.model.Model` and bound them
+together, let's see how we can perform {ref}`Local Training and Prediction <local_app>`.

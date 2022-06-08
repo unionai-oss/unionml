@@ -214,6 +214,7 @@ class Dataset(TrackedInstance):
         :param raw_data: Raw data in the same form as the ``reader`` output.
 
         This function uses the following registered functions to create parsed, split data:
+
         - :meth:`unionml.dataset.Dataset.loader`
         - :meth:`unionml.dataset.Dataset.splitter`
         - :meth:`unionml.dataset.Dataset.parser`
@@ -235,7 +236,8 @@ class Dataset(TrackedInstance):
     def get_features(self, features):
         """Get feature data from its raw form to its model-ready form.
 
-        This function uses the following registered functions to create model-ready features.
+        This function uses the following registered functions to create model-ready features:
+
         - :meth:`unionml.dataset.Dataset.feature_loader`
         - :meth:`unionml.dataset.Dataset.parser`
         - :meth:`unionml.dataset.Dataset.feature_transformer`

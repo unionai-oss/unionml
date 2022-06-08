@@ -134,7 +134,7 @@ model.serve(app)
 `model.serve` will take the `FastAPI` app and automatically create a `/predict/` endpoint that you can
 invoke with HTTP requests.
 
-Start the server with `unionml serve`:
+Start the server with <a href="cli_reference.html#unionml-serve">unionml serve</a>
 
 ```{prompt} bash
 :prompts: $

@@ -12,7 +12,7 @@
 ---
 hidden: true
 ---
-User Guide <user_guide>
+Basics <basics>
 Deployment Guide <deploying>
 ```
 
@@ -81,7 +81,8 @@ Before installing `unionml`, follow these StackOverflow posts to install
 
 # Quickstart
 
-A UnionML app is composed of two core classes: a `Dataset` and a `Model`.
+A UnionML app is composed of two core classes: a {class}`~unionml.dataset.Dataset` and a
+{class}`~unionml.model.Model`.
 
 In this example, we'll build a minimal UnionML app that classifies images of handwritten digits
 into their corresponding digit labels using [sklearn](https://scikit-learn.org/stable/),
@@ -196,7 +197,8 @@ exposed by the `dataset` and `model` objects:
 
 ## Train and Predict Locally
 
-Invoke `model.train` to train a model and `model.predict` to generate predictions.
+Invoke {meth}`~unionml.model.Model.train` to train a model and {meth}`~unionml.model.Model.predict`
+to generate predictions.
 
 ````{tabs}
 
@@ -310,7 +312,7 @@ Then you can invoke the endpoints using the `requests` library, e.g. in a separa
 
 # What Next?
 
-Learn how to leverage the full power of UnionML 🦾 in the {ref}`User Guide <user_guide>`.
+Learn how to leverage the full power of UnionML 🦾 in the {ref}`Basics <basics>` guide.
 
 
 ```{admonition} Want to contribute?

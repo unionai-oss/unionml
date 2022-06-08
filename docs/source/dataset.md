@@ -8,7 +8,7 @@ defined and how we can customize its behavior.
 
 ## What's a UnionML Dataset?
 
-A `Dataset` is one of the core parts of a *UnionML app*. You can think of
+A {class}`~unionml.dataset.Dataset` is one of the core parts of a *UnionML app*. You can think of
 it as a specification for a dataset's source in addition to a set of common
 machine-learning-specific abstractions, which we'll get into later in this guide.
 
@@ -44,7 +44,7 @@ so in this section we'll assume that we're working with one. If you would like b
 for other data structures, please [create an issue](https://github.com/unionai-oss/unionml/issues/new)!
 ```
 
-### `reader`
+### {meth}`~unionml.dataset.Dataset.reader`
 
 When working with `pandas.DataFrame`s, the only `Dataset` method you need to implement is
 the `reader`, which specifies how to get your training data. This is done by decorating a
@@ -63,7 +63,7 @@ def reader(sample_frac: float = 1.0, random_state: int = 12345) -> pd.DataFrame:
 Notice how we can define any arbitrary set of arguments. In this case, we can choose to
 sample the digits dataset to produce a subset of data.
 
-### `loader`
+### {meth}`~unionml.dataset.Dataset.loader`
 
 The `loader` function should specify how to load the output of the `reader` function into memory.
 Since the `Dataset` class knows how to handle `pandas.DataFrame`s, defining the `loader` function
@@ -113,7 +113,7 @@ With that context, there are two cases where you want to define a `reader` and `
 2. When you don't want to use pickle as the data transfer format between data reading and model training.
 ```
 
-### `splitter`
+### {meth}`~unionml.dataset.Dataset.splitter`
 
 The `splitter` function should specify how to split your data into train and test sets. When
 working with `pandas.DataFrame`s you can supply the `test_size`, `shuffle`, and `random_state`
@@ -143,7 +143,7 @@ The splitter is expected to return an indexable type whose underlying type match
 output of `reader`. In this case, we return a `NamedTuple` of `pd.DataFrame`s.
 ```
 
-### `parser`
+### {meth}`~unionml.dataset.Dataset.parser`
 
 Finally, this specifies how to extract features and targets from your dataset.
 By supplying the `features` and `targets` arguments for the `Dataset` initializer,
@@ -175,7 +175,7 @@ def parser(data: pd.DataFrame, features: Optional[List[str]], targets: List[str]
 
 The following functions define behavior for prediction across multiple use cases.
 
-### `feature_loader`
+### {meth}`~unionml.dataset.Dataset.feature_loader`
 
 Similar to the `loader` function, the `feature_loader` function handles the loading data into memory
 from a file or from some raw data format.
@@ -201,7 +201,7 @@ def feature_loader(features: Union[Path, RawFeatures]) -> pd.DataFrame:
 Note that this function handles the case where the input is a file path or a list
 of dictionary records.
 
-### `feature_transformer`
+### {meth}`~unionml.dataset.Dataset.feature_transformer`
 
 The `feature_transformer` function handles additional processing steps performed on the
 output of `feature_loader` in case you want to do some stateless transforms, like normalizing
