@@ -31,6 +31,7 @@ author = "unionai-oss"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx_autodoc_typehints",
     "sphinx_click",
     "sphinx_copybutton",
     "sphinx_panels",
@@ -95,6 +96,10 @@ if "READTHEDOCS" in os.environ:
     # don't run the docs
     nb_execution_excludepatterns = ["tutorials/*.md"]
 
+autoclass_content = "both"
 autodoc_default_flags = ["members", "undoc-members"]
-
 autosummary_generate = True
+
+# strip prompts in example code snippets
+copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
+copybutton_prompt_is_regexp = True
