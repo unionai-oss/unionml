@@ -37,12 +37,12 @@ This tutorial is adapted from this [sklearn guide](https://scikit-learn.org/stab
 !pip install 'gradio<=3.0.10' pandas sklearn unionml
 ```
 
-```{note}
-:tags: [remove-cell]
++++ {"tags": ["remove-cell"]}
 
-If you're running this notebook in google colab, you need to restart the kernel to
-make sure that the newly installed packages are correctly imported in the next line below.
-```
+> If you're running this notebook in google colab, you need to restart the kernel to
+> make sure that the newly installed packages are correctly imported in the next line below.
+
++++
 
 First let's import our dependencies and create the UnionML `Dataset` and `Model`
 objects:

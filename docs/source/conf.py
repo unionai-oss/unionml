@@ -11,9 +11,9 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
+import sys
 
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath("../.."))
 
 
 # -- Project information -----------------------------------------------------
@@ -30,6 +30,8 @@ author = "unionai-oss"
 # ones.
 extensions = [
     "myst_nb",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
     "sphinx_copybutton",
     "sphinx_panels",
     "sphinx-prompt",
