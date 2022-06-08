@@ -14,4 +14,4 @@ The code in `app.py` implements a hand-written digits model, but you can adapt t
 fit your use case.
 
 To learn more about how a UnionML App is structured, check out the
-📖 [Documentation](https://unionml.readthedocs.io/en/latest/user_guide.html).
+📖 [Documentation](https://unionml.readthedocs.io/en/latest/basics.html).

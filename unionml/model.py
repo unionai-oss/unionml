@@ -452,9 +452,10 @@ class Model(TrackedInstance):
 
         :param features: Raw features that are pre-processed by the :py:class:``unionml.Dataset`` methods in the
             following order:
-            - :meth:`unionml.Dataset.feature_loader`
-            - :meth:`unionml.Dataset.parser`
-            - :meth:`unionml.Dataset.feature_transformer`
+
+            - :meth:`unionml.dataset.Dataset.feature_loader`
+            - :meth:`unionml.dataset.Dataset.parser`
+            - :meth:`unionml.dataset.Dataset.feature_transformer`
         :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.Dataset.reader` method signature.
         """
         if features is None and not reader_kwargs:
@@ -629,9 +630,10 @@ class Model(TrackedInstance):
             function returns a ``FlyteWorkflowExecution``.
         :param features: Raw features that are pre-processed by the :py:class:``unionml.Dataset`` methods in the
             following order:
-            - :meth:`unionml.Dataset.feature_loader`
-            - :meth:`unionml.Dataset.parser`
-            - :meth:`unionml.Dataset.feature_transformer`
+
+            - :meth:`unionml.dataset.Dataset.feature_loader`
+            - :meth:`unionml.dataset.Dataset.parser`
+            - :meth:`unionml.dataset.Dataset.feature_transformer`
         :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.Dataset.reader` method signature.
         """
         if self._remote is None:

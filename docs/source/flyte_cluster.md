@@ -22,8 +22,8 @@ In this guide, we'll:
 
 ## Deploy App Workflows
 
-A UnionML app is composed of a `Dataset`, `Model`, and serving app component
-(e.g. `fastapi.FastAPI`). Under the hood, a `Model` object exposes
+A UnionML app is composed of a {class}`~unionml.dataset.Dataset`, {class}`~unionml.model.Model`, and
+serving app componen (e.g. `fastapi.FastAPI`). Under the hood, a `Model` object exposes
 `*_workflow` methods that return [`flytekit.workflow`](https://docs.flyte.org/projects/flytekit/en/latest/generated/flytekit.workflow.html#flytekit.workflow) objects, which are essentially
 execution graphs that perform multiple steps of computation.
 
@@ -155,6 +155,8 @@ the Flyte sandbox cluster:
 
 ### `unionml train`
 
+<a href="cli_reference.html#unionml-train">CLI reference</a>
+
 Train a model given some hyperparameters:
 
 ```{prompt} bash
@@ -166,6 +168,8 @@ unionml train app:model -i '{"hyperparameters": {"C": 1.0, "max_iter": 1000}}'
 ```
 
 ### `unionml predict`
+
+<a href="cli_reference.html#unionml-predict">CLI reference</a>
 
 Generate predictions with json data:
 
@@ -213,7 +217,7 @@ Currently, only json files that can be converted to a pandas DataFrame is suppor
 UnionML also provides a programmatic API to deploy your app and kick off training and prediction jobs
 that run on the Flyte cluster. We simply import the UnionML `Model` object into another python module:
 
-### `model.remote_deploy`
+### {meth}`~unionml.model.Model.remote_deploy`
 
 ```{code-block} python
 from app import model
@@ -221,7 +225,7 @@ from app import model
 model.remote_deploy()
 ```
 
-### `model.remote_train`
+### {meth}`~unionml.model.Model.remote_train`
 
 ```{code-block} python
 from unionml.model import ModelArtifact
@@ -243,7 +247,7 @@ By default, invoking `remote_train` is a blocking operation, i.e. the python pro
 the Flyte backend completes training.
 ```
 
-### `model.remote_predict`
+### {meth}`~unionml.model.Model.remote_predict`
 
 ```{code-block} python
 from sklearn.datasets import load_digits
