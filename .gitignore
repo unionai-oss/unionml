@@ -6,6 +6,7 @@ flyte-package
 .bash_history
 .DS_Store
 .vscode
+docs/source/generated_*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

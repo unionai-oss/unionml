@@ -163,6 +163,7 @@ class Model(TrackedInstance):
         return self._evaluator
 
     def saver(self, fn):
+        """Function definition for serializing a model to disk."""
         self._saver = fn
         return self._saver
 
