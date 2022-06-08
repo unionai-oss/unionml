@@ -46,12 +46,12 @@ and you can find the original notebook [here](https://github.com/nateraw/quickdr
 !pip install 'gradio<=3.0.10' numpy tqdm requests torch transformers unionml
 ```
 
-```{note}
-:tags: [remove-cell]
++++ {"tags": ["remove-cell"]}
 
-If you're running this notebook in google colab, you need to restart the kernel to
-make sure that the newly installed packages are correctly imported in the next line below.
-```
+> If you're running this notebook in google colab, you need to restart the kernel to
+> make sure that the newly installed packages are correctly imported in the next line below.
+
++++
 
 First let's import everything we need:
 

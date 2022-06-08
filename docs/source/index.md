@@ -14,6 +14,7 @@ hidden: true
 ---
 User Guide <user_guide>
 Deployment Guide <deploying>
+API Reference <api_reference/index>
 ```
 
 ```{toctree}
