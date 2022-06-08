@@ -6,14 +6,14 @@
    :members:
 
    {% block methods %}
-   .. automethod:: __init__
 
    {% if methods %}
    .. rubric:: {{ _('Methods') }}
 
    .. autosummary::
+      :nosignatures:
    {% for item in methods %}
-   {%- if item not in inherited_members %}
+   {%- if item not in inherited_members and item != "__init__" %}
       ~{{ name }}.{{ item }}
    {%- endif %}
    {%- endfor %}

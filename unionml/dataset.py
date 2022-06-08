@@ -28,6 +28,28 @@ class Dataset(TrackedInstance):
         shuffle: bool = True,
         random_state: int = 12345,
     ):
+        """Initialize a UnionML Dataset.
+
+        The term *UnionML Dataset* refers to the specification of data used to train a model object from features
+        and targets (see :py:class:`unionml.model.Model` for more details) or generate predictions from one
+        based on some features. This specification is implemented by the used via the functional entrypoints,
+        e.g. :meth:`unionml.dataset.Dataset.reader`.
+
+        By default the *UnionML Dataset* knows how to handle ``pandas.DataFrame`` objects automatically, meaning that
+        the only function that needs to be implemented is the :meth:`unionml.dataset.Dataset.reader`. To add support
+        for other data structures, the user needs to implement the rest of the functional entrypoints.
+
+        :param name: name of the dataset.
+        :param features: a list of string keys used to access features from the data structure. The type of this data
+            structure is determined by the output of the :meth:`unionml.dataset.Dataset.reader` by default, but
+            if :meth:`unionml.dataset.Dataset.loader` is implemented then the output type of the latter function
+            is taken.
+        :param targets: a list of string keys used to access targets data. The type of this data is determined in the
+            same way as the ``features`` argument.
+        :param test_size: the percent of the dataset to split out as the test set.
+        :param shuffle: if True, shuffles the dataset before dataset splitting.
+        :param random_state: random state used for data shuffling.
+        """
         super().__init__()
         self.name = name
         self._features = [] if features is None else features
@@ -50,7 +72,12 @@ class Dataset(TrackedInstance):
         self._dataset_task = None
 
     def reader(self, fn=None, **reader_task_kwargs):
-        """Register a reader function for getting data from some external source."""
+        """Register a reader function for getting data from some external source.
+
+        The signature of this function is flexible and dependent on the use case.
+
+        :param fn: function to register
+        """
         if fn is None:
             return partial(self.reader, **reader_task_kwargs)
         self._reader = fn
@@ -61,18 +88,60 @@ class Dataset(TrackedInstance):
         """Register an optional loader function for loading data into memory for model training.
 
         This function should take the output of the reader function and return the data structure needed
-        for model training.
+        for model training. If specified, the output type of this function take precedence over that of the ``reader``
+        function and the type signatures of ``splitter`` and ``parser`` should adhere to it.
+
+        By default this is simply a pass through function that returns the output of the ``reader`` function.
+
+        :param fn: function to register
         """
         self._loader = fn
         return fn
 
     def splitter(self, fn):
-        """Register an optional splitter function that partitions data into training and test sets."""
+        """Register an optional splitter function that partitions data into training and test sets.
+
+        :param fn: function to register
+
+        The following is equivalent to the default implementation.
+
+        .. code-block:: python
+
+            from typing import Tuple
+
+            Splits = Tuple[pd.DataFrame, pd.DataFrame]
+
+            @dataset.splitter
+            def splitter(data: pd.DataFrame, test_size: float, shuffle: bool, random_state: int) -> Splits:
+                if shuffle:
+                    data = data.sample(frac=1.0, random_state=random_state)
+                n = int(data.shape[0] * test_size)
+                return data.iloc[:-n], data.iloc[-n:]
+        """
         self._splitter = fn
         return fn
 
     def parser(self, fn, feature_key: int = 0):
-        """Register an optional parser function that produces a tuple of features and targets."""
+        """Register an optional parser function that produces a tuple of features and targets.
+
+        :param fn: function to register
+        :param feature_key: the index of the features in the output of the parser function. By default, this assumes
+            that the first element of the output contains the features.
+
+        The following is equivalent to the default implementation.
+
+        .. code-block:: python
+
+            from typing import Optional, Tuple
+
+            Parsed = Tuple[pd.DataFrame, pd.DataFrame]
+
+            @dataset.parser
+            def parser(data: pd.DataFrame, features: Optional[List[str]], targets: List[str]) -> Parsed:
+                if not features:
+                    features = [col for col in data if col not in targets]
+                return data[features], data[targets]
+        """
         self._parser = fn
         self._parser_feature_key = feature_key
         return fn
@@ -81,6 +150,7 @@ class Dataset(TrackedInstance):
         """Register an optional feature loader that loads data from some serialized format into raw features.
 
         This function handles prediction cases in two contexts:
+
         1. When the `unionml predict` cli command is invoked with the --features flag.
         2. When the FastAPI app `/predict/` endpoint is invoked with features passed in as JSON or string encoding.
 
@@ -93,15 +163,17 @@ class Dataset(TrackedInstance):
         """Register an optional feature transformer that performs pre-processing on features before prediction.
 
         This function handles prediction cases in three contexts:
+
         1. When the `unionml predict` cli command is invoked with the --features flag.
         2. When the FastAPI app `/predict/` endpoint is invoked with features passed in as JSON or string encoding.
         3. When the `model.predict` or `model.remote_predict` functions are invoked.
-        ."""
+        """
         self._feature_transformer = fn
         return fn
 
     @property
     def splitter_kwargs(self):
+        """The keyword arguments to be forwarded to the splitter function."""
         return {
             "test_size": self._test_size,
             "shuffle": self._shuffle,
@@ -110,12 +182,14 @@ class Dataset(TrackedInstance):
 
     @property
     def parser_kwargs(self):
+        """The keyword arguments to be forwarded to the parser function."""
         return {
             "features": self._features,
             "targets": self._targets,
         }
 
     def dataset_task(self):
+        """Create a Flyte task for getting the dataset using the ``reader`` function."""
         if self._dataset_task:
             return self._dataset_task
 
@@ -134,23 +208,16 @@ class Dataset(TrackedInstance):
         self._dataset_task = dataset_task
         return dataset_task
 
-    @property
-    def literal_data_workflow_name(self):
-        return f"{self.name}.literal_data"
-
-    @property
-    def literal_features_workflow_name(self):
-        return f"{self.name}.literal_features"
-
-    @property
-    def data_workflow_name(self):
-        return f"{self.name}.data"
-
-    @property
-    def features_workflow_name(self):
-        return f"{self.name}.features"
-
     def get_data(self, raw_data):
+        """Get training data from from its raw form to its model-ready form.
+
+        :param raw_data: Raw data in the same form as the ``reader`` output.
+
+        This function uses the following registered functions to create parsed, split data:
+        - :meth:`unionml.dataset.Dataset.loader`
+        - :meth:`unionml.dataset.Dataset.splitter`
+        - :meth:`unionml.dataset.Dataset.parser`
+        """
         data = self._loader(raw_data)
         splits = self._splitter(data, **self.splitter_kwargs)
         if len(splits) == 1:
@@ -166,18 +233,32 @@ class Dataset(TrackedInstance):
         }
 
     def get_features(self, features):
+        """Get feature data from its raw form to its model-ready form.
+
+        This function uses the following registered functions to create model-ready features.
+        - :meth:`unionml.dataset.Dataset.feature_loader`
+        - :meth:`unionml.dataset.Dataset.parser`
+        - :meth:`unionml.dataset.Dataset.feature_transformer`
+        """
         parsed_data = self._parser(self._feature_loader(features), self._features, self._targets)
         features = parsed_data[self._parser_feature_key]
         return self._feature_transformer(features)
 
     @property
     def reader_input_types(self) -> Optional[List[Parameter]]:
+        """Get the input parameters of the reader."""
         if self._reader and self._reader_input_types is None:
             return [*signature(self._reader).parameters.values()]
         return self._reader_input_types
 
     @property
     def reader_return_type(self) -> Dict[str, Type]:
+        """Get the output type of the ``reader`` .
+
+        If the ``loader`` is user-defined then the output of that function is used.
+        """
+        if self._loader != self._default_loader:
+            return {"data": signature(self._loader).return_annotation}
         if self._reader and self._reader_return_type is None:
             return {"data": signature(self._reader).return_annotation}
         elif self._reader_return_type is not None:
@@ -208,6 +289,12 @@ class Dataset(TrackedInstance):
         *args,
         **kwargs,
     ) -> "Dataset":
+        """Converts a sqlite task to a dataset.
+
+        This class method creates a *UnionML Dataset** that uses the
+        `sqlite task <https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/flytekit_plugins/sql/sqlite3_integration.html#sphx-glr-auto-integrations-flytekit-plugins-sql-sqlite3-integration-py>`__
+        as its ``reader`` function.
+        """
         return cls._from_flytekit_task(task, *args, **kwargs)
 
     @classmethod
@@ -217,6 +304,12 @@ class Dataset(TrackedInstance):
         *args,
         **kwargs,
     ) -> "Dataset":
+        """Converts a sqlalchemy task to a dataset.
+
+        This class method creates a *UnionML Dataset* that uses the
+        `sqlalchemy task <https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/flytekit_plugins/sql/sql_alchemy.html>`__
+        as its ``reader`` function.
+        """
         return cls._from_flytekit_task(task, *args, **kwargs)
 
     def _default_loader(self, data: R) -> R:

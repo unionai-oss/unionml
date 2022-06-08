@@ -10,5 +10,7 @@ Core API
    :toctree: generated_api_reference
    :template: custom_class.rst
 
-   unionml.model.Model
    unionml.dataset.Dataset
+   unionml.model.Model
+   unionml.model.ModelArtifact
+   unionml.model.BaseHyperparameters
