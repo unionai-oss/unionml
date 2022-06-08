@@ -14,7 +14,6 @@ hidden: true
 ---
 User Guide <user_guide>
 Deployment Guide <deploying>
-API Reference <api_reference/index>
 ```
 
 ```{toctree}
@@ -24,6 +23,15 @@ caption: Tutorials
 ---
 Tutorials <tutorials_intro>
 Computer Vision <computer_vision>
+```
+
+```{toctree}
+---
+hidden: true
+caption: References
+---
+api_reference
+cli_reference
 ```
 
 ```{toctree}

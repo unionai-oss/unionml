@@ -38,7 +38,7 @@ def init(
         help="template to use for initializing your app.",
     ),
 ):
-    """Initialize a UnionML project."""
+    r"""Initialize a UnionML project."""
     config = {
         "app_name": app_name,
     }
@@ -63,7 +63,7 @@ def train(
     inputs: str = typer.Option(None, "--inputs", "-i", help="json string of inputs to pass into training workflow"),
     app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
 ):
-    """Train a model."""
+    r"""Train a model."""
     typer.echo(f"[unionml] app: {app} - training model")
     model = get_model(app)
     train_inputs = {}
@@ -84,7 +84,7 @@ def predict(
     app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
     model_version: str = typer.Option(None, "--model-version", "-m", help="model version"),
 ):
-    """Generate prediction."""
+    r"""Generate prediction."""
     typer.echo(f"[unionml] app: {app} - generating predictions")
     model = get_model(app)
 
@@ -106,7 +106,7 @@ def list_model_versions(
         10, "--limit", help="Maximum number of model versions to list, sorted in descending order of time of execution."
     ),
 ):
-    """List all model versions."""
+    r"""List all model versions."""
 
     model = get_model(app)
     app_version = app_version or get_app_version()
@@ -123,7 +123,7 @@ def fetch_model(
     output_file: str = typer.Option(None, "--output-file", "-o", help="output file path"),
     kwargs: str = typer.Option(None, "--kwargs", help="json string of kwargs to pass into model.save"),
 ):
-    """Fetch a model object from the remote backend."""
+    r"""Fetch a model object from the remote backend."""
     model = get_model(app)
     app_version = app_version or get_app_version()
     execution = get_model_execution(model, app_version, model_version=model_version)
@@ -137,16 +137,17 @@ def fetch_model(
 
 @app.callback()
 def callback():
-    """unionml command-line tool."""
+    r"""unionml command-line tool."""
 
 
 def serve_command():
-    """Modify the uvicorn.main entrypoint for unionml app serving."""
+    r"""Modify the uvicorn.main entrypoint for unionml app serving."""
     fn = copy.deepcopy(uvicorn.main)
+    fn.name = "serve"
     fn.short_help = "Serve an unionml model."
     fn.help = (
         "Serve an unionml model using uvicorn. This command uses the main uvicorn entrypoint with an additional "
-        "--model-path argument.\n\nFor more information see: https://www.uvicorn.org/#command-line-options"
+        "``--model-path`` argument.\n\nFor more information see: https://www.uvicorn.org/#command-line-options"
     )
 
     option = click.Option(param_decls=["--model-path"], default=None, help="model path to use for serving", type=Path)
@@ -158,7 +159,7 @@ def serve_command():
         if os.getenv("UNIONML_MODEL_PATH"):
             typer.echo(
                 f"UNIONML_MODEL_PATH environment variable is set to {os.getenv('UNIONML_MODEL_PATH')}. "
-                "Please unset this variable before running `unionml serve`.",
+                "Please unset this variable before running ``unionml serve``.",
                 err=True,
             )
             raise typer.Exit(code=1)

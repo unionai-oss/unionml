@@ -29,13 +29,14 @@ author = "unionai-oss"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "myst_nb",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx_click",
     "sphinx_copybutton",
     "sphinx_panels",
     "sphinx-prompt",
     "sphinx_tabs.tabs",
+    "myst_nb",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -93,3 +94,7 @@ nb_execution_timeout = 600
 if "READTHEDOCS" in os.environ:
     # don't run the docs
     nb_execution_excludepatterns = ["tutorials/*.md"]
+
+autodoc_default_flags = ["members", "undoc-members"]
+
+autosummary_generate = True
