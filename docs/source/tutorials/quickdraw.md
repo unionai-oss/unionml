@@ -46,6 +46,13 @@ and you can find the original notebook [here](https://github.com/nateraw/quickdr
 !pip install 'gradio<=3.0.10' numpy tqdm requests torch transformers unionml
 ```
 
+```{note}
+:tags: [remove-cell]
+
+If you're running this notebook in google colab, you need to restart the kernel to
+make sure that the newly installed packages are correctly imported in the next line below.
+```
+
 First let's import everything we need:
 
 ```{code-cell}
@@ -392,7 +399,7 @@ gr.Interface(
 ).launch()
 ```
 
-You might notice that the model doesn't perform as well as you might expect...
+You might notice that the model may not perform as well as you might expect...
 welcome to the world of machine learning practice! To obtain a better model given
-a fixed dataset, feel free to play around with te model hyperparameters or even
+a fixed dataset, feel free to play around with the model hyperparameters or even
 switch up the model type/architecture that's defined in the `trainer` function.
