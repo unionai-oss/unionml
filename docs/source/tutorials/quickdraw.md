@@ -363,7 +363,7 @@ Now let's train a model just using 10 classes, with 500 examples per class, for 
 model won't perform that well, so feel free to change these numbers up in the code below:
 
 ```{code-cell}
-num_classes = 10
+num_classes = 10  # max number of classes is 345
 max_examples_per_class = 500
 num_epochs = 1
 batch_size = 256
