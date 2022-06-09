@@ -1,0 +1,9 @@
+fastapi
+numpy
+pandas
+requests
+sklearn
+torch
+tqdm
+transformers
+unionml

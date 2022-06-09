@@ -60,7 +60,7 @@ def inner_task(
 
 
 def is_pytorch_model(model_type: typing.Type):
-    return model_type.__bases__[0].__module__.startswith("torch")
+    return model_type.__bases__[0].__module__.startswith("torch") or model_type.__module__.startswith("torch")
 
 
 def is_keras_model(model_type: typing.Type):
