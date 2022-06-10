@@ -1,1 +1,7 @@
 recursive-include unionml/templates *
+recursive-include unionml/templates **/*
+recursive-include unionml/templates *.json
+recursive-include unionml/templates *.md
+recursive-include unionml/templates Dockerfile*
+recursive-include unionml/templates *.py
+recursive-include unionml/templates *.txt

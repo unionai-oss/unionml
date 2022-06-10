@@ -19,9 +19,17 @@ setup(
     license="Apache",
     keywords=["machine-learning", "artificial-intelligence", "microservices"],
     data_files=[("", ["LICENSE"])],
+    include_package_data=True,
     packages=find_packages(exclude=["tests*"]),
     package_data={
-        "unionml": ["py.typed", "templates/**/*"],
+        "unionml": [
+            "py.typed",
+            "templates/**/*.txt",
+            "templates/**/Dockerfile*",
+            "templates/**/*.py",
+            "templates/**/*.md",
+            "templates/**/*.json",
+        ],
     },
     python_requires=">=3.7",
     platforms="any",
