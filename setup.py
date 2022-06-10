@@ -20,7 +20,6 @@ setup(
     keywords=["machine-learning", "artificial-intelligence", "microservices"],
     data_files=[("", ["LICENSE"])],
     packages=find_packages(exclude=["tests*"]),
-    include_package_data=True,
     package_data={
         "unionml": ["py.typed", "templates/**"],
     },
