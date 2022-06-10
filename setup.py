@@ -21,7 +21,7 @@ setup(
     data_files=[("", ["LICENSE"])],
     packages=find_packages(exclude=["tests*"]),
     package_data={
-        "unionml": ["py.typed", "templates/**"],
+        "unionml": ["py.typed", "templates/**/*"],
     },
     python_requires=">=3.7",
     platforms="any",
