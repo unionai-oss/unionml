@@ -21,16 +21,7 @@ setup(
     data_files=[("", ["LICENSE"])],
     include_package_data=True,
     packages=find_packages(exclude=["tests*"]),
-    package_data={
-        "unionml": [
-            "py.typed",
-            "templates/**/*.txt",
-            "templates/**/Dockerfile*",
-            "templates/**/*.py",
-            "templates/**/*.md",
-            "templates/**/*.json",
-        ],
-    },
+    package_data={"unionml": ["py.typed"]},
     python_requires=">=3.7",
     platforms="any",
     install_requires=install_requires,
