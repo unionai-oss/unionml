@@ -30,3 +30,14 @@ body[data-theme="dark"] .card, body[data-theme="auto"] .card {
   background-color: rgb(50, 50, 50);
   border: 1px solid var(--color-sidebar-background-border);
 }
+
+div.mermaid {
+  opacity: 0;
+}
+
+div.mermaid[data-processed=true] {
+  display: block;
+  opacity: 1;
+  padding: 40px;
+  transition: opacity 1000ms;
+}

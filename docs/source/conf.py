@@ -37,6 +37,8 @@ extensions = [
     "sphinx_panels",
     "sphinx-prompt",
     "sphinx_tabs.tabs",
+    "sphinxcontrib.youtube",
+    "sphinxcontrib.mermaid",
     "myst_nb",
 ]
 
@@ -60,9 +62,10 @@ html_logo = "_static/images/union-logo.svg"
 html_favicon = "_static/images/union-logo.svg"
 
 announcement = """
-⭐️ &nbsp; UnionML is in Beta 🏗 &nbsp;! If you have questions, join the
-<a href='https://github.com/unionai-oss/unionml/discussions'>github discussions forum</a>
-or <a href='https://github.com/unionai-oss/unionml/issues'>file an issue</a>.
+UnionML is in Beta 🏗 &nbsp;! Join us on
+<a href='https://flyte-org.slack.com/archives/C03JL38L65V' target='_blank'>Slack</a>
+and <a href='https://github.com/unionai-oss/unionml/discussions' target='_blank'>Github Discussions</a>,
+and if you like this project, <a href='https://github.com/unionai-oss/unionml' target='_blank'>give us a star ⭐️! </a>
 """
 
 html_theme_options = {
@@ -85,6 +88,10 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
+html_js_files = [
+    "js/custom.js",
+]
+
 html_css_files = [
     "css/custom.css",
 ]
@@ -103,3 +110,11 @@ autosummary_generate = True
 # strip prompts in example code snippets
 copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
 copybutton_prompt_is_regexp = True
+
+# mermaid
+mermaid_params = [
+    "--height",
+    "350",
+    "--backgroundColor",
+    "transparent",
+]

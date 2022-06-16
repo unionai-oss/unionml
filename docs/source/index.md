@@ -6,7 +6,6 @@
    The easiest way to build and deploy machine learning microservices
 </div>
 
-<br>
 
 ```{toctree}
 ---
@@ -37,10 +36,11 @@ cli_reference
 ```{toctree}
 ---
 hidden: true
-caption: Contributing
+caption: Resources
 ---
 
 Contributing Guide <contributing_guide>
+Union.ai <https://www.union.ai/unionml>
 ```
 
 # Why?
@@ -53,9 +53,43 @@ web protocols, UnionML asks the question:
 > reused in many different contexts, from model training to prediction?
 
 It aims to unify the ever-evolving ecosystem of machine learning and data tools into a single
-interface for expressing microservices as Python functions. You can create _UnionML Apps_ by defining
-a few core methods that are automatically bundled into _ML microservices_, starting with model training and
-offline/online prediction.
+interface for expressing microservices as Python functions.
+
+You can create _UnionML Apps_ by defining a few core methods that are automatically bundled into
+_ML microservices_, starting with model training and offline/online prediction:
+
+```{mermaid}
+   :align: center
+
+   %%{init: {'theme':'default'}}%%
+
+   flowchart LR
+
+      A[UnionML App]
+
+      subgraph methods
+      Rm[reader]
+      Tm[trainer]
+      Pm[predictor]
+      Em[...]
+      end
+
+      subgraph microservices
+      T[train]
+      Pb[batch predict]
+      Po[online predict]
+      E[...]
+      end
+
+      Rm --> A
+      Tm --> A
+      Pm --> A
+      Em --> A
+
+      A --> T
+      A --> Pb
+      A --> Po
+```
 
 Brought to you by the [Union.ai](https://www.union.ai/) team, UnionML is built on top of
 [Flyte](https://docs.flyte.org/en/latest/) to provide a high-level interface for productionizing
