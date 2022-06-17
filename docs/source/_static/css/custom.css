@@ -38,6 +38,6 @@ div.mermaid {
 div.mermaid[data-processed=true] {
   display: block;
   opacity: 1;
-  padding: 40px;
+  padding: 10px;
   transition: opacity 1000ms;
 }
