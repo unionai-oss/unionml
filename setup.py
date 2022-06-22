@@ -22,7 +22,10 @@ setup(
     keywords=["machine-learning", "artificial-intelligence", "microservices"],
     data_files=[("", ["LICENSE"])],
     include_package_data=True,
-    packages=find_packages(exclude=["tests*"]),
+    packages=find_packages(
+        include=["unionml"], 
+        exclude=["tests*"],
+    ),
     package_data={"unionml": ["py.typed"]},
     python_requires=">=3.7",
     platforms="any",
