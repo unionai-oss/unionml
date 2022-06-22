@@ -4,6 +4,14 @@ import re
 from unionml.dataset import Dataset
 from unionml.model import Model
 
+try:
+    from importlib import metadata
+except ImportError:  # for Python<3.8
+    import importlib_metadata as metadata
+
+# single source version from setup.py
+__title__ = __name__
+__version__ = metadata.version(__title__)  # type: ignore
 
 # silence FlyteRemote beta warning since unionml won't expose it to end users.
 class FlyteRemoteFilter(logging.Filter):
@@ -23,6 +31,3 @@ flytekit_logger.addFilter(PickleFilter())
 
 flytekit_remote_logger = flytekit_logger.getChild("remote")
 flytekit_remote_logger.addFilter(FlyteRemoteFilter())
-
-
-__version__ = "0.0.0+dev0"
