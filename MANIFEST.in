@@ -17,7 +17,6 @@ include setup.cfg
 include tox.ini
 
 include requirements.txt
-recursive-include requirements *.txt
 
 exclude requirements-dev.txt
 exclude requirements-docs.txt
