@@ -16,7 +16,7 @@ setup(
     author="unionai-oss",
     author_email="info@union.ai",
     description="The easiest way to build and deploy machine learning microservices.",
-    long_description=long_description,
+    long_description=README,
     long_description_content_type="text/markdown",
     license=LICENSE,
     keywords=["machine-learning", "artificial-intelligence", "microservices"],
