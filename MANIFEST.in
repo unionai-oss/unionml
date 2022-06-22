@@ -1,1 +1,39 @@
 recursive-include unionml/templates *
+
+include README.md
+include unionml/py.typed  # marker file for PEP 561
+
+include CHANGELOG.md
+include changelog.md
+include LICENSE
+include LICENSE.txt
+include CITATION.cff
+include *.cff  # citation info
+
+include MANIFEST.in
+include pyproject.toml
+include setup.py
+include setup.cfg
+include tox.ini
+
+include requirements.txt
+recursive-include requirements *.txt
+
+exclude requirements-dev.txt
+exclude requirements-docs.txt
+
+recursive-exclude tests *
+recursive-exclude docs *
+recursive-exclude site *
+recursive-exclude config *
+recursive-exclude scripts *
+recursive-exclude .github *
+recursive-exclude .archives *
+
+exclude .gitignore
+exclude .gitattributes
+exclude .pre-commit-config.yaml
+exclude .readthedocs.yml
+
+exclude Dockerfile
+exclude Makefile
