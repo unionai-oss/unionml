@@ -27,16 +27,6 @@ jobs:
           PLACEHOLDER="__version__\ =\ \"0.0.0+dev0\""
           grep "$PLACEHOLDER" "setup.py"
           sed -i "s#$PLACEHOLDER#__version__ = \"$VERSION\"#g" "setup.py"
-      - name: Autobump version __init__.py
-        id: bump-init-py
-        run: |
-          # from refs/tags/v1.2.3 get 1.2.3
-          VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
-          PLACEHOLDER="__version__\ =\ \"0.0.0+dev0\""
-          # grep "$PLACEHOLDER" "unionml/__init__.py"
-          # sed -i "s#$PLACEHOLDER#__version__ = \"$VERSION\"#g" "unionml/__init__.py"
-          grep "$PLACEHOLDER" "setup.py"
-          sed -i "s#$PLACEHOLDER#__version__ = \"$VERSION\"#g" "setup.py"
         shell: bash
       - name: Build and publish
         env:
