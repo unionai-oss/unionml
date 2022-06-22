@@ -13,3 +13,4 @@ pydantic
 sklearn
 typer
 uvicorn
+importlib-metadata
