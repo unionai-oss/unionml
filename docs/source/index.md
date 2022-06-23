@@ -99,6 +99,7 @@ _ML microservices_, starting with model training and offline/online prediction:
       A --> T
       A --> Pb
       A --> Po
+      A --> E
 ```
 
 Brought to you by the [Union.ai](https://www.union.ai/) team, UnionML is built on top of
