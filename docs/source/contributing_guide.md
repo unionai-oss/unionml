@@ -18,15 +18,16 @@ There are many ways to contribute to this project:
 ## Roadmap
 
 [![Roadmap](https://img.shields.io/badge/Project-Roadmap-blueviolet?style=for-the-badge)](https://github.com/orgs/unionai-oss/projects/1/views/4)
-[![SyncUp](https://img.shields.io/badge/Event-OSS_Sync-yellow?style=for-the-badge)](https://calendar.google.com/event?action=TEMPLATE&tmeid=MjVyYzFjdWFtNWQ5ZzFnOGdwNWE3c2FraTFfMjAyMjA2MjJUMTYwMDAwWiBjX2huamt0ZzNrMTh0b3ZtMXRqZ3RkYnBqOTJvQGc&tmsrc=c_hnjktg3k18tovm1tjgtdbpj92o%40group.calendar.google.com&scp=ALL)
+[![SyncUp](https://img.shields.io/badge/Event-OSS_Planning-yellow?style=for-the-badge)](https://calendar.google.com/event?action=TEMPLATE&tmeid=MjVyYzFjdWFtNWQ5ZzFnOGdwNWE3c2FraTFfMjAyMjA2MjJUMTYwMDAwWiBjX2huamt0ZzNrMTh0b3ZtMXRqZ3RkYnBqOTJvQGc&tmsrc=c_hnjktg3k18tovm1tjgtdbpj92o%40group.calendar.google.com&scp=ALL)
 
-You can also participate in roadmapping and prioritization! The release roadmap is a living being 🌳
+The release roadmap is a living being 🌳, so you can also participate in roadmapping and prioritization!
 
-Each milestone is made up of multiple issues, and you can upvote roadmap items by going
+Each milestone in the roadmap is made up of multiple issues, and you can upvote roadmap items by going
 to the issue page and giving it a thumbs up 👍.
 
 The UnionML maintainers hold a weekly open source sync up and re-prioritize the roadmap
-based on community interest.
+based on community interest, so subscribe to the google calendar event by clicking on the
+"OSS Planning" badge above if you're interested in joining.
 
 ## Development Environment Setup
 
