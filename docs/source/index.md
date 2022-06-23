@@ -14,7 +14,7 @@
 [![Build](https://img.shields.io/github/workflow/status/unionai-oss/unionml/Python%20application/main?style=for-the-badge)](https://github.com/unionai-oss/unionml/actions/workflows/build.yml)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/unionml?style=for-the-badge)](https://pypistats.org/packages/unionml)
 [![Roadmap](https://img.shields.io/badge/Project-Roadmap-blueviolet?style=for-the-badge)](https://github.com/orgs/unionai-oss/projects/1/views/4)
-[![SyncUp](https://img.shields.io/badge/Event-OSS_Sync-yellow?style=for-the-badge)](https://calendar.google.com/event?action=TEMPLATE&tmeid=MjVyYzFjdWFtNWQ5ZzFnOGdwNWE3c2FraTFfMjAyMjA2MjJUMTYwMDAwWiBjX2huamt0ZzNrMTh0b3ZtMXRqZ3RkYnBqOTJvQGc&tmsrc=c_hnjktg3k18tovm1tjgtdbpj92o%40group.calendar.google.com&scp=ALL)
+[![OSS Planning](https://img.shields.io/badge/Event-OSS_Planning-yellow?style=for-the-badge)](https://app.addevent.com/event/tj14110550/)
 
 
 ```{toctree}
