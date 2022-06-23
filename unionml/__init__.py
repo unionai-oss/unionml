@@ -7,11 +7,12 @@ from unionml.model import Model
 try:
     from importlib import metadata  # type: ignore
 except ImportError:  # for Python<3.8
-    import importlib_metadata as metadata
+    import importlib_metadata as metadata  # type: ignore
 
 # single source version from setup.py
 __title__ = __name__
 __version__ = metadata.version(__title__)  # type: ignore
+
 
 # silence FlyteRemote beta warning since unionml won't expose it to end users.
 class FlyteRemoteFilter(logging.Filter):

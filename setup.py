@@ -1,4 +1,5 @@
 import pathlib
+
 from setuptools import find_packages, setup
 
 __version__ = "0.0.0+dev0"
@@ -23,7 +24,7 @@ setup(
     data_files=[("", ["LICENSE"])],
     include_package_data=True,
     packages=find_packages(
-        include=["unionml"], 
+        include=["unionml"],
         exclude=["tests*"],
     ),
     package_data={"unionml": ["py.typed"]},
