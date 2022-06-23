@@ -33,7 +33,7 @@ Built on top of [Flyte](https://docs.flyte.org/en/latest/), UnionML provides a h
 interface for productionizing your ML models so that you can focus on curating a better dataset
 and improving your models.
 
-To learn more, check out the 📖 [documentation](https://unionml.readthedocs.io).
+To learn more, check out the 📖 [Documentation](https://unionml.readthedocs.io).
 
 ## Installing
 
