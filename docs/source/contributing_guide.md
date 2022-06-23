@@ -15,7 +15,21 @@ There are many ways to contribute to this project:
 - 🙏 **Feature Requests**: Have ideas on new features or improvements? [Open up an issue](https://github.com/unionai-oss/unionml/issues/new)!
 - 🔧 **Pull Requests**: Pick up one of the issues in the [issue log](https://github.com/unionai-oss/unionml/issues) and submit a PR!
 
-## Environment Setup
+## Roadmap
+
+[![Roadmap](https://img.shields.io/badge/Project-Roadmap-blueviolet?style=for-the-badge)](https://github.com/orgs/unionai-oss/projects/1/views/4)
+[![OSS Planning](https://img.shields.io/badge/Event-OSS_Planning-yellow?style=for-the-badge)](https://app.addevent.com/event/tj14110550/)
+
+The release roadmap is a living being 🌳, so you can also participate in roadmapping and prioritization!
+
+Each milestone in the roadmap is made up of multiple issues, and you can upvote roadmap items by going
+to the issue page and giving it a thumbs up 👍.
+
+The UnionML maintainers hold a weekly open source sync up and re-prioritize the roadmap
+based on community interest, so subscribe to the google calendar event by clicking on the
+"OSS Planning" badge above if you're interested in joining.
+
+## Development Environment Setup
 
 Create a virtual environment:
 

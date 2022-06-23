@@ -41,3 +41,7 @@ div.mermaid[data-processed=true] {
   padding: 10px;
   transition: opacity 1000ms;
 }
+
+a.reference.external img {
+  margin-bottom: 4px;
+}
