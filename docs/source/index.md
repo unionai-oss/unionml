@@ -6,6 +6,16 @@
    The easiest way to build and deploy machine learning microservices
 </div>
 
+<br>
+
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/unionml?style=for-the-badge)](https://pypi.org/project/unionml/)
+[![PyPI version shields.io](https://img.shields.io/pypi/v/unionml?style=for-the-badge)](https://pypi.org/project/unionml/)
+[![Documentation Status](https://img.shields.io/readthedocs/unionml/latest?style=for-the-badge)](https://unionml.readthedocs.io/en/latest/?badge=latest)
+[![Build](https://img.shields.io/github/workflow/status/unionai-oss/unionml/Python%20application/main?style=for-the-badge)](https://github.com/unionai-oss/unionml/actions/workflows/build.yml)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/unionml?style=for-the-badge)](https://pypistats.org/packages/unionml)
+[![Roadmap](https://img.shields.io/badge/Project-Roadmap-blueviolet?style=for-the-badge)](https://github.com/orgs/unionai-oss/projects/1/views/4)
+[![SyncUp](https://img.shields.io/badge/Event-OSS_Sync-yellow?style=for-the-badge)](https://calendar.google.com/event?action=TEMPLATE&tmeid=MjVyYzFjdWFtNWQ5ZzFnOGdwNWE3c2FraTEgY19pYXA2NDBzZGIwbnR0NjRuaWloNmJ2MTRuc0Bn&tmsrc=c_iap640sdb0ntt64niih6bv14ns%40group.calendar.google.com)
+
 
 ```{toctree}
 ---
@@ -43,7 +53,7 @@ Contributing Guide <contributing_guide>
 Union.ai <https://www.union.ai/unionml>
 ```
 
-# Why?
+<br>
 
 **UnionML** is an open source MLOps framework that reduces the boilerplate, complexity,
 and friction that comes with building models and deploying them to production. Taking inspiration from
@@ -52,7 +62,7 @@ web protocols, UnionML asks the question:
 > Is it possible to define a standard set of functions/methods for machine learning that can be
 > reused in many different contexts, from model training to prediction?
 
-It aims to unify the ever-evolving ecosystem of machine learning and data tools into a single
+UnionML aims to unify the ever-evolving ecosystem of machine learning and data tools into a single
 interface for expressing microservices as Python functions.
 
 You can create _UnionML Apps_ by defining a few core methods that are automatically bundled into
