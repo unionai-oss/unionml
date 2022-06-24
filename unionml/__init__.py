@@ -4,7 +4,7 @@ import re
 from unionml.dataset import Dataset
 from unionml.model import Model
 
-# necessary for single souring version
+# necessary for single sourcing version
 try:
     from importlib import metadata  # type: ignore
 except ImportError:  # for Python<3.8
