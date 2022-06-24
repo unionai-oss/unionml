@@ -1,0 +1,29 @@
+# Use this file to control what is added to the
+# git-archives while making github releases.
+# Note:
+# - Add "export-ignore" after the file(s)/folders
+#   that should not to be part of the release(s).
+# Source:
+# - https://stackoverflow.com/questions/50059612/how-to-ignore-some-files-in-release-with-git
+# - https://git-scm.com/docs/git-archive#git-archive-export-ignore
+# - https://git-scm.com/docs/gitattributes#_creating_an_archive
+#
+##------------------------------------------------------------------
+
+tests export-ignore
+docs export-ignore
+scripts export-ignore
+config export-ignore
+.archives export-ignore
+
+.github export-ignore
+
+.flake8 export-ignore
+.gitattributes export-ignore
+.gitignore export-ignore
+.pre-commit-config.yaml export-ignore
+
+requirements-dev.txt export-ignore
+requirements-dev.docs export-ignore
+
+Makefile export-ignore
