@@ -25,7 +25,7 @@ The release roadmap is a living being 🌳, so you can also participate in roadm
 Each milestone in the roadmap is made up of multiple issues, and you can upvote roadmap items by going
 to the issue page and giving it a thumbs up 👍.
 
-The UnionML maintainers hold a weekly open source sync up and re-prioritize the roadmap
+The UnionML maintainers hold a bi-weekly open source sync up and re-prioritize the roadmap
 based on community interest, so subscribe to the google calendar event by clicking on the
 "OSS Planning" badge above if you're interested in joining.
 
