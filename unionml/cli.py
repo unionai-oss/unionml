@@ -26,6 +26,7 @@ FLYTE_SANDBOX_CONTAINER_NAME = "flyte-sandbox"
 class AppTemplate(str, Enum):
     basic = "basic"
     basic_aws_lambda = "basic-aws-lambda"
+    quickdraw = "quickdraw"
 
 
 @app.command()
