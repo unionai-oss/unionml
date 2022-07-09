@@ -51,11 +51,18 @@ def init(
 
 
 @app.command()
-def deploy(app: str):
+def deploy(
+    app: str,
+    ignore_diff: bool = typer.Option(False, "--ignore-diff", help="allow uncommitted changes"),
+):
     """Deploy model to a Flyte backend."""
     typer.echo(f"[unionml] deploying {app}")
     model = get_model(app)
-    model.remote_deploy()
+    try:
+        model.remote_deploy(ignore_diff=ignore_diff)
+    except Exception as e:
+        typer.echo(f"[unionml] failed to deploy {app}: {e}", err=True)
+        raise typer.Exit(code=1)
 
 
 @app.command()
@@ -110,7 +117,7 @@ def list_model_versions(
     r"""List all model versions."""
 
     model = get_model(app)
-    app_version = app_version or get_app_version()
+    app_version = app_version or get_app_version(ignore_diff=True)
     typer.echo(f"[unionml] app: {app} - listing model versions for app version={app_version}")
     for model_version in model.remote_list_model_versions(app_version, limit):
         typer.echo(f"- {model_version}")
@@ -126,7 +133,7 @@ def fetch_model(
 ):
     r"""Fetch a model object from the remote backend."""
     model = get_model(app)
-    app_version = app_version or get_app_version()
+    app_version = app_version or get_app_version(ignore_diff=True)
     execution = get_model_execution(model, app_version, model_version=model_version)
     model.remote_load(execution)
     save_kwargs = {}
