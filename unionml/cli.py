@@ -117,7 +117,7 @@ def list_model_versions(
     r"""List all model versions."""
 
     model = get_model(app)
-    app_version = app_version or get_app_version(ignore_diff=True)
+    app_version = app_version or get_app_version()
     typer.echo(f"[unionml] app: {app} - listing model versions for app version={app_version}")
     for model_version in model.remote_list_model_versions(app_version, limit):
         typer.echo(f"- {model_version}")
@@ -133,7 +133,7 @@ def fetch_model(
 ):
     r"""Fetch a model object from the remote backend."""
     model = get_model(app)
-    app_version = app_version or get_app_version(ignore_diff=True)
+    app_version = app_version or get_app_version()
     execution = get_model_execution(model, app_version, model_version=model_version)
     model.remote_load(execution)
     save_kwargs = {}

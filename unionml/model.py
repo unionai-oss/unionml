@@ -559,7 +559,7 @@ class Model(TrackedInstance):
         )
         return self.__remote__
 
-    def remote_deploy(self, ignore_diff: bool = False):
+    def remote_deploy(self, ignore_diff: bool = True):
         """Deploy model services to a Flyte backend."""
         if self._remote is None:
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
@@ -622,7 +622,7 @@ class Model(TrackedInstance):
 
         from unionml import remote
 
-        app_version = app_version or remote.get_app_version(ignore_diff=True)
+        app_version = app_version or remote.get_app_version()
         train_wf = self._remote.fetch_workflow(name=self.train_workflow_name, version=app_version)
         execution = self._remote.execute(
             train_wf,
@@ -687,7 +687,7 @@ class Model(TrackedInstance):
 
         from unionml import remote
 
-        app_version = app_version or remote.get_app_version(ignore_diff=True)
+        app_version = app_version or remote.get_app_version()
         model_artifact = remote.get_model_artifact(self, app_version, model_version)
 
         if (features is not None and len(reader_kwargs) > 0) or (features is None and len(reader_kwargs) == 0):
@@ -761,7 +761,7 @@ class Model(TrackedInstance):
         """
         from unionml import remote
 
-        app_version = app_version or remote.get_app_version(ignore_diff=True)
+        app_version = app_version or remote.get_app_version()
         return remote.list_model_versions(self, app_version=app_version, limit=limit)
 
     def remote_fetch_predictions(self, execution: FlyteWorkflowExecution) -> Any:
