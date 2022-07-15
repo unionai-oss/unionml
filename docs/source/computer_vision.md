@@ -2,7 +2,7 @@
 
 # Computer Vision
 
-This section of the tutorials should you how to process image data to create
+This section of the tutorials should show you how to process image data to create
 predictive applications like digits classification 🔢 and pictionary 🖼!
 
 ```{toctree}
