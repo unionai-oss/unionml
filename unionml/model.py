@@ -533,11 +533,14 @@ class Model(TrackedInstance):
         )
         return self.__remote__
 
-    def remote_deploy(self):
+    def remote_deploy(self, ignore_diff: bool = True):
         """Deploy model services to a Flyte backend."""
+        if self._remote is None:
+            raise RuntimeError("First configure the remote client with the `Model.remote` method")
+
         from unionml import remote
 
-        app_version = remote.get_app_version()
+        app_version = remote.get_app_version(ignore_diff=ignore_diff)
         image = remote.get_image_fqn(self, app_version, self._image_name)
 
         os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
