@@ -23,7 +23,7 @@ In this guide, we'll:
 ## Deploy App Workflows
 
 A UnionML app is composed of a {class}`~unionml.dataset.Dataset`, {class}`~unionml.model.Model`, and
-serving app componen (e.g. `fastapi.FastAPI`). Under the hood, a `Model` object exposes
+serving app component (e.g. `fastapi.FastAPI`). Under the hood, a `Model` object exposes
 `*_workflow` methods that return [`flytekit.workflow`](https://docs.flyte.org/projects/flytekit/en/latest/generated/flytekit.workflow.html#flytekit.workflow) objects, which are essentially
 execution graphs that perform multiple steps of computation.
 
