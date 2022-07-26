@@ -83,5 +83,5 @@ And that's it 🙌
 ## Next
 
 Serving online predictions on FastAPI gives you full control over the server infrastructure, but
-what if you want to standup a servless online prediction service? We'll see how we can achieve this
+what if you want to standup a serverless online prediction service? We'll see how we can achieve this
 in the {ref}`Serving with AWS Lambda <serving_aws_lambda>` guide.
