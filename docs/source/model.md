@@ -35,7 +35,7 @@ In the above code snippet you might notice a few things:
 - We're defining a `Model` named `"digits_classifier"`.
 - The `init` argument is a class, function, or callable object that returns
   your model of interest when called. In this case, we're using the
-  `sklearn.linear_model.LogisticRegression` class to train our digits classifer.
+  `sklearn.linear_model.LogisticRegression` class to train our digits classifier.
 - The `dataset` argument takes a `Dataset` object, effectively constraining
   the model's form as a function of the `Dataset` specification.
 ```
