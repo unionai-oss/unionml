@@ -1,6 +1,7 @@
 """Utilities for the FastAPI integration."""
 
 import os
+from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Union
 
 from fastapi import Body, FastAPI, HTTPException
@@ -55,3 +56,7 @@ def serving_app(model: Model, app: FastAPI, remote: bool = False, model_version:
         workflow_inputs.update(inputs if inputs else {"features": features})
 
         return model.predict(**workflow_inputs)
+
+    @app.get("/health")
+    async def health():
+        return {"message": HTTPStatus.OK.phrase, "status": HTTPStatus.OK}
