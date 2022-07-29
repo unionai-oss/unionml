@@ -1,9 +1,9 @@
 """Utilities for the FastAPI integration."""
 
 import os
+from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Union
 
-from http import HTTPStatus
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -59,4 +59,4 @@ def serving_app(model: Model, app: FastAPI, remote: bool = False, model_version:
 
     @app.get("/health")
     async def health():
-        return {"message": HTTPStatus.OK.phrase, "status": HTTPStatus.OK, "data": {}}
+        return {"message": HTTPStatus.OK.phrase, "status": HTTPStatus.OK}
