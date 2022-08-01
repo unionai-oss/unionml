@@ -4,8 +4,8 @@
 furo
 gradio<=3.0.10
 joblib
-jupytext
-myst-nb>=0.15.0
+jupytext==1.14.1
+myst-nb==0.16.0
 sphinx
 sphinx-autodoc-typehints
 sphinx-click
