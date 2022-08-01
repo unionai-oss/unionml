@@ -237,11 +237,16 @@ class Model(TrackedInstance):
         # add hyperparameter argument
         wf.add_workflow_input(hyperparam_arg, hyperparam_type)
 
+        # add loader, splitter, parser kwargs
+        wf.add_workflow_input("loader_kwargs", dict)
+        wf.add_workflow_input("splitter_kwargs", dict)
+        wf.add_workflow_input("parser_kwargs", dict)
+
         # add dataset.reader arguments
         for arg, type in dataset_task.python_interface.inputs.items():
             wf.add_workflow_input(arg, type)
 
-        # add training keyword-only arguments
+        # add training kwargs
         trainer_param_types = {k: v.annotation for k, v in self.trainer_params.items()}
         for arg, type in trainer_param_types.items():
             wf.add_workflow_input(arg, type)
@@ -256,6 +261,7 @@ class Model(TrackedInstance):
                 hyperparam_arg: wf.inputs[hyperparam_arg],
                 **dataset_node.outputs,
                 **{arg: wf.inputs[arg] for arg in trainer_param_types},
+                **{arg: wf.inputs[arg] for arg in ["loader_kwargs", "splitter_kwargs", "parser_kwargs"]},
             },
         )
         wf.add_workflow_output("model_object", train_node.outputs["model_object"])
@@ -321,12 +327,20 @@ class Model(TrackedInstance):
                 [
                     (p.name, p)
                     for p in [
+                        # hyperparameters
                         hyperparameters_param,
+                        # raw data
                         Parameter(
                             data_arg_name,
                             kind=Parameter.KEYWORD_ONLY,
                             annotation=data_arg_type,
                         ),
+                        # loader, splitter, and parser kwargs
+                        *[
+                            Parameter(arg, kind=Parameter.KEYWORD_ONLY, annotation=dict)
+                            for arg in ["loader_kwargs", "splitter_kwargs", "parser_kwargs"]
+                        ],
+                        # trainer kwargs
                         *self.trainer_params.values(),
                     ]
                 ]
@@ -421,6 +435,9 @@ class Model(TrackedInstance):
     def train(
         self,
         hyperparameters: Optional[Dict[str, Any]] = None,
+        loader_kwargs: Optional[Dict[str, Any]] = None,
+        splitter_kwargs: Optional[Dict[str, Any]] = None,
+        parser_kwargs: Optional[Dict[str, Any]] = None,
         trainer_kwargs: Optional[Dict[str, Any]] = None,
         **reader_kwargs,
     ) -> Tuple[Any, Any]:
@@ -435,6 +452,9 @@ class Model(TrackedInstance):
         trainer_kwargs = {} if trainer_kwargs is None else trainer_kwargs
         model_obj, hyperparameters, metrics = self.train_workflow()(
             hyperparameters=self.hyperparameter_type(**({} if hyperparameters is None else hyperparameters)),
+            loader_kwargs=loader_kwargs or {},
+            splitter_kwargs=splitter_kwargs or {},
+            parser_kwargs=parser_kwargs or {},
             **{**reader_kwargs, **trainer_kwargs},
         )
         self.artifact = ModelArtifact(model_obj, hyperparameters, metrics)
@@ -564,6 +584,9 @@ class Model(TrackedInstance):
         wait: bool = True,
         *,
         hyperparameters: Optional[Dict[str, Any]] = None,
+        loader_kwargs: Optional[Dict[str, Any]] = None,
+        splitter_kwargs: Optional[Dict[str, Any]] = None,
+        parser_kwargs: Optional[Dict[str, Any]] = None,
         trainer_kwargs: Optional[Dict[str, Any]] = None,
         **reader_kwargs,
     ) -> Union[ModelArtifact, FlyteWorkflowExecution]:
@@ -590,6 +613,9 @@ class Model(TrackedInstance):
             train_wf,
             inputs={
                 "hyperparameters": self.hyperparameter_type(**({} if hyperparameters is None else hyperparameters)),
+                "loader_kwargs": loader_kwargs or {},
+                "splitter_kwargs": splitter_kwargs or {},
+                "parser_kwargs": parser_kwargs or {},
                 **{**reader_kwargs, **({} if trainer_kwargs is None else trainer_kwargs)},  # type: ignore
             },
             project=self._remote.default_project,

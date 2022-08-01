@@ -6,6 +6,11 @@ from inspect import Parameter, signature
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, TypeVar, cast
 
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
+
 import pandas as pd
 from flytekit.core.tracker import TrackedInstance
 from flytekit.extras.sqlite3.task import SQLite3Task
@@ -208,7 +213,13 @@ class Dataset(TrackedInstance):
         self._dataset_task = dataset_task
         return dataset_task
 
-    def get_data(self, raw_data):
+    def get_data(
+        self,
+        raw_data,
+        loader_kwargs: Optional[Dict[str, Any]] = None,
+        splitter_kwargs: Optional[Dict[str, Any]] = None,
+        parser_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> Dict[Literal["train", "test"], Any]:
         """Get training data from from its raw form to its model-ready form.
 
         :param raw_data: Raw data in the same form as the ``reader`` output.
@@ -219,15 +230,27 @@ class Dataset(TrackedInstance):
         - :meth:`unionml.dataset.Dataset.splitter`
         - :meth:`unionml.dataset.Dataset.parser`
         """
-        data = self._loader(raw_data)
-        splits = self._splitter(data, **self.splitter_kwargs)
+
+        def update_kwargs(
+            kwargs: Dict[str, Any],
+            new_kwargs: Optional[Dict[str, Any]],
+        ) -> Dict[str, Any]:
+            return kwargs if new_kwargs is None else {**kwargs, **new_kwargs}
+
+        loader_kwargs = update_kwargs({}, loader_kwargs)
+        splitter_kwargs = update_kwargs(self.splitter_kwargs, splitter_kwargs)
+        parser_kwargs = update_kwargs(self.parser_kwargs, parser_kwargs)
+
+        data = self._loader(raw_data, **loader_kwargs)
+        splits = self._splitter(data, **splitter_kwargs)
+
         if len(splits) == 1:
-            return {"train": self._parser(splits[0], **self.parser_kwargs)}
+            return {"train": self._parser(splits[0], **parser_kwargs)}
 
         train_split, test_split = splits
         # TODO: make this more generic so as to include a validation split
-        train_data = self._parser(train_split, **self.parser_kwargs)
-        test_data = self._parser(test_split, **self.parser_kwargs)
+        train_data = self._parser(train_split, **parser_kwargs)
+        test_data = self._parser(test_split, **parser_kwargs)
         return {
             "train": train_data,
             "test": test_data,
