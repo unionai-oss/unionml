@@ -54,7 +54,8 @@ def get_app_version(ignore_diff: bool = True) -> str:
     with contextlib.suppress(git.CommandError):
         if list(repo.iter_commits("@{upstream}..")):
             logger.warning(
-                "You have local commits to not present on remote repositories, this may cause issues with deployment."
+                "You have local commits that are not present on remote repositories,"
+                " which may cause issues with deployment."
             )
 
     return repo.head.commit.hexsha
