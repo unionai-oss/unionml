@@ -39,7 +39,7 @@ jobs:
         pip install --no-deps -e .
     - name: Lint
       run: |
-        pre-commit run --all-files
+        pre-commit run --all-files --show-diff-on-failure
     - name: Unit tests with pytest
       run: |
         pytest tests/unit
