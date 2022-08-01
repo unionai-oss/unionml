@@ -63,7 +63,17 @@ def deploy(
     typer.echo(f"[unionml] deploying {app}")
     model = get_model(app)
     try:
-        model.remote_deploy(allow_uncommitted=allow_uncommitted)
+        app_version = get_app_version(allow_uncommitted=allow_uncommitted)
+    except Exception as e:
+        typer.echo(f"[unionml] failed to get app version: {e}", err=True)
+        typer.echo(
+            "[unionml] Please commit your changes or explicitly ignore this using the --allow-uncommitted flag.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        model.remote_deploy(app_version)
     except Exception as e:
         typer.echo(f"[unionml] failed to deploy {app}: {e}", err=True)
         raise typer.Exit(code=1)
@@ -121,7 +131,7 @@ def list_model_versions(
     r"""List all model versions."""
 
     model = get_model(app)
-    app_version = app_version or get_app_version()
+    app_version = app_version or get_app_version(allow_uncommitted=True)
     typer.echo(f"[unionml] app: {app} - listing model versions for app version={app_version}")
     for model_version in model.remote_list_model_versions(app_version, limit):
         typer.echo(f"- {model_version}")
@@ -137,7 +147,7 @@ def fetch_model(
 ):
     r"""Fetch a model object from the remote backend."""
     model = get_model(app)
-    app_version = app_version or get_app_version()
+    app_version = app_version or get_app_version(allow_uncommitted=True)
     execution = get_model_execution(model, app_version, model_version=model_version)
     model.remote_load(execution)
     save_kwargs = {}

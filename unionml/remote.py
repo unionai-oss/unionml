@@ -41,15 +41,12 @@ def create_project(remote: FlyteRemote, project: typing.Optional[str]):
         remote.client.register_project(Project(id=project, name=project, description=project))
 
 
-def get_app_version(allow_uncommitted: bool = True) -> str:
+def get_app_version(allow_uncommitted: bool = False) -> str:
     repo = git.Repo(".", search_parent_directories=True)
     if repo.is_dirty():
         if not allow_uncommitted:
-            raise RuntimeError(
-                "You have uncommitted changes."
-                " Please commit your changes or explicitly ignore this using the --allow-uncommitted flag.",
-            )
-        logger.warning("You have uncommitted changes, unionml is operating based on the latest commit.")
+            raise RuntimeError("Version number cannot be determined with uncommitted changes present.")
+        logger.warning("You have uncommitted changes, unionml is using the the latest commit as the app version.")
 
     with contextlib.suppress(git.CommandError):
         if list(repo.iter_commits("@{upstream}..")):
@@ -128,7 +125,7 @@ def get_model_execution(
     if model._remote is None:
         raise RuntimeError("You need to configure the remote client with the `Model.remote` method")
 
-    app_version = app_version or get_app_version()
+    app_version = app_version or get_app_version(allow_uncommitted=True)
     train_wf = model._remote.fetch_workflow(
         model._remote._default_project,
         model._remote._default_domain,
@@ -172,7 +169,7 @@ def list_model_versions(model: Model, app_version: typing.Optional[str] = None, 
     if model._remote is None:
         raise RuntimeError("You need to configure the remote client with the `Model.remote` method")
 
-    app_version = app_version or get_app_version()
+    app_version = app_version or get_app_version(allow_uncommitted=True)
     train_wf = model._remote.fetch_workflow(
         model._remote._default_project,
         model._remote._default_domain,
