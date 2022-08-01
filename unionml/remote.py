@@ -41,13 +41,13 @@ def create_project(remote: FlyteRemote, project: typing.Optional[str]):
         remote.client.register_project(Project(id=project, name=project, description=project))
 
 
-def get_app_version(ignore_diff: bool = True) -> str:
+def get_app_version(allow_uncommitted: bool = True) -> str:
     repo = git.Repo(".", search_parent_directories=True)
     if repo.is_dirty():
-        if not ignore_diff:
+        if not allow_uncommitted:
             raise RuntimeError(
                 "You have uncommitted changes."
-                " Please commit your changes or explicitly ignore this using the --ignore-diff flag.",
+                " Please commit your changes or explicitly ignore this using the --allow-uncommitted flag.",
             )
         logger.warning("You have uncommitted changes, unionml is operating based on the latest commit.")
 

@@ -53,13 +53,17 @@ def init(
 @app.command()
 def deploy(
     app: str,
-    ignore_diff: bool = typer.Option(False, "--ignore-diff", help="allow uncommitted changes"),
+    allow_uncommitted: bool = typer.Option(
+        False,
+        "--allow-uncommitted",
+        help="proceed with deployment even with uncommitted changes",
+    ),
 ):
     """Deploy model to a Flyte backend."""
     typer.echo(f"[unionml] deploying {app}")
     model = get_model(app)
     try:
-        model.remote_deploy(ignore_diff=ignore_diff)
+        model.remote_deploy(allow_uncommitted=allow_uncommitted)
     except Exception as e:
         typer.echo(f"[unionml] failed to deploy {app}: {e}", err=True)
         raise typer.Exit(code=1)
