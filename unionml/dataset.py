@@ -1,8 +1,9 @@
 """Dataset class for defining data source, splitting, parsing, and iteration."""
 
 import json
+from dataclasses import _MISSING_TYPE, field, make_dataclass
 from functools import partial
-from inspect import Parameter, signature
+from inspect import Parameter, _empty, signature
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, TypeVar, cast
 
@@ -12,6 +13,7 @@ except ImportError:
     from typing_extensions import Literal  # type: ignore
 
 import pandas as pd
+from dataclasses_json import dataclass_json
 from flytekit.core.tracker import TrackedInstance
 from flytekit.extras.sqlite3.task import SQLite3Task
 from sklearn.model_selection import train_test_split
@@ -75,6 +77,11 @@ class Dataset(TrackedInstance):
         self._reader_input_types: Optional[List[Parameter]] = None
         self._reader_return_type: Optional[Dict[str, Type]] = None
         self._dataset_task = None
+
+        # dynamically defined types
+        self._loader_kwargs_type: Optional[Type] = None
+        self._splitter_kwargs_type: Optional[Type] = None
+        self._parser_kwargs_type: Optional[Type] = None
 
     def reader(self, fn=None, **reader_task_kwargs):
         """Register a reader function for getting data from some external source.
@@ -192,6 +199,57 @@ class Dataset(TrackedInstance):
             "features": self._features,
             "targets": self._targets,
         }
+
+    @staticmethod
+    def _kwarg_to_dataclass_field(param, default_kwargs):
+        default = default_kwargs.get(param.name, _MISSING_TYPE if param.default is _empty else param.default)
+        if isinstance(default, (list, dict, set)):
+            _kwargs = {"default_factory": lambda: default}
+        else:
+            _kwargs = {"default": default}
+        return field(**_kwargs)
+
+    @property
+    def loader_kwargs_type(self):
+        """Dynamically create a dataclass for loader kwargs."""
+        if self._loader_kwargs_type is not None:
+            return self._loader_kwargs_type
+
+        fields = [
+            (p.name, p.annotation, field() if p.default is _empty else field(default=p.default))
+            for i, p in enumerate(signature(self._loader).parameters.values())
+            if i > 0  # skip the first argument, which is the raw data
+        ]
+        self._loader_kwargs_type = dataclass_json(make_dataclass("LoaderKwargs", fields))
+        return self._loader_kwargs_type
+
+    @property
+    def splitter_kwargs_type(self):
+        """Dynamically create a dataclass for splitter kwargs."""
+        if self._splitter_kwargs_type is not None:
+            return self._splitter_kwargs_type
+
+        fields = [
+            (p.name, p.annotation, self._kwarg_to_dataclass_field(p, self.splitter_kwargs))
+            for i, p in enumerate(signature(self._splitter).parameters.values())
+            if i > 0  # skip the first argument, which is the data
+        ]
+        self._splitter_kwargs_type = dataclass_json(make_dataclass("SplitterKwargs", fields))
+        return self._splitter_kwargs_type
+
+    @property
+    def parser_kwargs_type(self):
+        """Dynamically create a dataclass for parser kwargs."""
+        if self._parser_kwargs_type is not None:
+            return self._parser_kwargs_type
+
+        fields = [
+            (p.name, p.annotation, self._kwarg_to_dataclass_field(p, self.parser_kwargs))
+            for i, p in enumerate(signature(self._parser).parameters.values())
+            if i > 0  # skip the first argument, which is the data
+        ]
+        self._parser_kwargs_type = dataclass_json(make_dataclass("ParserKwargs", fields))
+        return self._parser_kwargs_type
 
     def dataset_task(self):
         """Create a Flyte task for getting the dataset using the ``reader`` function."""

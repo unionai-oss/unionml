@@ -238,9 +238,9 @@ class Model(TrackedInstance):
         wf.add_workflow_input(hyperparam_arg, hyperparam_type)
 
         # add loader, splitter, parser kwargs
-        wf.add_workflow_input("loader_kwargs", dict)
-        wf.add_workflow_input("splitter_kwargs", dict)
-        wf.add_workflow_input("parser_kwargs", dict)
+        wf.add_workflow_input("loader_kwargs", self._dataset.loader_kwargs_type)
+        wf.add_workflow_input("splitter_kwargs", self._dataset.splitter_kwargs_type)
+        wf.add_workflow_input("parser_kwargs", self._dataset.parser_kwargs_type)
 
         # add dataset.reader arguments
         for arg, type in dataset_task.python_interface.inputs.items():
@@ -452,9 +452,9 @@ class Model(TrackedInstance):
         trainer_kwargs = {} if trainer_kwargs is None else trainer_kwargs
         model_obj, hyperparameters, metrics = self.train_workflow()(
             hyperparameters=self.hyperparameter_type(**({} if hyperparameters is None else hyperparameters)),
-            loader_kwargs=loader_kwargs or {},
-            splitter_kwargs=splitter_kwargs or {},
-            parser_kwargs=parser_kwargs or {},
+            loader_kwargs=self._dataset.loader_kwargs_type(**({} if loader_kwargs is None else loader_kwargs)),
+            splitter_kwargs=self._dataset.splitter_kwargs_type(**({} if splitter_kwargs is None else splitter_kwargs)),
+            parser_kwargs=self._dataset.parser_kwargs_type(**({} if parser_kwargs is None else parser_kwargs)),
             **{**reader_kwargs, **trainer_kwargs},
         )
         self.artifact = ModelArtifact(model_obj, hyperparameters, metrics)
@@ -613,15 +613,20 @@ class Model(TrackedInstance):
             train_wf,
             inputs={
                 "hyperparameters": self.hyperparameter_type(**({} if hyperparameters is None else hyperparameters)),
-                "loader_kwargs": loader_kwargs or {},
-                "splitter_kwargs": splitter_kwargs or {},
-                "parser_kwargs": parser_kwargs or {},
+                "loader_kwargs": self._dataset.loader_kwargs_type(**loader_kwargs or {}),
+                "splitter_kwargs": self._dataset.splitter_kwargs_type(**splitter_kwargs or {}),
+                "parser_kwargs": self._dataset.parser_kwargs_type(**parser_kwargs or {}),
                 **{**reader_kwargs, **({} if trainer_kwargs is None else trainer_kwargs)},  # type: ignore
             },
             project=self._remote.default_project,
             domain=self._remote.default_domain,
             wait=wait,
-            type_hints={"hyperparameters": self.hyperparameter_type},
+            type_hints={
+                "hyperparameters": self.hyperparameter_type,
+                "loader_kwargs": self._dataset.loader_kwargs_type,
+                "splitter_kwargs": self._dataset.splitter_kwargs,
+                "parser_kwargs": self._dataset.parser_kwargs,
+            },
         )
         console_url = self._remote.generate_console_url(execution)
         print(
