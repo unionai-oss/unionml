@@ -10,3 +10,4 @@ tensorflow
 torch
 types-requests
 uvicorn
+jupytext
