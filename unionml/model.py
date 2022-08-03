@@ -237,11 +237,16 @@ class Model(TrackedInstance):
         # add hyperparameter argument
         wf.add_workflow_input(hyperparam_arg, hyperparam_type)
 
+        # add loader, splitter, parser kwargs
+        wf.add_workflow_input("loader_kwargs", self._dataset.loader_kwargs_type)
+        wf.add_workflow_input("splitter_kwargs", self._dataset.splitter_kwargs_type)
+        wf.add_workflow_input("parser_kwargs", self._dataset.parser_kwargs_type)
+
         # add dataset.reader arguments
         for arg, type in dataset_task.python_interface.inputs.items():
             wf.add_workflow_input(arg, type)
 
-        # add training keyword-only arguments
+        # add training kwargs
         trainer_param_types = {k: v.annotation for k, v in self.trainer_params.items()}
         for arg, type in trainer_param_types.items():
             wf.add_workflow_input(arg, type)
@@ -256,6 +261,7 @@ class Model(TrackedInstance):
                 hyperparam_arg: wf.inputs[hyperparam_arg],
                 **dataset_node.outputs,
                 **{arg: wf.inputs[arg] for arg in trainer_param_types},
+                **{arg: wf.inputs[arg] for arg in ["loader_kwargs", "splitter_kwargs", "parser_kwargs"]},
             },
         )
         wf.add_workflow_output("model_object", train_node.outputs["model_object"])
@@ -321,12 +327,20 @@ class Model(TrackedInstance):
                 [
                     (p.name, p)
                     for p in [
+                        # hyperparameters
                         hyperparameters_param,
+                        # raw data
                         Parameter(
                             data_arg_name,
                             kind=Parameter.KEYWORD_ONLY,
                             annotation=data_arg_type,
                         ),
+                        # loader, splitter, and parser kwargs
+                        *[
+                            Parameter(arg, kind=Parameter.KEYWORD_ONLY, annotation=dict)
+                            for arg in ["loader_kwargs", "splitter_kwargs", "parser_kwargs"]
+                        ],
+                        # trainer kwargs
                         *self.trainer_params.values(),
                     ]
                 ]
@@ -421,6 +435,9 @@ class Model(TrackedInstance):
     def train(
         self,
         hyperparameters: Optional[Dict[str, Any]] = None,
+        loader_kwargs: Optional[Dict[str, Any]] = None,
+        splitter_kwargs: Optional[Dict[str, Any]] = None,
+        parser_kwargs: Optional[Dict[str, Any]] = None,
         trainer_kwargs: Optional[Dict[str, Any]] = None,
         **reader_kwargs,
     ) -> Tuple[Any, Any]:
@@ -428,6 +445,12 @@ class Model(TrackedInstance):
 
         :param hyperparameters: a dictionary mapping hyperparameter names to values. This is passed into the
             ``init`` callable to initialize a model object.
+        :param loader_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.loader` function.
+            This will override any defaults set in the function definition.
+        :param splitter_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.splitter` function.
+            This will override any defaults set in the function definition.
+        :param parser_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.parser` function.
+            This will override any defaults set in the function definition.
         :param trainer_kwargs: a dictionary mapping training parameter names to values. There training parameters
             are determined by the keyword-only arguments of the ``model.trainer`` function.
         :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.Dataset.reader` method signature.
@@ -435,6 +458,9 @@ class Model(TrackedInstance):
         trainer_kwargs = {} if trainer_kwargs is None else trainer_kwargs
         model_obj, hyperparameters, metrics = self.train_workflow()(
             hyperparameters=self.hyperparameter_type(**({} if hyperparameters is None else hyperparameters)),
+            loader_kwargs=self._dataset.loader_kwargs_type(**({} if loader_kwargs is None else loader_kwargs)),
+            splitter_kwargs=self._dataset.splitter_kwargs_type(**({} if splitter_kwargs is None else splitter_kwargs)),
+            parser_kwargs=self._dataset.parser_kwargs_type(**({} if parser_kwargs is None else parser_kwargs)),
             **{**reader_kwargs, **trainer_kwargs},
         )
         self.artifact = ModelArtifact(model_obj, hyperparameters, metrics)
@@ -564,6 +590,9 @@ class Model(TrackedInstance):
         wait: bool = True,
         *,
         hyperparameters: Optional[Dict[str, Any]] = None,
+        loader_kwargs: Optional[Dict[str, Any]] = None,
+        splitter_kwargs: Optional[Dict[str, Any]] = None,
+        parser_kwargs: Optional[Dict[str, Any]] = None,
         trainer_kwargs: Optional[Dict[str, Any]] = None,
         **reader_kwargs,
     ) -> Union[ModelArtifact, FlyteWorkflowExecution]:
@@ -575,6 +604,12 @@ class Model(TrackedInstance):
             function returns a ``FlyteWorkflowExecution``.
         :param hyperparameters: a dictionary mapping hyperparameter names to values. This is passed into the
             ``init`` callable to initialize a model object.
+        :param loader_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.loader` function.
+            This will override any defaults set in the function definition.
+        :param splitter_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.splitter` function.
+            This will override any defaults set in the function definition.
+        :param parser_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.parser` function.
+            This will override any defaults set in the function definition.
         :param trainer_kwargs: a dictionary mapping training parameter names to values. There training parameters
             are determined by the keyword-only arguments of the ``model.trainer`` function.
         :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.Dataset.reader` method signature.
@@ -590,12 +625,20 @@ class Model(TrackedInstance):
             train_wf,
             inputs={
                 "hyperparameters": self.hyperparameter_type(**({} if hyperparameters is None else hyperparameters)),
+                "loader_kwargs": self._dataset.loader_kwargs_type(**loader_kwargs or {}),
+                "splitter_kwargs": self._dataset.splitter_kwargs_type(**splitter_kwargs or {}),
+                "parser_kwargs": self._dataset.parser_kwargs_type(**parser_kwargs or {}),
                 **{**reader_kwargs, **({} if trainer_kwargs is None else trainer_kwargs)},  # type: ignore
             },
             project=self._remote.default_project,
             domain=self._remote.default_domain,
             wait=wait,
-            type_hints={"hyperparameters": self.hyperparameter_type},
+            type_hints={
+                "hyperparameters": self.hyperparameter_type,
+                "loader_kwargs": self._dataset.loader_kwargs_type,
+                "splitter_kwargs": self._dataset.splitter_kwargs_type,
+                "parser_kwargs": self._dataset.parser_kwargs_type,
+            },
         )
         console_url = self._remote.generate_console_url(execution)
         print(

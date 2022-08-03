@@ -17,6 +17,8 @@ def mock_data() -> pd.DataFrame:
     return pd.DataFrame(
         {
             "x": [1, 2, 3, 4] * 25,
+            "x2": [1, 2, 3, 4] * 25,
+            "x3": [1, 2, 3, 4] * 25,
             "y": [0, 1, 0, 1] * 25,
         }
     )
@@ -36,6 +38,12 @@ def raw_model(request, mock_data) -> Model:
     @dataset.reader
     def reader(sample_frac: float, random_state: int) -> pd.DataFrame:
         return mock_data.sample(frac=sample_frac, random_state=random_state)
+
+    @dataset.loader
+    def loader(raw_data: pd.DataFrame, head: typing.Optional[int] = None) -> pd.DataFrame:
+        if head is not None:
+            return raw_data.head(head)
+        return raw_data
 
     model = Model(
         name="test_model",
@@ -135,11 +143,21 @@ def test_model_train(model, custom_init):
     assert isinstance(metrics["test"], float)
 
 
-def test_model_train_from_data(model):
+@pytest.mark.parametrize(
+    "dataset_kwargs",
+    [
+        {},
+        {"loader_kwargs": {"head": 20}},
+        {"splitter_kwargs": {"test_size": 0.5, "shuffle": False, "random_state": 54321}},
+        {"parser_kwargs": {"features": ["x2", "x3"], "targets": ["y"]}},
+    ],
+)
+def test_model_train_from_data(model, dataset_kwargs):
     model_object, metrics = model.train(
         hyperparameters={"C": 1.0, "max_iter": 1000},
         sample_frac=1.0,
         random_state=123,
+        **dataset_kwargs,
     )
     assert isinstance(model_object, LogisticRegression)
     assert isinstance(metrics["train"], float)
