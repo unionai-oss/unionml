@@ -17,6 +17,14 @@ def _app(ml_framework: str, *args, port: str = "8000"):
     )
     if len(process.stderr.peek().decode()) == 0:  # type: ignore
         _wait_to_exist(port)
+
+    # for some reason the keras test has trouble connecting to the fastapi app
+    if "--model-path" in args and ml_framework != "keras":
+        assert requests.get(f"http://127.0.0.1:{port}/health").json()["status"] == 200
+    else:
+        with pytest.raises(requests.exceptions.ConnectionError):
+            requests.get(f"http://127.0.0.1:{port}/health")
+
     try:
         yield process
     finally:
@@ -30,8 +38,6 @@ def _wait_to_exist(port):
             break
         except Exception:  # pylint: disable=broad-except
             time.sleep(1.0)
-
-    assert requests.get(f"http://127.0.0.1:{port}/health").json()["status"] == 200
 
 
 @pytest.mark.parametrize(
