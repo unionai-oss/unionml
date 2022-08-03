@@ -445,6 +445,12 @@ class Model(TrackedInstance):
 
         :param hyperparameters: a dictionary mapping hyperparameter names to values. This is passed into the
             ``init`` callable to initialize a model object.
+        :param loader_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.loader` function.
+            This will override any defaults set in the function definition.
+        :param splitter_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.splitter` function.
+            This will override any defaults set in the function definition.
+        :param parser_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.parser` function.
+            This will override any defaults set in the function definition.
         :param trainer_kwargs: a dictionary mapping training parameter names to values. There training parameters
             are determined by the keyword-only arguments of the ``model.trainer`` function.
         :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.Dataset.reader` method signature.
@@ -598,6 +604,12 @@ class Model(TrackedInstance):
             function returns a ``FlyteWorkflowExecution``.
         :param hyperparameters: a dictionary mapping hyperparameter names to values. This is passed into the
             ``init`` callable to initialize a model object.
+        :param loader_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.loader` function.
+            This will override any defaults set in the function definition.
+        :param splitter_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.splitter` function.
+            This will override any defaults set in the function definition.
+        :param parser_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.parser` function.
+            This will override any defaults set in the function definition.
         :param trainer_kwargs: a dictionary mapping training parameter names to values. There training parameters
             are determined by the keyword-only arguments of the ``model.trainer`` function.
         :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.Dataset.reader` method signature.
