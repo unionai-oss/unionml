@@ -31,6 +31,8 @@ def _wait_to_exist(port):
         except Exception:  # pylint: disable=broad-except
             time.sleep(1.0)
 
+    assert requests.get(f"http://127.0.0.1:{port}/health").json()["status"] == 200
+
 
 @pytest.mark.parametrize(
     "ml_framework, model_cls_name, model_checker",

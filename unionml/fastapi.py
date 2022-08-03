@@ -59,4 +59,6 @@ def serving_app(model: Model, app: FastAPI, remote: bool = False, model_version:
 
     @app.get("/health")
     async def health():
+        if model.artifact is None:
+            raise HTTPException(status_code=500, detail="Model artifact not available.")
         return {"message": HTTPStatus.OK.phrase, "status": HTTPStatus.OK}
