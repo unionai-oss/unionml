@@ -624,8 +624,8 @@ class Model(TrackedInstance):
             type_hints={
                 "hyperparameters": self.hyperparameter_type,
                 "loader_kwargs": self._dataset.loader_kwargs_type,
-                "splitter_kwargs": self._dataset.splitter_kwargs,
-                "parser_kwargs": self._dataset.parser_kwargs,
+                "splitter_kwargs": self._dataset.splitter_kwargs_type,
+                "parser_kwargs": self._dataset.parser_kwargs_type,
             },
         )
         console_url = self._remote.generate_console_url(execution)

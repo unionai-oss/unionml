@@ -23,6 +23,8 @@ from unionml.utils import inner_task
 R = TypeVar("R")  # raw data
 D = TypeVar("D")  # model-ready data
 
+DataSplits = Literal["train", "test"]  # type: ignore
+
 
 class Dataset(TrackedInstance):
     def __init__(
@@ -277,7 +279,7 @@ class Dataset(TrackedInstance):
         loader_kwargs: Optional[Dict[str, Any]] = None,
         splitter_kwargs: Optional[Dict[str, Any]] = None,
         parser_kwargs: Optional[Dict[str, Any]] = None,
-    ) -> Dict[Literal["train", "test"], Any]:
+    ) -> Dict[DataSplits, Any]:
         """Get training data from from its raw form to its model-ready form.
 
         :param raw_data: Raw data in the same form as the ``reader`` output.
