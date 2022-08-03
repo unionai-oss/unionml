@@ -7,11 +7,6 @@ from inspect import Parameter, _empty, signature
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, TypeVar, cast
 
-try:
-    from typing import Literal  # type: ignore
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
-
 import pandas as pd
 from dataclasses_json import dataclass_json
 from flytekit.core.tracker import TrackedInstance
@@ -22,8 +17,6 @@ from unionml.utils import inner_task
 
 R = TypeVar("R")  # raw data
 D = TypeVar("D")  # model-ready data
-
-DataSplits = Literal["train", "test"]  # type: ignore
 
 
 class Dataset(TrackedInstance):
@@ -279,7 +272,7 @@ class Dataset(TrackedInstance):
         loader_kwargs: Optional[Dict[str, Any]] = None,
         splitter_kwargs: Optional[Dict[str, Any]] = None,
         parser_kwargs: Optional[Dict[str, Any]] = None,
-    ) -> Dict[DataSplits, Any]:
+    ) -> Dict[str, Any]:
         """Get training data from from its raw form to its model-ready form.
 
         :param raw_data: Raw data in the same form as the ``reader`` output.
