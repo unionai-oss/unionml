@@ -7,8 +7,10 @@ import pytest
 import requests
 from sklearn.utils.validation import check_is_fitted
 
+DEFAULT_PORT = "8000"
 
-def _app(ml_framework: str, *args, port: str = "8000"):
+
+def _app(ml_framework: str, *args, port: str = DEFAULT_PORT):
     """Transient app server for testing."""
     process = subprocess.Popen(
         ["unionml", "serve", f"tests.integration.{ml_framework}_app.fastapi_app:app", "--port", port, *args],
@@ -17,13 +19,6 @@ def _app(ml_framework: str, *args, port: str = "8000"):
     )
     if len(process.stderr.peek().decode()) == 0:  # type: ignore
         _wait_to_exist(port)
-
-    # for some reason the keras test has trouble connecting to the fastapi app
-    if "--model-path" in args and ml_framework != "keras":
-        assert requests.get(f"http://127.0.0.1:{port}/health").json()["status"] == 200
-    else:
-        with pytest.raises(requests.exceptions.ConnectionError):
-            requests.get(f"http://127.0.0.1:{port}/health")
 
     try:
         yield process
@@ -36,6 +31,15 @@ def _wait_to_exist(port):
         try:
             requests.get(f"http://127.0.0.1:{port}/")
             break
+        except Exception:  # pylint: disable=broad-except
+            time.sleep(1.0)
+
+
+def assert_health_check():
+    for _ in range(30):
+        try:
+            health_check = requests.get(f"http://127.0.0.1:{DEFAULT_PORT}/health")
+            assert health_check.json()["status"] == 200
         except Exception:  # pylint: disable=broad-except
             time.sleep(1.0)
 
@@ -82,6 +86,7 @@ def test_fastapi_app(ml_framework, filename, tmp_path):
     n_samples = 5
 
     with contextmanager(_app)(ml_framework, "--model-path", str(model_path)):
+        assert_health_check()
         for _ in range(10):
             # for some reason the keras test has trouble connecting to the fastapi app
             try:
