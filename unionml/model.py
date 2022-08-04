@@ -18,6 +18,7 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.remote import FlyteRemote
 from flytekit.remote.executions import FlyteWorkflowExecution
 
+import unionml.type_guards as type_guards
 from unionml.dataset import Dataset
 from unionml.utils import inner_task, is_keras_model, is_pytorch_model
 
@@ -186,6 +187,8 @@ class Model(TrackedInstance):
         """Register a function for training a model object."""
         if fn is None:
             return partial(self.trainer, **train_task_kwargs)
+
+        type_guards.guard_trainer(fn, self.model_type, self._dataset.parser_return_types)
         self._trainer = fn
         self._train_task_kwargs = train_task_kwargs
         return self._trainer
@@ -194,12 +197,15 @@ class Model(TrackedInstance):
         """Register a function that generates predictions from a model object."""
         if fn is None:
             return partial(self.predictor, **predict_task_kwargs)
+
+        type_guards.guard_predictor(fn, self.model_type, self._dataset.feature_type)
         self._predictor = fn
         self._predict_task_kwargs = predict_task_kwargs
         return self._predictor
 
     def evaluator(self, fn):
         """Register a function for producing metrics for given model object."""
+        type_guards.guard_evaluator(fn, self.model_type, self._dataset.parser_return_types)
         self._evaluator = fn
         return self._evaluator
 
@@ -772,6 +778,11 @@ class Model(TrackedInstance):
         predictions, *_ = execution.outputs.values()
         return predictions
 
+    @property
+    def model_type(self) -> Type:
+        init = self._init_callable if self._init == self._default_init else self._init or self._init_callable
+        return init if inspect.isclass(init) else signature(init).return_annotation if init is not None else init
+
     def _default_init(self, hyperparameters: dict) -> Any:
         if self._init_callable is None:
             raise ValueError(
@@ -787,8 +798,7 @@ class Model(TrackedInstance):
         *args,
         **kwargs,
     ) -> Any:
-        init = self._init_callable if self._init == self._default_init else self._init or self._init_callable
-        model_type = init if inspect.isclass(init) else signature(init).return_annotation if init is not None else init
+        model_type = self.model_type
         hyperparameters = (
             asdict(hyperparameters)
             if hyperparameters is not None and is_dataclass(hyperparameters)
@@ -815,9 +825,7 @@ class Model(TrackedInstance):
         )
 
     def _default_loader(self, file: Union[str, os.PathLike, IO], *args, **kwargs) -> Any:
-        init = self._init_callable if self._init == self._default_init else self._init or self._init_callable
-        model_type = init if inspect.isclass(init) else signature(init).return_annotation if init is not None else init
-
+        model_type = self.model_type
         if issubclass(model_type, sklearn.base.BaseEstimator):
             deserialized_model = joblib.load(file, *args, **kwargs)
             return deserialized_model["model_obj"]

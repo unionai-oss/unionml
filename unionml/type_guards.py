@@ -1,0 +1,176 @@
+"""Type checking utilities for core function decorators."""
+
+from inspect import Parameter, _empty, signature
+from typing import Callable, Dict, Iterable, List, Mapping, Optional, Type, get_args, get_origin
+
+SPLITTER_KWTYPES: Dict[str, object] = {
+    "test_size": float,
+    "shuffle": bool,
+    "random_state": int,
+}
+
+PARSER_KWTYPES: Dict[str, object] = {
+    "features": Optional[List[str]],
+    "targets": List[str],
+}
+
+
+def _is_tuple_or_list_type(type: Type):
+    return get_origin(type) in {tuple, list} or getattr(type, "__bases__", None) == (tuple,)
+
+
+def _check_input_data_type(fn_name: str, actual_type: Type, expected_type: Type):
+    if actual_type != expected_type:
+        raise TypeError(
+            f"The type of the first argument of the '{fn_name}' function must match the 'reader' output type: "
+            f"{expected_type}. Found {actual_type}"
+        )
+
+
+def _check_supported_generic_type(fn_name: str, type: Type):
+    if not _is_tuple_or_list_type(type):
+        raise TypeError(
+            f"The output of '{fn_name}' must be a List, Tuple, or NamedTuple type containing data splits. "
+            f"Found {type}"
+        )
+
+
+def _check_generic_arg_types(fn_name: str, generic_type: Type, expected_type: Type, expected_type_source: str):
+    for subtype in get_args(generic_type):
+        if subtype != expected_type:
+            raise TypeError(
+                f"The type arguments to the output generic type of '{fn_name}' the function must match the "
+                f"'{expected_type_source}' output type: {expected_type}. Found {generic_type}"
+            )
+
+
+def _check_parameters(fn_name: str, parameters: Mapping[str, Parameter], kwtypes: Dict[str, object]):
+    for i, (argname, argtype) in enumerate(kwtypes.items()):
+        param = parameters.get(argname)
+        if param is None:
+            raise TypeError(
+                f"The '{fn_name}' function is expected to accept an argument '{argname}' of type {argtype} "
+                f"at the {i + 1}th position. Found a function with the following signature: {parameters}"
+            )
+        if param.annotation != argtype:
+            raise TypeError(f"The argument '{argname}' expected to be of type {argtype}, found {param.annotation}")
+
+
+def _check_data_types_length(actual_types, expected_types):
+    if len(actual_types) != len(expected_types):
+        raise TypeError(
+            f"Length of positional data arguments are expected to match {expected_types}. Found {actual_types}."
+        )
+
+
+def guard_reader(reader):
+    reader_sig = signature(reader)
+    if reader_sig.return_annotation is _empty:
+        raise TypeError(
+            "The dataset.reader function return annotation cannot be empty. You need to specify a return type."
+        )
+
+
+def guard_loader(loader: Callable, expected_data_type: Type):
+    sig = signature(loader)
+    actual_data_type = [*sig.parameters.values()][0].annotation
+
+    if expected_data_type != actual_data_type:
+        raise TypeError(
+            "The type of the first argument of the 'loader' function must match the 'reader' output type: "
+            f"{expected_data_type}. Found {actual_data_type}"
+        )
+
+
+def guard_splitter(splitter: Callable, expected_data_type: Type, expected_type_source: str):
+    sig = signature(splitter)
+    actual_data_type = [*sig.parameters.values()][0].annotation
+    output_type = sig.return_annotation
+
+    _check_input_data_type("splitter", actual_data_type, expected_data_type)
+    _check_supported_generic_type("splitter", output_type)
+    _check_generic_arg_types("splitter", output_type, expected_data_type, expected_type_source)
+    _check_parameters("splitter", sig.parameters, SPLITTER_KWTYPES)
+
+
+def guard_parser(parser: Callable, expected_data_type: Type, expected_type_source: str):
+    sig = signature(parser)
+    actual_data_type = [*sig.parameters.values()][0].annotation
+    output_type = sig.return_annotation
+
+    _check_input_data_type("parser", actual_data_type, expected_data_type)
+    _check_supported_generic_type("parser", output_type)
+    _check_parameters("parser", sig.parameters, PARSER_KWTYPES)
+
+
+def guard_trainer(trainer: Callable, expected_model_type: Type, expected_data_types: Iterable[Type]):
+    sig = signature(trainer)
+    params = [*sig.parameters.values()]
+
+    actual_model_type = params[0].annotation
+    actual_data_types = [
+        p.annotation for p in params[1:] if p.kind in {Parameter.POSITIONAL_OR_KEYWORD, Parameter.POSITIONAL_ONLY}
+    ]
+
+    _check_input_data_type("trainer", actual_model_type, expected_model_type)
+    _check_input_data_type("trainer", sig.return_annotation, expected_model_type)
+    _check_data_types_length(actual_data_types, expected_data_types)
+    for actual_dtype, expected_dtype in zip(actual_data_types, expected_data_types):
+        _check_input_data_type("trainer", actual_dtype, expected_dtype)
+
+
+def guard_evaluator(evaluator: Callable, expected_model_type: Type, expected_data_types: Iterable[Type]):
+    sig = signature(evaluator)
+    params = [*sig.parameters.values()]
+
+    actual_model_type = params[0].annotation
+    actual_data_types = [
+        p.annotation for p in params[1:] if p.kind in {Parameter.POSITIONAL_OR_KEYWORD, Parameter.POSITIONAL_ONLY}
+    ]
+
+    _check_input_data_type("evaluator", actual_model_type, expected_model_type)
+    _check_data_types_length(actual_data_types, expected_data_types)
+    for actual_dtype, expected_dtype in zip(actual_data_types, expected_data_types):
+        _check_input_data_type("evaluator", actual_dtype, expected_dtype)
+
+
+def guard_predictor(predictor: Callable, expected_model_type: Type, expected_data_type: Type):
+    sig = signature(predictor)
+    params = [*sig.parameters.values()]
+
+    actual_model_type = params[0].annotation
+    actual_data_types = [
+        p.annotation for p in params[1:] if p.kind in {Parameter.POSITIONAL_OR_KEYWORD, Parameter.POSITIONAL_ONLY}
+    ]
+
+    if len(actual_data_types) != 1:
+        raise TypeError(
+            f"The 'predictor' function needs to take only one 'features' argument, found {actual_data_types}"
+        )
+
+    actual_data_type = actual_data_types[0]
+    _check_input_data_type("predictor", actual_model_type, expected_model_type)
+    _check_input_data_type("predictor", actual_data_type, expected_data_type)
+
+    if sig.return_annotation is _empty:
+        raise TypeError("The 'predictor' function needs a return type annotation.")
+
+
+def guard_feature_loader(feature_loader: Callable, expected_data_type: Type):
+    """Ensure that the feature loader return type needs to match the parser data input."""
+    sig = signature(feature_loader)
+    if len(sig.parameters) != 1:
+        raise TypeError(
+            "The 'feature_loader' must take a single argument representing raw features or a reference to raw features."
+        )
+    _check_input_data_type("feature_loader", sig.return_annotation, expected_data_type)
+
+
+def guard_feature_transformer(feature_transformer: Callable, expected_data_type: Type):
+    """Ensure that the feature_transformer input matches the return type of parser."""
+    sig = signature(feature_transformer)
+    params = [*sig.parameters.values()]
+    if len(sig.parameters) != 1:
+        raise TypeError("The 'feature_transformer' must take a single argument representing the loaded features.")
+    actual_data_type = params[0].annotation
+    _check_input_data_type("feature_transformer", actual_data_type, expected_data_type)
