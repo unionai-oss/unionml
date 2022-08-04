@@ -1,7 +1,13 @@
 """Type checking utilities for core function decorators."""
 
 from inspect import Parameter, _empty, signature
-from typing import Callable, Dict, Iterable, List, Mapping, Optional, Type, get_args, get_origin
+from typing import Callable, Dict, Iterable, List, Mapping, Optional, Type
+
+try:
+    from typing import get_args, get_origin
+except ImportError:
+    from typing_extensions import get_args, get_origin
+
 
 SPLITTER_KWTYPES: Dict[str, object] = {
     "test_size": float,
