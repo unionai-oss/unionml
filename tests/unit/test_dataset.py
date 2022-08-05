@@ -136,7 +136,10 @@ def test_dataset_custom_splitter_parser(dataset, dict_dataset_reader):
         return data[:-n_test_samples], data[-n_test_samples:]
 
     @dataset.parser
-    def parser(data, features: typing.List[str], targets: typing.List[str]) -> typing.Tuple[Data, Data]:
+    def parser(
+        data: Data, features: typing.Optional[typing.List[str]], targets: typing.List[str]
+    ) -> typing.Tuple[Data, Data]:
+        features = [] if features is None else features
         feature_data, target_data = [], []
         for example in data:
             feature_data.append({x: example[x] for x in features})

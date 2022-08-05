@@ -2,10 +2,16 @@
 
 import json
 from dataclasses import _MISSING_TYPE, field, make_dataclass
+from enum import Enum
 from functools import partial
 from inspect import Parameter, _empty, signature
 from pathlib import Path
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, TypeVar, cast
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type, TypeVar, cast
+
+try:
+    from typing import get_args  # type: ignore
+except ImportError:
+    from typing_extensions import get_args
 
 import pandas as pd
 from dataclasses_json import dataclass_json
@@ -13,10 +19,16 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.extras.sqlite3.task import SQLite3Task
 from sklearn.model_selection import train_test_split
 
+import unionml.type_guards as type_guards
 from unionml.utils import inner_task
 
 R = TypeVar("R")  # raw data
 D = TypeVar("D")  # model-ready data
+
+
+class ReaderReturnTypeSource(Enum):
+    READER = "reader"
+    LOADER = "loader"
 
 
 class Dataset(TrackedInstance):
@@ -70,7 +82,7 @@ class Dataset(TrackedInstance):
 
         self._reader = None
         self._reader_input_types: Optional[List[Parameter]] = None
-        self._reader_return_type: Optional[Dict[str, Type]] = None
+        self._dataset_datatype: Optional[Dict[str, Type]] = None
         self._dataset_task = None
 
         # dynamically defined types
@@ -87,6 +99,8 @@ class Dataset(TrackedInstance):
         """
         if fn is None:
             return partial(self.reader, **reader_task_kwargs)
+
+        type_guards.guard_reader(fn)
         self._reader = fn
         self._reader_task_kwargs = reader_task_kwargs
         return fn
@@ -102,6 +116,7 @@ class Dataset(TrackedInstance):
 
         :param fn: function to register
         """
+        type_guards.guard_loader(fn, self.dataset_datatype["data"])
         self._loader = fn
         return fn
 
@@ -125,6 +140,8 @@ class Dataset(TrackedInstance):
                 n = int(data.shape[0] * test_size)
                 return data.iloc[:-n], data.iloc[-n:]
         """
+
+        type_guards.guard_splitter(fn, self.dataset_datatype["data"], self.dataset_datatype_source.value)
         self._splitter = fn
         return fn
 
@@ -149,6 +166,7 @@ class Dataset(TrackedInstance):
                     features = [col for col in data if col not in targets]
                 return data[features], data[targets]
         """
+        type_guards.guard_parser(fn, self.dataset_datatype["data"], self.dataset_datatype_source.value)
         self._parser = fn
         self._parser_feature_key = feature_key
         return fn
@@ -163,6 +181,7 @@ class Dataset(TrackedInstance):
 
         And it should return the data structure needed for model training.
         """
+        type_guards.guard_feature_loader(fn, self.parser_return_types[self._parser_feature_key])
         self._feature_loader = fn
         return fn
 
@@ -175,6 +194,7 @@ class Dataset(TrackedInstance):
         2. When the FastAPI app `/predict/` endpoint is invoked with features passed in as JSON or string encoding.
         3. When the `model.predict` or `model.remote_predict` functions are invoked.
         """
+        type_guards.guard_feature_transformer(fn, self.parser_return_types[self._parser_feature_key])
         self._feature_transformer = fn
         return fn
 
@@ -301,7 +321,6 @@ class Dataset(TrackedInstance):
             return {"train": self._parser(splits[0], **parser_kwargs)}
 
         train_split, test_split = splits
-        # TODO: make this more generic so as to include a validation split
         train_data = self._parser(train_split, **parser_kwargs)
         test_data = self._parser(test_split, **parser_kwargs)
         return {
@@ -330,20 +349,47 @@ class Dataset(TrackedInstance):
         return self._reader_input_types
 
     @property
-    def reader_return_type(self) -> Dict[str, Type]:
-        """Get the output type of the ``reader`` .
+    def dataset_datatype(self) -> Dict[str, Type]:
+        """Get the output type of the ``reader`` or a user-defined ``loader``.
 
-        If the ``loader`` is user-defined then the output of that function is used.
+        The type from the ``loader`` takes precedence.
         """
         if self._loader != self._default_loader:
             return {"data": signature(self._loader).return_annotation}
-        if self._reader and self._reader_return_type is None:
+        if self._reader and self._dataset_datatype is None:
             return {"data": signature(self._reader).return_annotation}
-        elif self._reader_return_type is not None:
-            return self._reader_return_type
+        elif self._dataset_datatype is not None:
+            return self._dataset_datatype
         raise ValueError(
-            "reader_return_type is not defined. Please define a @dataset.reader function with an output annotation."
+            "dataset_datatype is not defined. Please define a @dataset.reader function with an output annotation."
         )
+
+    @property
+    def dataset_datatype_source(self) -> ReaderReturnTypeSource:
+        """Get the output type of the ``reader`` or a user-defined ``loader``.
+
+        The type from the ``loader`` takes precedence.
+        """
+        return ReaderReturnTypeSource.LOADER if self._loader != self._default_loader else ReaderReturnTypeSource.READER
+
+    @property
+    def parser_return_types(self) -> Iterable[Type]:
+        """Get an iterable of types produces by the parser."""
+        sig = signature(self._parser)
+        return get_args(sig.return_annotation)
+
+    @property
+    def feature_type(self) -> Type:
+        """Get the type returned by the ``feature_transformer``, falling back to the ``parser``.
+
+        The fallback behavior occurs if the user didn't define a ``feature_transformer`` function.
+        """
+        if self._feature_transformer == self._default_feature_transformer:
+            # if the feature transformer not user-defined, use the parser return signature
+            return get_args(signature(self._parser).return_annotation)[self._parser_feature_key]
+
+        # otherwise use the feature transformer return type
+        return signature(self._feature_transformer).return_annotation
 
     @classmethod
     def _from_flytekit_task(
@@ -354,7 +400,7 @@ class Dataset(TrackedInstance):
     ) -> "Dataset":
         dataset = cls(*args, **kwargs)
         dataset._dataset_task = task
-        dataset._reader_return_type = task.python_interface.outputs
+        dataset._dataset_datatype = task.python_interface.outputs
         dataset._reader_input_types = [
             Parameter(k, Parameter.KEYWORD_ONLY, annotation=v) for k, v in task.python_interface.inputs.items()
         ]
@@ -391,7 +437,7 @@ class Dataset(TrackedInstance):
         return cls._from_flytekit_task(task, *args, **kwargs)
 
     def _default_loader(self, data: R) -> R:
-        [(_, data_type)] = self.reader_return_type.items()
+        [(_, data_type)] = self.dataset_datatype.items()
         if data_type is pd.DataFrame:
             return pd.DataFrame(data)
         return data
@@ -407,9 +453,14 @@ class Dataset(TrackedInstance):
             return (data,)
         return train_test_split(data, test_size=test_size, random_state=random_state, shuffle=shuffle)
 
-    def _default_parser(self, data: D, features: Optional[List[str]], targets: Optional[List[str]]) -> Tuple[D, ...]:
+    def _default_parser(
+        self,
+        data: pd.DataFrame,
+        features: Optional[List[str]],
+        targets: Optional[List[str]],
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if not isinstance(data, pd.DataFrame):
-            return (data,)
+            return (data,)  # type: ignore
 
         if features is not None and targets is not None:
             features = [col for col in data if col not in targets]
@@ -424,7 +475,7 @@ class Dataset(TrackedInstance):
             with features.open() as f:
                 features = json.load(f)
 
-        [(_, data_type)] = self.reader_return_type.items()
+        [(_, data_type)] = self.dataset_datatype.items()
         if data_type is pd.DataFrame:
             return pd.DataFrame(features)
         return features

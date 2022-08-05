@@ -50,7 +50,7 @@ def serving_app(model: Model, app: FastAPI, remote: bool = False, model_version:
             raise HTTPException(status_code=500, detail="inputs or features must be supplied.")
 
         workflow_inputs: Dict[str, Any] = {}
-        if model._dataset.reader_return_type is not None:
+        if model._dataset.dataset_datatype is not None:
             # convert raw features to whatever the output type of the reader is.
             features = model._dataset.get_features(features)
         workflow_inputs.update(inputs if inputs else {"features": features})
