@@ -28,7 +28,7 @@ def _is_tuple_or_list_type(type: Type):
 def _check_input_data_type(fn_name: str, actual_type: Type, expected_type: Type):
     if actual_type != expected_type:
         raise TypeError(
-            f"The type of the first argument of the '{fn_name}' function must match the 'reader' output type: "
+            f"The type of the first argument of the '{fn_name}' function must match the expected output type: "
             f"{expected_type}. Found {actual_type}"
         )
 
