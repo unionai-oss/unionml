@@ -4,7 +4,7 @@ from inspect import Parameter, _empty, signature
 from typing import Callable, Dict, Iterable, List, Mapping, Optional, Type
 
 try:
-    from typing import get_args, get_origin
+    from typing import get_args, get_origin  # type: ignore
 except ImportError:
     from typing_extensions import get_args, get_origin
 

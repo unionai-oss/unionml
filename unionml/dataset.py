@@ -6,7 +6,12 @@ from enum import Enum
 from functools import partial
 from inspect import Parameter, _empty, signature
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type, TypeVar, cast, get_args
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type, TypeVar, cast
+
+try:
+    from typing import get_args  # type: ignore
+except ImportError:
+    from typing_extensions import get_args
 
 import pandas as pd
 from dataclasses_json import dataclass_json
