@@ -486,7 +486,6 @@ class Model(TrackedInstance):
             following order:
 
             - :meth:`unionml.dataset.Dataset.feature_loader`
-            - :meth:`unionml.dataset.Dataset.parser`
             - :meth:`unionml.dataset.Dataset.feature_transformer`
         :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.Dataset.reader` method signature.
         """
@@ -684,7 +683,6 @@ class Model(TrackedInstance):
             following order:
 
             - :meth:`unionml.dataset.Dataset.feature_loader`
-            - :meth:`unionml.dataset.Dataset.parser`
             - :meth:`unionml.dataset.Dataset.feature_transformer`
         :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.Dataset.reader` method signature.
         """

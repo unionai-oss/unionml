@@ -6,7 +6,7 @@ from enum import Enum
 from functools import partial
 from inspect import Parameter, _empty, signature
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type, TypeVar, cast
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type, TypeVar, Union, cast
 
 try:
     from typing import get_args  # type: ignore
@@ -337,8 +337,9 @@ class Dataset(TrackedInstance):
         - :meth:`unionml.dataset.Dataset.parser`
         - :meth:`unionml.dataset.Dataset.feature_transformer`
         """
-        parsed_data = self._parser(self._feature_loader(features), self._features, self._targets)
-        features = parsed_data[self._parser_feature_key]
+        # parsed_data = self._parser(self._feature_loader(features), self._features, self._targets)
+        # features = parsed_data[self._parser_feature_key]
+        features = self._feature_loader(features)
         return self._feature_transformer(features)
 
     @property
@@ -384,12 +385,17 @@ class Dataset(TrackedInstance):
 
         The fallback behavior occurs if the user didn't define a ``feature_transformer`` function.
         """
-        if self._feature_transformer == self._default_feature_transformer:
-            # if the feature transformer not user-defined, use the parser return signature
-            return get_args(signature(self._parser).return_annotation)[self._parser_feature_key]
+        parser_type = get_args(signature(self._parser).return_annotation)[self._parser_feature_key]
 
-        # otherwise use the feature transformer return type
-        return signature(self._feature_transformer).return_annotation
+        ft_type = signature(self._feature_transformer).return_annotation
+        if self._feature_transformer == self._default_feature_transformer:
+            # if the feature transformer is not user-defined, use the parser return signature
+            ft_type = get_args(signature(self._parser).return_annotation)[self._parser_feature_key]
+
+        if parser_type != ft_type:
+            return cast(Type, Union[ft_type, parser_type])
+
+        return parser_type
 
     @classmethod
     def _from_flytekit_task(
@@ -476,8 +482,14 @@ class Dataset(TrackedInstance):
                 features = json.load(f)
 
         [(_, data_type)] = self.dataset_datatype.items()
+
         if data_type is pd.DataFrame:
-            return pd.DataFrame(features)
+            data = pd.DataFrame(features)
+            features_names = self._features
+            if not features_names and self._targets is not None:
+                features_names = [col for col in data if col not in self._targets]
+            return data[features_names]
+
         return features
 
     def _default_feature_transformer(self, features: R) -> D:

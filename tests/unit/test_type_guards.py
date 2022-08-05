@@ -298,6 +298,35 @@ def test_guard_predictor(predictor_fn, is_valid):
             type_guards.guard_predictor(predictor_fn, ModelType, DatasetType)
 
 
+# types
+UnionDatasetType = typing.Union[DatasetType, list]
+
+
+# valid evaluators
+def predictor_valid_union(model_obj: ModelType, features: UnionDatasetType) -> float:
+    ...
+
+
+def predictor_valid_inverted_order(model_obj: ModelType, features: typing.Union[list, DatasetType]) -> float:
+    ...
+
+
+@pytest.mark.parametrize(
+    "predictor_fn, is_valid",
+    [
+        [predictor_valid_union, True],
+        [predictor_valid_inverted_order, True],
+        [predictor_wrong_dtype, False],
+    ],
+)
+def test_guard_predictor_with_unions(predictor_fn, is_valid):
+    if is_valid:
+        type_guards.guard_predictor(predictor_fn, ModelType, UnionDatasetType)
+    else:
+        with pytest.raises(TypeError):
+            type_guards.guard_predictor(predictor_fn, ModelType, UnionDatasetType)
+
+
 # valid feature loaders
 def feature_loader_valid(data: typing.List[int]) -> DatasetType:
     ...

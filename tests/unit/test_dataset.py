@@ -80,7 +80,7 @@ def test_dataset_get_features_custom(dataset: Dataset):
 
     @dataset.feature_loader
     def feature_loader(serialized_features: str) -> pd.DataFrame:
-        return pd.DataFrame(json.loads(serialized_features))
+        return pd.DataFrame(json.loads(serialized_features))[dataset._features]
 
     @dataset.feature_transformer
     def feature_transformer(raw_features: pd.DataFrame) -> pd.DataFrame:
