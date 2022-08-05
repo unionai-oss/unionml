@@ -70,6 +70,7 @@ def _check_data_types_length(actual_types, expected_types):
 
 
 def guard_reader(reader):
+    """Ensure that reader return annotation is not empty."""
     reader_sig = signature(reader)
     if reader_sig.return_annotation is _empty:
         raise TypeError(
@@ -78,17 +79,14 @@ def guard_reader(reader):
 
 
 def guard_loader(loader: Callable, expected_data_type: Type):
+    """Ensure that the first arg of the loader is of the expected type."""
     sig = signature(loader)
     actual_data_type = [*sig.parameters.values()][0].annotation
-
-    if expected_data_type != actual_data_type:
-        raise TypeError(
-            "The type of the first argument of the 'loader' function must match the 'reader' output type: "
-            f"{expected_data_type}. Found {actual_data_type}"
-        )
+    _check_input_data_type("loader", actual_data_type, expected_data_type)
 
 
 def guard_splitter(splitter: Callable, expected_data_type: Type, expected_type_source: str):
+    """Ensure that the splitter has the expected input data type."""
     sig = signature(splitter)
     actual_data_type = [*sig.parameters.values()][0].annotation
     output_type = sig.return_annotation
@@ -100,6 +98,7 @@ def guard_splitter(splitter: Callable, expected_data_type: Type, expected_type_s
 
 
 def guard_parser(parser: Callable, expected_data_type: Type, expected_type_source: str):
+    """Ensure that the parser has the expected input data type."""
     sig = signature(parser)
     actual_data_type = [*sig.parameters.values()][0].annotation
     output_type = sig.return_annotation
@@ -110,6 +109,7 @@ def guard_parser(parser: Callable, expected_data_type: Type, expected_type_sourc
 
 
 def guard_trainer(trainer: Callable, expected_model_type: Type, expected_data_types: Iterable[Type]):
+    """Ensure that the trainer has the expected input data and model types."""
     sig = signature(trainer)
     params = [*sig.parameters.values()]
 
@@ -126,6 +126,7 @@ def guard_trainer(trainer: Callable, expected_model_type: Type, expected_data_ty
 
 
 def guard_evaluator(evaluator: Callable, expected_model_type: Type, expected_data_types: Iterable[Type]):
+    """Ensure that the evaluater has the expected input data and model types."""
     sig = signature(evaluator)
     params = [*sig.parameters.values()]
 
@@ -141,6 +142,7 @@ def guard_evaluator(evaluator: Callable, expected_model_type: Type, expected_dat
 
 
 def guard_predictor(predictor: Callable, expected_model_type: Type, expected_data_type: Type):
+    """Ensure that the evaluater has the expected input data and model types."""
     sig = signature(predictor)
     params = [*sig.parameters.values()]
 
@@ -150,9 +152,7 @@ def guard_predictor(predictor: Callable, expected_model_type: Type, expected_dat
     ]
 
     if len(actual_data_types) != 1:
-        raise TypeError(
-            f"The 'predictor' function needs to take only one 'features' argument, found {actual_data_types}"
-        )
+        raise TypeError(f"The 'predictor' function must take a single 'features' argument, found {actual_data_types}")
 
     actual_data_type = actual_data_types[0]
     _check_input_data_type("predictor", actual_model_type, expected_model_type)

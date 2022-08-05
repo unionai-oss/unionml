@@ -82,7 +82,7 @@ class Dataset(TrackedInstance):
 
         self._reader = None
         self._reader_input_types: Optional[List[Parameter]] = None
-        self._reader_return_type: Optional[Dict[str, Type]] = None
+        self._dataset_datatype: Optional[Dict[str, Type]] = None
         self._dataset_task = None
 
         # dynamically defined types
@@ -116,7 +116,7 @@ class Dataset(TrackedInstance):
 
         :param fn: function to register
         """
-        type_guards.guard_loader(fn, self.reader_return_type["data"])
+        type_guards.guard_loader(fn, self.dataset_datatype["data"])
         self._loader = fn
         return fn
 
@@ -141,7 +141,7 @@ class Dataset(TrackedInstance):
                 return data.iloc[:-n], data.iloc[-n:]
         """
 
-        type_guards.guard_splitter(fn, self.reader_return_type["data"], self.reader_return_type_source.value)
+        type_guards.guard_splitter(fn, self.dataset_datatype["data"], self.dataset_datatype_source.value)
         self._splitter = fn
         return fn
 
@@ -166,7 +166,7 @@ class Dataset(TrackedInstance):
                     features = [col for col in data if col not in targets]
                 return data[features], data[targets]
         """
-        type_guards.guard_parser(fn, self.reader_return_type["data"], self.reader_return_type_source.value)
+        type_guards.guard_parser(fn, self.dataset_datatype["data"], self.dataset_datatype_source.value)
         self._parser = fn
         self._parser_feature_key = feature_key
         return fn
@@ -349,30 +349,26 @@ class Dataset(TrackedInstance):
         return self._reader_input_types
 
     @property
-    def reader_return_type(self) -> Dict[str, Type]:
+    def dataset_datatype(self) -> Dict[str, Type]:
         """Get the output type of the ``reader`` or a user-defined ``loader``.
 
         The type from the ``loader`` takes precedence.
-
-        TODO: this should really be called "dataset_type"
         """
         if self._loader != self._default_loader:
             return {"data": signature(self._loader).return_annotation}
-        if self._reader and self._reader_return_type is None:
+        if self._reader and self._dataset_datatype is None:
             return {"data": signature(self._reader).return_annotation}
-        elif self._reader_return_type is not None:
-            return self._reader_return_type
+        elif self._dataset_datatype is not None:
+            return self._dataset_datatype
         raise ValueError(
-            "reader_return_type is not defined. Please define a @dataset.reader function with an output annotation."
+            "dataset_datatype is not defined. Please define a @dataset.reader function with an output annotation."
         )
 
     @property
-    def reader_return_type_source(self) -> ReaderReturnTypeSource:
+    def dataset_datatype_source(self) -> ReaderReturnTypeSource:
         """Get the output type of the ``reader`` or a user-defined ``loader``.
 
         The type from the ``loader`` takes precedence.
-
-        TODO: this should really be called "dataset_type_source" since the loader takes precedence over the reader
         """
         return ReaderReturnTypeSource.LOADER if self._loader != self._default_loader else ReaderReturnTypeSource.READER
 
@@ -404,7 +400,7 @@ class Dataset(TrackedInstance):
     ) -> "Dataset":
         dataset = cls(*args, **kwargs)
         dataset._dataset_task = task
-        dataset._reader_return_type = task.python_interface.outputs
+        dataset._dataset_datatype = task.python_interface.outputs
         dataset._reader_input_types = [
             Parameter(k, Parameter.KEYWORD_ONLY, annotation=v) for k, v in task.python_interface.inputs.items()
         ]
@@ -441,7 +437,7 @@ class Dataset(TrackedInstance):
         return cls._from_flytekit_task(task, *args, **kwargs)
 
     def _default_loader(self, data: R) -> R:
-        [(_, data_type)] = self.reader_return_type.items()
+        [(_, data_type)] = self.dataset_datatype.items()
         if data_type is pd.DataFrame:
             return pd.DataFrame(data)
         return data
@@ -479,7 +475,7 @@ class Dataset(TrackedInstance):
             with features.open() as f:
                 features = json.load(f)
 
-        [(_, data_type)] = self.reader_return_type.items()
+        [(_, data_type)] = self.dataset_datatype.items()
         if data_type is pd.DataFrame:
             return pd.DataFrame(features)
         return features

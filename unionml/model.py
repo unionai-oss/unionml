@@ -323,8 +323,8 @@ class Model(TrackedInstance):
         *_, hyperparameters_param = signature(self._init).parameters.values()
         hyperparameters_param = hyperparameters_param.replace(annotation=self.hyperparameter_type)
 
-        # assume that reader_return_type is a dict with only a single entry
-        [(data_arg_name, data_arg_type)] = self._dataset.reader_return_type.items()
+        # assume that dataset_datatype is a dict with only a single entry
+        [(data_arg_name, data_arg_type)] = self._dataset.dataset_datatype.items()
 
         # get keyword-only training args
         @inner_task(
@@ -391,8 +391,8 @@ class Model(TrackedInstance):
         model_param, *_ = predictor_sig.parameters.values()
         model_param = model_param.replace(name="model_object")
 
-        # assume that reader_return_type is a dict with only a single entry
-        [(data_arg_name, data_arg_type)] = self._dataset.reader_return_type.items()
+        # assume that dataset_datatype is a dict with only a single entry
+        [(data_arg_name, data_arg_type)] = self._dataset.dataset_datatype.items()
         data_param = Parameter(data_arg_name, kind=Parameter.KEYWORD_ONLY, annotation=data_arg_type)
 
         # TODO: make sure return type is not None
@@ -422,8 +422,8 @@ class Model(TrackedInstance):
         model_param, *_ = predictor_sig.parameters.values()
         model_param = model_param.replace(name="model_object")
 
-        # assume that reader_return_type is a dict with only a single entry
-        [(_, data_arg_type)] = self._dataset.reader_return_type.items()
+        # assume that dataset_datatype is a dict with only a single entry
+        [(_, data_arg_type)] = self._dataset.dataset_datatype.items()
         data_param = Parameter("features", kind=Parameter.KEYWORD_ONLY, annotation=data_arg_type)
 
         @inner_task(
@@ -704,7 +704,7 @@ class Model(TrackedInstance):
         else:
             workflow_name = self.predict_from_features_workflow_name
             inputs.update({"features": self._dataset.get_features(features)})
-            type_hints = {"features": [*self._dataset.reader_return_type.values()][0]}
+            type_hints = {"features": [*self._dataset.dataset_datatype.values()][0]}
 
         predict_wf = self._remote.fetch_workflow(
             self._remote._default_project,
