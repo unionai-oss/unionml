@@ -519,6 +519,7 @@ class Model(TrackedInstance):
         return self.artifact.model_object
 
     def load_from_env(self, env_var: str = "UNIONML_MODEL_PATH"):
+        """Load a model object from an environment variable pointing to the model file."""
         model_path = os.getenv(env_var)
         if model_path is None:
             raise ValueError("env_var for model path {env_var} doesn't exist.")

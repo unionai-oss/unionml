@@ -62,9 +62,10 @@ def lambda_handler(event, context):
         predictions = model.predict(features=features)
 
         # upload predictions to s3
-        with tempfile.NamedTemporaryFile("w") as f:
-            json.dumps(predictions, f)
-            s3_client.upload_file(f.name, bucket, f"predictions/{key}")
+        out_filename = "/tmp/predictions.json"
+        with open(out_filename, "w") as f:
+            json.dump(predictions, f)
+        s3_client.upload_file(out_filename, bucket, f"predictions/{key.split('/')[-1]}")
 
 
 if __name__ == "__main__":
