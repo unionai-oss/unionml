@@ -1,0 +1,5 @@
+.aws-sam
+model_object.joblib
+.venv
+__pycache__
+*.pyc

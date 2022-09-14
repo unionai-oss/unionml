@@ -122,6 +122,10 @@ class Model(TrackedInstance):
         self._artifact = new_value
 
     @property
+    def dataset(self) -> Dataset:
+        return self._dataset
+
+    @property
     def hyperparameter_type(self) -> Type:
         """Hyperparameter type of the model object based on the ``init`` function signature."""
         if self._hyperparameter_type is not None:
@@ -511,7 +515,15 @@ class Model(TrackedInstance):
 
     def load(self, file: Union[str, os.PathLike, IO], *args, **kwargs):
         """Load a model object from disk."""
-        return self._loader(file, *args, **kwargs)
+        self.artifact = ModelArtifact(self._loader(file, *args, **kwargs))
+        return self.artifact.model_object
+
+    def load_from_env(self, env_var: str = "UNIONML_MODEL_PATH"):
+        model_path = os.getenv(env_var)
+        if model_path is None:
+            raise ValueError("env_var for model path {env_var} doesn't exist.")
+        self.artifact = ModelArtifact(self.load(model_path))
+        return self.artifact.model_object
 
     def serve(self, app: FastAPI, remote: bool = False, model_version: str = "latest"):
         """Create a FastAPI serving app.

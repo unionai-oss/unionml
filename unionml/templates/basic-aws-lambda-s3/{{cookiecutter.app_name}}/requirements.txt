@@ -1,0 +1,9 @@
+unionml
+sklearn
+numpy
+pandas
+fastapi
+pydantic
+typer
+mangum
+torch
