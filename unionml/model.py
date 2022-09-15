@@ -123,6 +123,7 @@ class Model(TrackedInstance):
 
     @property
     def dataset(self) -> Dataset:
+        """Exposes the ``unionml.Dataset`` associated with the model."""
         return self._dataset
 
     @property

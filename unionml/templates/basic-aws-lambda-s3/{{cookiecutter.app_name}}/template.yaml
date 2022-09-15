@@ -20,11 +20,6 @@ Resources:
       Architectures:
         - x86_64
       Events:
-        unionml:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-          Properties:
-            Path: /{proxy+}
-            Method: post
         fileupload:
           Type: S3
           Properties:
@@ -56,9 +51,6 @@ Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  UnionmlApi:
-    Description: "API Gateway endpoint URL for Prod stage for unionml function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
   UnionmlFunction:
     Description: "unionml Lambda Function ARN"
     Value: !GetAtt UnionmlFunction.Arn

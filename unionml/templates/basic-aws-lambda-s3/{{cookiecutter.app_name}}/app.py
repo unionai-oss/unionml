@@ -1,4 +1,5 @@
 import json
+import logging
 import tempfile
 from pathlib import Path
 from typing import List
@@ -11,6 +12,9 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
 from unionml import Dataset, Model
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 dataset = Dataset(name="digits_dataset", test_size=0.2, shuffle=True, targets=["target"])
 model = Model(name="digits_classifier", init=LogisticRegression, dataset=dataset)
@@ -56,16 +60,21 @@ def lambda_handler(event, context):
         # get features from s3
         with tempfile.NamedTemporaryFile("w") as f:
             s3_client.download_file(bucket, key, f.name)
+            logger.info("loading features")
             features = model.dataset.get_features(Path(f.name))
 
         # generate prediction
         predictions = model.predict(features=features)
+        logger.info(f"generated predictions {predictions}")
 
         # upload predictions to s3
         out_filename = "/tmp/predictions.json"
         with open(out_filename, "w") as f:
             json.dump(predictions, f)
-        s3_client.upload_file(out_filename, bucket, f"predictions/{key.split('/')[-1]}")
+
+        upload_key = f"predictions/{key.split('/')[-1]}"
+        s3_client.upload_file(out_filename, bucket, upload_key)
+        logger.info(f"uploaded predictions to {bucket}/{upload_key}")
 
 
 if __name__ == "__main__":
