@@ -48,9 +48,10 @@ model.remote(
     domain="development",
 )
 
+s3_client = boto3.client("s3")  # create s3 client
+
 
 def lambda_handler(event, context):
-    s3_client = boto3.client("s3")  # create s3 client
     model.load_from_env()  # load the model
 
     for record in event["Records"]:
