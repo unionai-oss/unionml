@@ -1,4 +1,5 @@
 unionml
+boto3
 sklearn
 numpy
 pandas

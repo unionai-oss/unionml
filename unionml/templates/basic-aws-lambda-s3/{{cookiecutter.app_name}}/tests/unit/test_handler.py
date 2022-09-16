@@ -56,6 +56,7 @@ def test_lambda_handler(monkeypatch, s3_event, features):
     from app import lambda_handler, s3_client
 
     monkeypatch.setenv("UNIONML_MODEL_PATH", "./tests/unit/model_object.joblib")
+    results = {}
 
     def mock_download_file(bucket, key, filename):
         # This is a nasty piece of state mutation 😈. We basically
@@ -66,7 +67,8 @@ def test_lambda_handler(monkeypatch, s3_event, features):
             json.dump(features, f)
 
     def mock_upload_file(filename, bucket, upload_key):
-        ...
+        with open(filename) as f:
+            results["output"] = json.load(f)
 
     with patch.object(s3_client, "download_file", MagicMock(wraps=mock_download_file)) as mock_dl_file, patch.object(
         s3_client, "upload_file", MagicMock(wraps=mock_upload_file)
@@ -74,5 +76,6 @@ def test_lambda_handler(monkeypatch, s3_event, features):
         ret = lambda_handler(s3_event, "")
 
     assert ret is None
+    assert results["output"] == [8.0, 8.0, 0.0]
     mock_dl_file.assert_called_once()
     mock_ul_file.assert_called_once()

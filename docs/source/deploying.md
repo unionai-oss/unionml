@@ -9,6 +9,7 @@ hidden: true
 flyte_cluster
 serving_fastapi
 serving_aws_lambda
+reacting_to_s3_events
 ```
 
 Currently, UnionML apps support two core types of machine learning microservices: model training and

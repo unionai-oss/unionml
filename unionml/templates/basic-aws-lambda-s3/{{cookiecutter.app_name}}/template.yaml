@@ -57,3 +57,6 @@ Outputs:
   UnionmlFunctionIamRole:
     Description: "Implicit IAM Role created for unionml function"
     Value: !GetAtt UnionmlFunctionRole.Arn
+  UnionmlAppBucket:
+    Description: "unionml app s3 bucket"
+    Value: !GetAtt UnionmlAppBucket.Arn

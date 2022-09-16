@@ -69,13 +69,12 @@ def lambda_handler(event, context):
         logger.info(f"generated predictions {predictions}")
 
         # upload predictions to s3
-        out_filename = "/tmp/predictions.json"
-        with open(out_filename, "w") as f:
-            json.dump(predictions, f)
-
-        upload_key = f"predictions/{key.split('/')[-1]}"
-        s3_client.upload_file(out_filename, bucket, upload_key)
-        logger.info(f"uploaded predictions to {bucket}/{upload_key}")
+        with tempfile.NamedTemporaryFile("w") as out_file:
+            json.dump(predictions, out_file)
+            upload_key = f"predictions/{key.split('/')[-1]}"
+            out_file.flush()
+            s3_client.upload_file(out_file.name, bucket, upload_key)
+            logger.info(f"uploaded predictions to {bucket}/{upload_key}")
 
 
 if __name__ == "__main__":

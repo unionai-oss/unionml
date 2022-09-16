@@ -2,9 +2,8 @@
 
 # Serving with AWS Lambda
 
-The [Serverless Application Model](https://aws.amazon.com/serverless/sam/) Command Line Interface
-(SAM CLI) is an extension of the AWS CLI that adds functionality for building and testing Lambda
-applications.
+The [Serverless Application Model](https://aws.amazon.com/serverless/sam/) Command Line Interface (SAM CLI) is an extension of the AWS CLI that adds functionality for building
+and testing Lambda applications.
 
 It uses Docker to run our functions in an Amazon Linux environment that matches Lambda.
 It can also emulate our application's build environment and API locally.
@@ -29,7 +28,35 @@ Initialize a UnionML app that supports serving for AWS Lambda:
 :prompts: $
 
 unionml init aws_lambda_app --template basic-aws-lambda
+cd aws_lambda_app
 ```
+
+This will create a UnionML project directory called `aws_lambda_app` which contains
+all of the scripts and configuration needed to build and deploy the app.
+
+As we can see in the `app.py` script, the main additions to the UnionML app definition
+are that we need to define a `FastAPI` app and wrap it in a `Mangum` object.
+
+```{code-block} python
+from fastapi import FastAPI
+from mangum import Mangum
+
+# dataset and model definition
+dataset = ...
+model = ...
+
+# serve with FastAPI
+app = FastAPI()
+model.serve(app)
+
+# run ASGI applications in AWS Lambda to handle API Gateway using Mangum
+lambda_handler = Mangum(app)
+```
+
+[Mangum](https://mangum.io/) is an adapter for running ASGI applications in AWS Lambda,
+so what we're doing here is using it to convert a `FastAPI` app into an AWS Lambda
+serverless function that you can invoke over a web endpoint.
+
 
 (aws_lambda_build_test_locally)=
 
@@ -221,7 +248,7 @@ To delete the sample application that we created, use the AWS CLI. Assuming we u
 ```{prompt} bash
 :prompts: $
 
-aws cloudformation delete-stack --stack-name unionml-aws-lambda-example
+sam delete --stack-name unionml-aws-lambda-example
 ```
 
 ### Add a Resource to our Application
