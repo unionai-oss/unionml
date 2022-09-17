@@ -3,15 +3,17 @@
 import contextlib
 import importlib
 import logging
+import pathlib
 import typing
 
 import docker
 import git
-from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.configuration import ImageConfig, SerializationSettings, FastSerializationSettings
 from flytekit.models import filters
 from flytekit.models.admin.common import Sort
 from flytekit.models.project import Project
 from flytekit.remote import FlyteRemote, FlyteWorkflowExecution
+from flytekit.tools import repo, fast_registration
 
 from unionml.model import Model, ModelArtifact
 
@@ -24,6 +26,10 @@ logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s"))
 logger.addHandler(handler)
+
+
+class VersionFetchError(RuntimeError):
+    pass
 
 
 def get_model(app: str, reload: bool = False) -> Model:
@@ -45,7 +51,7 @@ def get_app_version(allow_uncommitted: bool = False) -> str:
     repo = git.Repo(".", search_parent_directories=True)
     if repo.is_dirty():
         if not allow_uncommitted:
-            raise RuntimeError("Version number cannot be determined with uncommitted changes present.")
+            raise VersionFetchError("Version number cannot be determined with uncommitted changes present.")
         logger.warning("You have uncommitted changes, unionml is using the the latest commit as the app version.")
 
     with contextlib.suppress(git.CommandError):
@@ -106,14 +112,37 @@ def docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Imag
         logger.info(line)
 
 
-def deploy_wf(wf, remote: FlyteRemote, image: str, project: str, domain: str, version: str):
+def deploy_wf(wf, remote: FlyteRemote, image: str, project: str, domain: str, version: str, patch: bool = False, docker_install_path: str = None):
     """Register all tasks, workflows, and launchplans needed to execute the workflow."""
     logger.info(f"Deploying workflow {wf.name}")
-    serialization_settings = SerializationSettings(
-        project=project,
-        domain=domain,
-        image_config=ImageConfig.auto(img_name=image),
-    )
+    if patch:
+        # Todo: add switch for non-fast - skip the zipping and uploading and no fastserializationsettings
+        # Create a zip file containing all the entries.
+        detected_root = repo.find_common_root(["."])
+        zip_file = fast_registration.fast_package(detected_root, output_dir=None, deref_symlinks=False)
+
+        # Upload zip file to Admin using FlyteRemote.
+        md5_bytes, native_url = remote._upload_file(pathlib.Path(zip_file))
+
+        # Create serialization settings
+        # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
+        serialization_settings = SerializationSettings(
+            project=project,
+            domain=domain,
+            image_config=ImageConfig.auto(img_name=image),
+            fast_serialization_settings=FastSerializationSettings(
+                enabled=True,
+                destination_dir=docker_install_path,
+                distribution_location=native_url,
+            ),
+        )
+    else:
+        serialization_settings = SerializationSettings(
+            project=project,
+            domain=domain,
+            image_config=ImageConfig.auto(img_name=image),
+        )
+
     remote.register_workflow(wf, serialization_settings, version)
 
 

@@ -113,6 +113,8 @@ class Model(TrackedInstance):
         # dynamically defined types
         self._hyperparameter_type: Optional[Type] = None
 
+        self._docker_install_path: Optional[str] = None
+
     @property
     def artifact(self) -> Optional[ModelArtifact]:
         """Model artifact associated with the ``unionml.Model`` ."""
@@ -580,6 +582,7 @@ class Model(TrackedInstance):
         registry: Optional[str] = None,
         image_name: str = None,
         dockerfile: str = "Dockerfile",
+        docker_install_path: str = "/root",
         config_file: Optional[str] = None,
         project: Optional[str] = None,
         domain: Optional[str] = None,
@@ -589,10 +592,11 @@ class Model(TrackedInstance):
         :param registry: Docker registry used to push UnionML app.
         :param image_name: image name to give to the Docker image associated with the UnionML app.
         :param dockerfile: path to the Dockerfile used to package the UnionML app.
+        :param docker_install_path: path where the UnionML source is installed within the docker image.
         :param config_file: path to the `flytectl config <https://docs.flyte.org/projects/flytectl/en/latest/>`__ to use for
             deploying your UnionML app to a Flyte backend.
         :param project: deploy your app to this Flyte project name.
-        :param project: deploy your app to this Flyte domain name.
+        :param domain: deploy your app to this Flyte domain name.
         """
         self._config_file = config_file
         self._registry = registry
@@ -600,6 +604,7 @@ class Model(TrackedInstance):
         self._dockerfile = dockerfile
         self._project = project
         self._domain = domain
+        self._docker_install_path = docker_install_path
 
     @property
     def _remote(self) -> Optional[FlyteRemote]:
@@ -617,14 +622,14 @@ class Model(TrackedInstance):
         )
         return self.__remote__
 
-    def remote_deploy(self, app_version: str = None):
+    def remote_deploy(self, app_version: str = None, allow_uncommitted: bool = True, patch: bool = True):
         """Deploy model services to a Flyte backend."""
         if self._remote is None:
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
 
         from unionml import remote
 
-        app_version = app_version or remote.get_app_version(allow_uncommitted=True)
+        app_version = app_version or remote.get_app_version(allow_uncommitted=allow_uncommitted)
         image = remote.get_image_fqn(self, app_version, self._image_name)
 
         os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
@@ -637,13 +642,13 @@ class Model(TrackedInstance):
         else:
             remote.docker_build_push(self, image)
 
-        args = [_remote._default_project, _remote._default_domain, app_version]
         for wf in [
             self.train_workflow(),
             self.predict_workflow(),
             self.predict_from_features_workflow(),
         ]:
-            remote.deploy_wf(wf, _remote, image, *args)
+            remote.deploy_wf(wf, _remote, image, project=_remote.default_project, domain=_remote.default_domain,
+                             version=app_version, patch=patch, docker_install_path=self._docker_install_path)
 
     def remote_train(
         self,
