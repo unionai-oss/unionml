@@ -328,7 +328,7 @@ def test_guard_predictor_with_unions(predictor_fn, is_valid):
 
 
 # valid feature loaders
-def feature_loader_valid(data: typing.List[int]) -> DatasetType:
+def feature_loader_valid(data: typing.List[float]) -> DatasetType:
     ...
 
 

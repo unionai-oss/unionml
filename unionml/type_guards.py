@@ -1,7 +1,7 @@
 """Type checking utilities for core function decorators."""
 
 from inspect import Parameter, _empty, signature
-from typing import Callable, Dict, Iterable, List, Mapping, Optional, Type
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Type
 
 try:
     from typing import get_args, get_origin  # type: ignore
@@ -26,10 +26,17 @@ def _is_tuple_or_list_type(type: Type):
 
 
 def _check_input_data_type(fn_name: str, actual_type: Type, expected_type: Type):
-    if actual_type != expected_type:
+    if actual_type is Any or expected_type is Any:
+        return
+
+    if (
+        actual_type != expected_type
+        and expected_type not in get_args(actual_type)
+        and actual_type not in get_args(expected_type)
+    ):
         raise TypeError(
-            f"The type of the first argument of the '{fn_name}' function must match the expected output type: "
-            f"{expected_type}. Found {actual_type}"
+            f"The type of the first argument of the '{fn_name}' function must be compatible with the expected output "
+            f"type: {expected_type}. Found {actual_type}"
         )
 
 
@@ -120,7 +127,7 @@ def guard_trainer(trainer: Callable, expected_model_type: Type, expected_data_ty
 
     _check_input_data_type("trainer", actual_model_type, expected_model_type)
     _check_input_data_type("trainer", sig.return_annotation, expected_model_type)
-    _check_data_types_length(actual_data_types, expected_data_types)
+    # _check_data_types_length(actual_data_types, expected_data_types)
     for actual_dtype, expected_dtype in zip(actual_data_types, expected_data_types):
         _check_input_data_type("trainer", actual_dtype, expected_dtype)
 
@@ -165,11 +172,13 @@ def guard_predictor(predictor: Callable, expected_model_type: Type, expected_dat
 def guard_feature_loader(feature_loader: Callable, expected_data_type: Type):
     """Ensure that the feature loader return type needs to match the parser data input."""
     sig = signature(feature_loader)
+    params = [*sig.parameters.values()]
     if len(sig.parameters) != 1:
         raise TypeError(
             "The 'feature_loader' must take a single argument representing raw features or a reference to raw features."
         )
-    _check_input_data_type("feature_loader", sig.return_annotation, expected_data_type)
+    actual_data_type = params[0].annotation
+    _check_input_data_type("feature_loader", actual_data_type, expected_data_type)
 
 
 def guard_feature_transformer(feature_transformer: Callable, expected_data_type: Type):
