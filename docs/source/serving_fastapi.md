@@ -27,7 +27,8 @@ prediction service from a model that we've trained locally:
 from fastapi import FastAPI
 
 # dataset and model definition
-...
+dataset = ...
+model = ...
 
 app = FastAPI()
 

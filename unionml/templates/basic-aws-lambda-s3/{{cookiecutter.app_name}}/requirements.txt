@@ -1,0 +1,10 @@
+unionml
+boto3
+sklearn
+numpy
+pandas
+fastapi
+pydantic
+typer
+mangum
+torch

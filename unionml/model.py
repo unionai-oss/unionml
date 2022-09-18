@@ -122,6 +122,11 @@ class Model(TrackedInstance):
         self._artifact = new_value
 
     @property
+    def dataset(self) -> Dataset:
+        """Exposes the ``unionml.Dataset`` associated with the model."""
+        return self._dataset
+
+    @property
     def hyperparameter_type(self) -> Type:
         """Hyperparameter type of the model object based on the ``init`` function signature."""
         if self._hyperparameter_type is not None:
@@ -451,11 +456,11 @@ class Model(TrackedInstance):
 
         :param hyperparameters: a dictionary mapping hyperparameter names to values. This is passed into the
             ``init`` callable to initialize a model object.
-        :param loader_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.loader` function.
+        :param loader_kwargs: key-word arguments to pass to the registered :meth:`unionml.Dataset.loader` function.
             This will override any defaults set in the function definition.
-        :param splitter_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.splitter` function.
+        :param splitter_kwargs: key-word arguments to pass to the registered :meth:`unionml.Dataset.splitter` function.
             This will override any defaults set in the function definition.
-        :param parser_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.parser` function.
+        :param parser_kwargs: key-word arguments to pass to the registered :meth:`unionml.Dataset.parser` function.
             This will override any defaults set in the function definition.
         :param trainer_kwargs: a dictionary mapping training parameter names to values. There training parameters
             are determined by the keyword-only arguments of the ``model.trainer`` function.
@@ -510,8 +515,28 @@ class Model(TrackedInstance):
         return self._saver(self.artifact.model_object, self.artifact.hyperparameters, file, *args, **kwargs)
 
     def load(self, file: Union[str, os.PathLike, IO], *args, **kwargs):
-        """Load a model object from disk."""
-        return self._loader(file, *args, **kwargs)
+        """Load a model object from disk.
+
+        :file: a string or path-like object to load a model from.
+        :param args: positional arguments forwarded to :meth:`unionml.Model.loader` .
+        :param kwargs: key-word arguments forwarded to :meth:`unionml.Model.loader` .
+        """
+        self.artifact = ModelArtifact(self._loader(file, *args, **kwargs))
+        return self.artifact.model_object
+
+    def load_from_env(self, env_var: str = "UNIONML_MODEL_PATH", *args, **kwargs):
+        """Load a model object from an environment variable pointing to the model file.
+
+        :env_var: environment variable referencing a path to load a model from.
+        :param args: positional arguments forwarded to :meth:`unionml.Model.loader` .
+        :param kwargs: key-word arguments forwarded to :meth:`unionml.Model.loader` .
+        """
+        model_path = os.getenv(env_var)
+        if model_path is None:
+            raise ValueError("env_var for model path {env_var} doesn't exist.")
+        return self.load(model_path)
+        self.artifact = ModelArtifact(self.load(model_path))
+        return self.artifact.model_object
 
     def serve(self, app: FastAPI, remote: bool = False, model_version: str = "latest"):
         """Create a FastAPI serving app.
@@ -612,11 +637,11 @@ class Model(TrackedInstance):
             function returns a ``FlyteWorkflowExecution``.
         :param hyperparameters: a dictionary mapping hyperparameter names to values. This is passed into the
             ``init`` callable to initialize a model object.
-        :param loader_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.loader` function.
+        :param loader_kwargs: key-word arguments to pass to the registered :meth:`unionml.Dataset.loader` function.
             This will override any defaults set in the function definition.
-        :param splitter_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.splitter` function.
+        :param splitter_kwargs: key-word arguments to pass to the registered :meth:`unionml.Dataset.splitter` function.
             This will override any defaults set in the function definition.
-        :param parser_kwargs: key-word arguments to pass to the registered :class:`unionml.Dataset.parser` function.
+        :param parser_kwargs: key-word arguments to pass to the registered :meth:`unionml.Dataset.parser` function.
             This will override any defaults set in the function definition.
         :param trainer_kwargs: a dictionary mapping training parameter names to values. There training parameters
             are determined by the keyword-only arguments of the ``model.trainer`` function.

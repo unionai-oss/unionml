@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  python3.8
+
+  Sample SAM Template for unionml-aws-lambda-example
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: unionml-example-aws-lambda-s3
+
+Resources:
+  UnionmlFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      Timeout: 30
+      MemorySize: 512
+      PackageType: Image
+      Architectures:
+        - x86_64
+      Events:
+        fileupload:
+          Type: S3
+          Properties:
+            Bucket: !Ref UnionmlAppBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: features/
+                  - Name: suffix
+                    Value: .json
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Sub "${BucketName}"
+        - S3ReadPolicy:
+            BucketName: !Sub "${BucketName}"
+    Metadata:
+      Dockerfile: Dockerfile.awslambda
+      DockerContext: .
+      DockerTag: python3.8-v1
+
+  UnionmlAppBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${BucketName}"
+
+Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  UnionmlFunction:
+    Description: "unionml Lambda Function ARN"
+    Value: !GetAtt UnionmlFunction.Arn
+  UnionmlFunctionIamRole:
+    Description: "Implicit IAM Role created for unionml function"
+    Value: !GetAtt UnionmlFunctionRole.Arn
+  UnionmlAppBucket:
+    Description: "unionml app s3 bucket"
+    Value: !GetAtt UnionmlAppBucket.Arn
