@@ -75,7 +75,7 @@ def test_dataset_get_features_default(dataset):
 
 def test_dataset_get_features_custom(dataset: Dataset):
     @dataset.reader
-    def reader() -> pd.DataFrame:
+    def reader() -> str:
         ...
 
     @dataset.feature_loader

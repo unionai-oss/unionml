@@ -6,7 +6,7 @@ from enum import Enum
 from functools import partial
 from inspect import Parameter, _empty, signature
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type, TypeVar, Union, cast
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, TypeVar, Union, cast
 
 try:
     from typing import get_args  # type: ignore
@@ -181,7 +181,13 @@ class Dataset(TrackedInstance):
 
         And it should return the data structure needed for model training.
         """
-        type_guards.guard_feature_loader(fn, self.parser_return_types[self._parser_feature_key])
+        expected_type = (
+            # use the reader/loader datatype if parser is the default parser, otherwise use parser return type
+            self.dataset_datatype["data"]
+            if self._parser == self._default_parser
+            else self.parser_return_types[self._parser_feature_key]
+        )
+        type_guards.guard_feature_loader(fn, expected_type)
         self._feature_loader = fn
         return fn
 
@@ -194,7 +200,8 @@ class Dataset(TrackedInstance):
         2. When the FastAPI app `/predict/` endpoint is invoked with features passed in as JSON or string encoding.
         3. When the `model.predict` or `model.remote_predict` functions are invoked.
         """
-        type_guards.guard_feature_transformer(fn, self.parser_return_types[self._parser_feature_key])
+        sig = signature(self._feature_loader)
+        type_guards.guard_feature_transformer(fn, sig.return_annotation)
         self._feature_transformer = fn
         return fn
 
@@ -374,8 +381,8 @@ class Dataset(TrackedInstance):
         return ReaderReturnTypeSource.LOADER if self._loader != self._default_loader else ReaderReturnTypeSource.READER
 
     @property
-    def parser_return_types(self) -> Iterable[Type]:
-        """Get an iterable of types produces by the parser."""
+    def parser_return_types(self) -> Tuple[Any, ...]:
+        """Get an iterable of types produced by the parser."""
         sig = signature(self._parser)
         return get_args(sig.return_annotation)
 
@@ -385,12 +392,19 @@ class Dataset(TrackedInstance):
 
         The fallback behavior occurs if the user didn't define a ``feature_transformer`` function.
         """
-        parser_type = get_args(signature(self._parser).return_annotation)[self._parser_feature_key]
 
-        ft_type = signature(self._feature_transformer).return_annotation
-        if self._feature_transformer == self._default_feature_transformer:
-            # if the feature transformer is not user-defined, use the parser return signature
-            ft_type = get_args(signature(self._parser).return_annotation)[self._parser_feature_key]
+        parser_type = (
+            # use the reader/loader datatype if parser is the default parser, otherwise use parser return type
+            self.dataset_datatype["data"]
+            if self._parser == self._default_parser
+            else self.parser_return_types[self._parser_feature_key]
+        )
+
+        ft_type = (
+            signature(self._feature_loader).return_annotation
+            if self._feature_transformer == self._default_feature_transformer
+            else signature(self._feature_transformer).return_annotation
+        )
 
         if parser_type != ft_type:
             return cast(Type, Union[ft_type, parser_type])
@@ -406,7 +420,8 @@ class Dataset(TrackedInstance):
     ) -> "Dataset":
         dataset = cls(*args, **kwargs)
         dataset._dataset_task = task
-        dataset._dataset_datatype = task.python_interface.outputs
+        (_, dtype), *_ = task.python_interface.outputs.items()
+        dataset._dataset_datatype = {"data": dtype}
         dataset._reader_input_types = [
             Parameter(k, Parameter.KEYWORD_ONLY, annotation=v) for k, v in task.python_interface.inputs.items()
         ]
@@ -461,10 +476,10 @@ class Dataset(TrackedInstance):
 
     def _default_parser(
         self,
-        data: pd.DataFrame,
+        data: D,
         features: Optional[List[str]],
         targets: Optional[List[str]],
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    ) -> Tuple[D, D]:
         if not isinstance(data, pd.DataFrame):
             return (data,)  # type: ignore
 

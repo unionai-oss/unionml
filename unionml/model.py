@@ -9,6 +9,7 @@ from inspect import Parameter, signature
 from typing import IO, Any, Callable, Dict, List, NamedTuple, Optional, Tuple, Type, Union
 
 import joblib
+import pandas as pd
 import sklearn
 from dataclasses_json import dataclass_json
 from fastapi import FastAPI
@@ -193,7 +194,19 @@ class Model(TrackedInstance):
         if fn is None:
             return partial(self.trainer, **train_task_kwargs)
 
-        type_guards.guard_trainer(fn, self.model_type, self._dataset.parser_return_types)
+        if self.dataset._parser == self.dataset._default_parser:
+            # Use the reader/loader datatype if parser is the default parser, otherwise use parser return type.
+            # Additionally, special-case dataframes so that they are treated as two dataframes: one for features
+            # and another for targets.
+            expected_types = (
+                tuple([self.dataset.dataset_datatype["data"]] * 2)
+                if self.dataset.dataset_datatype["data"] is pd.DataFrame
+                else (self.dataset.dataset_datatype["data"],)
+            )
+        else:
+            expected_types = self.dataset.parser_return_types
+
+        type_guards.guard_trainer(fn, self.model_type, expected_types)
         self._trainer = fn
         self._train_task_kwargs = train_task_kwargs
         return self._trainer
@@ -210,7 +223,20 @@ class Model(TrackedInstance):
 
     def evaluator(self, fn):
         """Register a function for producing metrics for given model object."""
-        type_guards.guard_evaluator(fn, self.model_type, self._dataset.parser_return_types)
+
+        if self.dataset._parser == self.dataset._default_parser:
+            # Use the reader/loader datatype if parser is the default parser, otherwise use parser return type.
+            # Additionally, special-case dataframes so that they are treated as two dataframes: one for features
+            # and another for targets.
+            expected_types = (
+                tuple([self.dataset.dataset_datatype["data"]] * 2)
+                if self.dataset.dataset_datatype["data"] is pd.DataFrame
+                else (self.dataset.dataset_datatype["data"],)
+            )
+        else:
+            expected_types = self.dataset.parser_return_types
+
+        type_guards.guard_evaluator(fn, self.model_type, expected_types)
         self._evaluator = fn
         return self._evaluator
 
@@ -266,11 +292,12 @@ class Model(TrackedInstance):
             dataset_task,
             **{k: wf.inputs[k] for k in dataset_task.python_interface.inputs},
         )
+        (_, dataset_promise), *_ = dataset_node.outputs.items()
         train_node = wf.add_entity(
             train_task,
             **{
                 hyperparam_arg: wf.inputs[hyperparam_arg],
-                **dataset_node.outputs,
+                **{"data": dataset_promise},
                 **{arg: wf.inputs[arg] for arg in trainer_param_types},
                 **{arg: wf.inputs[arg] for arg in ["loader_kwargs", "splitter_kwargs", "parser_kwargs"]},
             },
@@ -295,8 +322,9 @@ class Model(TrackedInstance):
             dataset_task,
             **{k: wf.inputs[k] for k in dataset_task.python_interface.inputs},
         )
+        (_, dataset_promise), *_ = dataset_node.outputs.items()
         predict_node = wf.add_entity(
-            predict_task, **{"model_object": wf.inputs["model_object"], **dataset_node.outputs}
+            predict_task, **{"model_object": wf.inputs["model_object"], **{"data": dataset_promise}}
         )
         for output_name, promise in predict_node.outputs.items():
             wf.add_workflow_output(output_name, promise)
