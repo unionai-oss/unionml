@@ -127,7 +127,7 @@ def guard_trainer(trainer: Callable, expected_model_type: Type, expected_data_ty
 
     _check_input_data_type("trainer", actual_model_type, expected_model_type)
     _check_input_data_type("trainer", sig.return_annotation, expected_model_type)
-    # _check_data_types_length(actual_data_types, expected_data_types)
+    _check_data_types_length(actual_data_types, expected_data_types)
     for actual_dtype, expected_dtype in zip(actual_data_types, expected_data_types):
         _check_input_data_type("trainer", actual_dtype, expected_dtype)
 

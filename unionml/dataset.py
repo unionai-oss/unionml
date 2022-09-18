@@ -181,12 +181,13 @@ class Dataset(TrackedInstance):
 
         And it should return the data structure needed for model training.
         """
-        if self._parser == self._default_parser:
-            type_ = self.dataset_datatype["data"]
-        else:
-            type_ = self.parser_return_types[self._parser_feature_key]
-
-        type_guards.guard_feature_loader(fn, type_)
+        expected_type = (
+            # use the reader/loader datatype if parser is the default parser, otherwise use parser return type
+            self.dataset_datatype["data"]
+            if self._parser == self._default_parser
+            else self.parser_return_types[self._parser_feature_key]
+        )
+        type_guards.guard_feature_loader(fn, expected_type)
         self._feature_loader = fn
         return fn
 
@@ -392,15 +393,18 @@ class Dataset(TrackedInstance):
         The fallback behavior occurs if the user didn't define a ``feature_transformer`` function.
         """
 
-        if self._parser == self._default_parser:
-            parser_type = self.dataset_datatype["data"]
-        else:
-            parser_type = self.parser_return_types[self._parser_feature_key]
+        parser_type = (
+            # use the reader/loader datatype if parser is the default parser, otherwise use parser return type
+            self.dataset_datatype["data"]
+            if self._parser == self._default_parser
+            else self.parser_return_types[self._parser_feature_key]
+        )
 
-        if self._feature_transformer == self._default_feature_transformer:
-            ft_type = signature(self._feature_loader).return_annotation
-        else:
-            ft_type = signature(self._feature_transformer).return_annotation
+        ft_type = (
+            signature(self._feature_loader).return_annotation
+            if self._feature_transformer == self._default_feature_transformer
+            else signature(self._feature_transformer).return_annotation
+        )
 
         if parser_type != ft_type:
             return cast(Type, Union[ft_type, parser_type])

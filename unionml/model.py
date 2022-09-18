@@ -195,6 +195,9 @@ class Model(TrackedInstance):
             return partial(self.trainer, **train_task_kwargs)
 
         if self.dataset._parser == self.dataset._default_parser:
+            # Use the reader/loader datatype if parser is the default parser, otherwise use parser return type.
+            # Additionally, special-case dataframes so that they are treated as two dataframes: one for features
+            # and another for targets.
             expected_types = (
                 tuple([self.dataset.dataset_datatype["data"]] * 2)
                 if self.dataset.dataset_datatype["data"] is pd.DataFrame
@@ -222,6 +225,9 @@ class Model(TrackedInstance):
         """Register a function for producing metrics for given model object."""
 
         if self.dataset._parser == self.dataset._default_parser:
+            # Use the reader/loader datatype if parser is the default parser, otherwise use parser return type.
+            # Additionally, special-case dataframes so that they are treated as two dataframes: one for features
+            # and another for targets.
             expected_types = (
                 tuple([self.dataset.dataset_datatype["data"]] * 2)
                 if self.dataset.dataset_datatype["data"] is pd.DataFrame
