@@ -804,7 +804,7 @@ class Model(TrackedInstance):
 
         with self._remote.remote_context():
             self.artifact = ModelArtifact(
-                execution.outputs["model_object"],
+                execution.outputs.get("model_object", as_type=self.model_type),
                 execution.outputs["hyperparameters"],
                 execution.outputs["metrics"],
             )

@@ -85,6 +85,7 @@ def train(
     app: str,
     inputs: str = typer.Option(None, "--inputs", "-i", help="json string of inputs to pass into training workflow"),
     app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
+    wait: bool = typer.Option(False, "--wait", "-w", help="whether or not to wait for remote execution to complete."),
 ):
     r"""Train a model."""
     typer.echo(f"[unionml] app: {app} - training model")
@@ -92,11 +93,12 @@ def train(
     train_inputs = {}
     if inputs:
         train_inputs.update(json.loads(inputs))
-    model.remote_train(app_version, **train_inputs)
-    assert model.artifact is not None
-    typer.echo("[unionml] training completed with model artifacts:")
-    typer.echo(f"[unionml] model object: {model.artifact.model_object}")
-    typer.echo(f"[unionml] model metrics: {model.artifact.metrics}")
+    model.remote_train(app_version, wait, **train_inputs)
+    if wait:
+        assert model.artifact is not None
+        typer.echo("[unionml] training completed with model artifacts:")
+        typer.echo(f"[unionml] model object: {model.artifact.model_object}")
+        typer.echo(f"[unionml] model metrics: {model.artifact.metrics}")
 
 
 @app.command()
@@ -106,6 +108,7 @@ def predict(
     features: Path = typer.Option(None, "--features", "-f", help="generate predictions for this feature"),
     app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
     model_version: str = typer.Option(None, "--model-version", "-m", help="model version"),
+    wait: bool = typer.Option(False, "--wait", "-w", help="whether or not to wait for remote execution to complete."),
 ):
     r"""Generate prediction."""
     typer.echo(f"[unionml] app: {app} - generating predictions")
@@ -117,8 +120,9 @@ def predict(
     elif features:
         prediction_inputs.update({"features": model._dataset.get_features(features)})
 
-    predictions = model.remote_predict(app_version, model_version, wait=True, **prediction_inputs)
-    typer.echo(f"[unionml] predictions: {predictions}")
+    predictions = model.remote_predict(app_version, model_version, wait=wait, **prediction_inputs)
+    if wait:
+        typer.echo(f"[unionml] predictions: {predictions}")
 
 
 @app.command("list-model-versions")
