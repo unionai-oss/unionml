@@ -8,12 +8,12 @@ import typing
 
 import docker
 import git
-from flytekit.configuration import ImageConfig, SerializationSettings, FastSerializationSettings
+from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.models import filters
 from flytekit.models.admin.common import Sort
 from flytekit.models.project import Project
 from flytekit.remote import FlyteRemote, FlyteWorkflowExecution
-from flytekit.tools import repo, fast_registration
+from flytekit.tools import fast_registration, repo
 
 from unionml.model import Model, ModelArtifact
 
@@ -112,7 +112,16 @@ def docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Imag
         logger.info(line)
 
 
-def deploy_wf(wf, remote: FlyteRemote, image: str, project: str, domain: str, version: str, patch: bool = False, docker_install_path: str = None):
+def deploy_wf(
+    wf,
+    remote: FlyteRemote,
+    image: str,
+    project: str,
+    domain: str,
+    version: str,
+    patch: bool = False,
+    docker_install_path: str = None,
+):
     """Register all tasks, workflows, and launchplans needed to execute the workflow."""
     logger.info(f"Deploying workflow {wf.name}")
     if patch:

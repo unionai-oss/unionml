@@ -12,7 +12,7 @@ import typer
 import uvicorn
 from cookiecutter.main import cookiecutter
 
-from unionml.remote import get_app_version, get_model, get_model_execution, VersionFetchError
+from unionml.remote import VersionFetchError, get_app_version, get_model, get_model_execution
 
 sys.path.append(os.curdir)
 
@@ -63,7 +63,7 @@ def deploy(
         False,
         "--patch",
         help="Do not rebuild the container and just patch the code. Useful, for iterating once the dependencies have"
-             " already been baked into the container image.",
+        " already been baked into the container image.",
     ),
 ):
     """Deploy model to a Flyte backend."""

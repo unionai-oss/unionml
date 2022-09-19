@@ -647,8 +647,16 @@ class Model(TrackedInstance):
             self.predict_workflow(),
             self.predict_from_features_workflow(),
         ]:
-            remote.deploy_wf(wf, _remote, image, project=_remote.default_project, domain=_remote.default_domain,
-                             version=app_version, patch=patch, docker_install_path=self._docker_install_path)
+            remote.deploy_wf(
+                wf,
+                _remote,
+                image,
+                project=_remote.default_project,
+                domain=_remote.default_domain,
+                version=app_version,
+                patch=patch,
+                docker_install_path=self._docker_install_path,
+            )
 
     def remote_train(
         self,
