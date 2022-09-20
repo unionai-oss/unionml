@@ -54,7 +54,14 @@ def assert_health_check():
     ids=["sklearn", "pytorch", "keras"],
 )
 def test_module(ml_framework, model_cls_name, model_checker):
-    module_vars = runpy.run_module(f"tests.integration.{ml_framework}_app.quickstart", run_name="__main__")
+
+    module_vars = runpy.run_module(
+        f"tests.integration.{ml_framework}_app.quickstart",
+        run_name="__main__",
+        # needed to successfully pickle classes defined in quickstart module so sys.modules has
+        # access to the quickstart module, which is being executed here
+        alter_sys=True,
+    )
     model_object = module_vars["model_object"]
     predictions = module_vars["predictions"]
 
@@ -78,7 +85,13 @@ def test_module(ml_framework, model_cls_name, model_checker):
 def test_fastapi_app(ml_framework, filename, tmp_path):
     # run the quickstart module to train a model
     model_path = tmp_path / filename
-    module_vars = runpy.run_module(f"tests.integration.{ml_framework}_app.quickstart", run_name="__main__")
+    module_vars = runpy.run_module(
+        f"tests.integration.{ml_framework}_app.quickstart",
+        run_name="__main__",
+        # needed to successfully pickle classes defined in quickstart module so sys.modules has
+        # access to the quickstart module, which is being executed here
+        alter_sys=True,
+    )
 
     # extract unionml model and model_object from module global namespace
     model = module_vars["model"]

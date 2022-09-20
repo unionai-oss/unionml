@@ -566,14 +566,20 @@ class Model(TrackedInstance):
         self.artifact = ModelArtifact(self.load(model_path))
         return self.artifact.model_object
 
-    def serve(self, app: FastAPI, remote: bool = False, model_version: str = "latest"):
+    def serve(
+        self,
+        app: FastAPI,
+        remote: bool = False,
+        app_version: Optional[str] = None,
+        model_version: str = "latest",
+    ):
         """Create a FastAPI serving app.
 
         :param app: A ``FastAPI`` app to use for model serving.
         """
         from unionml.fastapi import serving_app
 
-        serving_app(self, app, remote=remote, model_version=model_version)
+        serving_app(self, app, remote=remote, app_version=app_version, model_version=model_version)
 
     def remote(
         self,
@@ -887,7 +893,11 @@ class Model(TrackedInstance):
             import torch
 
             deserialized_model = torch.load(file, *args, **kwargs)
-            model = model_type(**deserialized_model["hyperparameters"])
+            if self._init_callable is not None:
+                model = self._init(deserialized_model["hyperparameters"])
+            else:
+                model = model_type(**deserialized_model["hyperparameters"])
+
             model.load_state_dict(deserialized_model["model_obj"])
             return model
         elif is_keras_model(model_type):
