@@ -12,7 +12,13 @@ from unionml.model import Model, ModelArtifact
 from unionml.remote import get_model_artifact
 
 
-def serving_app(model: Model, app: FastAPI, remote: bool = False, model_version: str = "latest"):
+def serving_app(
+    model: Model,
+    app: FastAPI,
+    remote: bool = False,
+    app_version: Optional[str] = None,
+    model_version: str = "latest",
+):
     @app.on_event("startup")
     async def setup_model():
         model_path = os.getenv("UNIONML_MODEL_PATH")
@@ -25,7 +31,7 @@ def serving_app(model: Model, app: FastAPI, remote: bool = False, model_version:
                     )
                 model.artifact = ModelArtifact(model.load(model_path))
             else:
-                model.artifact = get_model_artifact(model, model_version=model_version)
+                model.artifact = get_model_artifact(model, app_version=app_version, model_version=model_version)
 
     @app.get("/", response_class=HTMLResponse)
     def root():
