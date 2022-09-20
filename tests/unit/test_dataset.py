@@ -4,48 +4,11 @@ import typing
 from inspect import signature
 
 import pandas as pd
-import pytest
+from flytekit import task, workflow
 from flytekit.core.python_function_task import PythonFunctionTask
 
+from tests.unit.dataset_fixtures import N_SAMPLES, TEST_SIZE
 from unionml import Dataset
-
-N_SAMPLES = 100
-TEST_SIZE = 0.2
-
-
-@pytest.fixture(scope="function")
-def dataset():
-    return Dataset(
-        features=["x"],
-        targets=["y"],
-        test_size=TEST_SIZE,
-        shuffle=True,
-        random_state=123,
-    )
-
-
-@pytest.fixture(scope="function")
-def simple_reader():
-    def _reader(value: float, n_samples: int) -> typing.List[float]:
-        return [value for _ in range(n_samples)]
-
-    return _reader
-
-
-@pytest.fixture(scope="function")
-def dict_dataset_reader():
-    def _reader() -> typing.List[typing.Dict[str, int]]:
-        return [{"x": i, "y": i * 2} for i in range(1, N_SAMPLES + 1)]
-
-    return _reader
-
-
-@pytest.fixture(scope="function")
-def reader_with_json_string_output(dict_dataset_reader):
-    def _reader() -> str:
-        return json.dumps(dict_dataset_reader())
-
-    return _reader
 
 
 def test_dataset_reader(dataset, simple_reader):
@@ -161,3 +124,22 @@ def test_dataset_custom_loader(dataset: Dataset, reader_with_json_string_output)
 
     training_data = dataset.get_data(dataset._reader())  # type: ignore
     assert_training_data_expectations(training_data)
+
+
+def test_dataset_task_in_flyte_workflow(dataset: Dataset, simple_reader):
+    """Test that the unionml.Dataset-derived dataset reading task can be used in regular Flyte workflows."""
+    dataset.reader(simple_reader)
+
+    dataset_task = dataset.dataset_task()
+
+    @task
+    def aggregate_data(data: typing.List[float]) -> float:
+        return sum(data) / len(data)
+
+    @workflow
+    def wf(value: float, n_samples: int) -> float:
+        reader_output = dataset_task(value=value, n_samples=n_samples)
+        return aggregate_data(data=reader_output.data)
+
+    aggregate = wf(value=10.0, n_samples=100)
+    assert aggregate == 10.0
