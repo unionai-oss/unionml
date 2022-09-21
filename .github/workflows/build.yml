@@ -18,6 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10"]
+        test-dir: ["unit", "integration"]
 
     steps:
     - uses: actions/checkout@v2
@@ -42,7 +43,7 @@ jobs:
         pre-commit run --all-files --show-diff-on-failure
     - name: Unit tests with pytest
       run: |
-        pytest tests/unit
+        pytest tests/${{ matrix.test-dir }}
     - name: Build Docs
       # build error AttributeError: 'document' object has no attribute 'findall'
       # in the furo theme, see: https://github.com/unionai-oss/unionml/runs/6786848582?check_suite_focus=true#step:8:2531
