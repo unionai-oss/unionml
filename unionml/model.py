@@ -18,6 +18,7 @@ from flytekit.configuration import Config
 from flytekit.core.tracker import TrackedInstance
 from flytekit.remote import FlyteRemote
 from flytekit.remote.executions import FlyteWorkflowExecution
+from flytekit.types.pickle import FlytePickle
 
 import unionml.type_guards as type_guards
 from unionml.dataset import Dataset
@@ -699,7 +700,6 @@ class Model(TrackedInstance):
             },
             project=self._remote.default_project,
             domain=self._remote.default_domain,
-            wait=wait,
             type_hints={
                 "hyperparameters": self.hyperparameter_type,
                 "loader_kwargs": self._dataset.loader_kwargs_type,
@@ -712,9 +712,11 @@ class Model(TrackedInstance):
             f"Executing {train_wf.id.name}, execution name: {execution.id.name}."
             f"\nGo to {console_url} to see the execution in the console."
         )
+
         if not wait:
             return execution
 
+        self.remote_wait(execution)
         self.remote_load(execution)
         return self.artifact
 
@@ -809,8 +811,13 @@ class Model(TrackedInstance):
             print("Done.")
 
         with self._remote.remote_context():
+            try:
+                model_object = execution.outputs.get("model_object", as_type=self.model_type)
+            except ValueError:
+                model_object = execution.outputs.get("model_object", as_type=FlytePickle)
+
             self.artifact = ModelArtifact(
-                execution.outputs.get("model_object", as_type=self.model_type),
+                model_object,
                 execution.outputs["hyperparameters"],
                 execution.outputs["metrics"],
             )

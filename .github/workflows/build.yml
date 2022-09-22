@@ -20,6 +20,9 @@ jobs:
         test-dir: ["unit", "integration"]
         python-version: ["3.7", "3.8", "3.9", "3.10"]
 
+    env:
+      UNIONML_CI: "1"
+
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -41,6 +44,14 @@ jobs:
     - name: Lint
       run: |
         pre-commit run --all-files --show-diff-on-failure
+    - name: Install FlyteCTL
+      if: ${{ matrix.test-dir == 'integration' }}
+      uses: unionai-oss/flytectl-setup-action@master
+    - name: Setup Flyte Sandbox
+      if: ${{ matrix.test-dir == 'integration' }}
+      run: |
+        flytectl sandbox start --source .
+        flytectl config init
     - name: Unit tests with pytest
       run: |
         pytest tests/${{ matrix.test-dir }}
