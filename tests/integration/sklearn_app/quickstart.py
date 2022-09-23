@@ -13,13 +13,11 @@ model = Model(name="digits_classifier", init=LogisticRegression, dataset=dataset
 
 @dataset.reader
 def reader() -> pd.DataFrame:
-    print("getting data")
     return load_digits(as_frame=True).frame
 
 
 @model.trainer
 def trainer(estimator: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> LogisticRegression:
-    print("fitting estimator")
     return estimator.fit(features, target.squeeze())
 
 

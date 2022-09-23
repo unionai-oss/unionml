@@ -15,8 +15,10 @@ RUN python3 -m venv ${VENV}
 ENV PATH="${VENV}/bin:$PATH"
 
 # Install Python dependencies
-COPY ./tests/integration/sklearn_app/requirements.txt /root
-RUN pip install -r /root/requirements.txt
+# This assumes that the build context is the root of the unionml repo
+COPY ./requirements.txt /root
+COPY ./requirements-dev.txt /root
+RUN pip install -r /root/requirements-dev.txt
 
 # Copy the actual code
 COPY . /root
