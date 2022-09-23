@@ -87,6 +87,7 @@ def test_unionml_deployment(flyte_remote: FlyteRemote, ml_framework):
         domain="development",
     )
     app_version = str(uuid.uuid4())
+
     model.remote_deploy(app_version=app_version)
     _wait_for_project_to_exist(flyte_remote, project)
 

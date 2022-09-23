@@ -85,7 +85,8 @@ def reader() -> pd.DataFrame:
         cache=True,
         as_frame=True,
     )
-    return dataset.frame
+    # randomly sample a subset for faster training
+    return dataset.frame.sample(1000, random_state=42)
 
 
 @model.init

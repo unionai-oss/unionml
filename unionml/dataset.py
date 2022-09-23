@@ -20,6 +20,7 @@ from flytekit.extras.sqlite3.task import SQLite3Task
 from sklearn.model_selection import train_test_split
 
 import unionml.type_guards as type_guards
+from unionml.defaults import DEFAULT_RESOURCES
 from unionml.utils import inner_task
 
 R = TypeVar("R")  # raw data
@@ -81,6 +82,7 @@ class Dataset(TrackedInstance):
         self._feature_transformer = self._default_feature_transformer
 
         self._reader = None
+        self._reader_task_kwargs: Optional[Dict[str, Any]] = None
         self._reader_input_types: Optional[List[Parameter]] = None
         self._dataset_datatype: Optional[Dict[str, Type]] = None
         self._dataset_task = None
@@ -102,7 +104,7 @@ class Dataset(TrackedInstance):
 
         type_guards.guard_reader(fn)
         self._reader = fn
-        self._reader_task_kwargs = reader_task_kwargs
+        self._reader_task_kwargs = {"requests": DEFAULT_RESOURCES, "limits": DEFAULT_RESOURCES, **reader_task_kwargs}
         return fn
 
     def loader(self, fn):
@@ -181,13 +183,9 @@ class Dataset(TrackedInstance):
 
         And it should return the data structure needed for model training.
         """
-        expected_type = (
-            # use the reader/loader datatype if parser is the default parser, otherwise use parser return type
-            self.dataset_datatype["data"]
-            if self._parser == self._default_parser
-            else self.parser_return_types[self._parser_feature_key]
-        )
-        type_guards.guard_feature_loader(fn, expected_type)
+        # TODO: the feature_loader input should be compatible with the feature_reader (to be implemented) or
+        # pathlib.Path
+        type_guards.guard_feature_loader(fn, Any)
         self._feature_loader = fn
         return fn
 
@@ -341,11 +339,8 @@ class Dataset(TrackedInstance):
         This function uses the following registered functions to create model-ready features:
 
         - :meth:`unionml.dataset.Dataset.feature_loader`
-        - :meth:`unionml.dataset.Dataset.parser`
         - :meth:`unionml.dataset.Dataset.feature_transformer`
         """
-        # parsed_data = self._parser(self._feature_loader(features), self._features, self._targets)
-        # features = parsed_data[self._parser_feature_key]
         features = self._feature_loader(features)
         return self._feature_transformer(features)
 

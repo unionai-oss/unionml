@@ -31,6 +31,7 @@ author = "unionai-oss"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx.ext.intersphinx",
     "sphinx_autodoc_typehints",
     "sphinx_click",
     "sphinx_copybutton",
@@ -118,3 +119,24 @@ mermaid_params = [
     "--backgroundColor",
     "transparent",
 ]
+
+# intersphinx configuration
+intersphinx_mapping = {
+    "flytekit": ("https://flyte.readthedocs.io/projects/flytekit/en/latest/", None),
+    "flytekitplugins": ("https://docs.flyte.org/projects/flytekit/en/latest/", None),
+    "flyte": ("https://flyte.readthedocs.io/en/latest/", None),
+    "flyteidl": ("https://docs.flyte.org/projects/flyteidl/en/latest", None),
+    "flytectl": ("https://docs.flyte.org/projects/flytectl/en/latest/", None),
+    "matplotlib": ("https://matplotlib.org", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
+    "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
+    "pandera": ("https://pandera.readthedocs.io/en/stable/", None),
+    "python": ("https://docs.python.org/{.major}".format(sys.version_info), None),
+    "pytorch": ("https://pytorch.org/docs/stable/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/reference", None),
+    "tensorflow": (
+        "https://www.tensorflow.org/api_docs/python",
+        "https://github.com/GPflow/tensorflow-intersphinx/raw/master/tf2_py_objects.inv",
+    ),
+    "torch": ("https://pytorch.org/docs/master/", None),
+}

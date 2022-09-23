@@ -52,7 +52,7 @@ jobs:
       run: |
         flytectl sandbox start --source .
         flytectl config init
-    - name: Unit tests with pytest
+    - name: Pytest
       run: |
         pytest tests/${{ matrix.test-dir }}
     - name: Build Docs
