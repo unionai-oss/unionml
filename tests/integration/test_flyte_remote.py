@@ -78,6 +78,12 @@ def _retry_execution(fn, n_retries: int = 100, wait_time: int = 3):
             time.sleep(wait_time)
 
 
+# disable this test on python 3.7, see:
+# https://stackoverflow.com/questions/63329657/python-3-7-error-unsupported-pickle-protocol-5
+@pytest.mark.skipif(
+    sys.version_info < (3, 8),
+    reason="pickle protocol: 5 not supported in python 3.7.*",
+)
 @pytest.mark.parametrize(
     "ml_framework, hyperparameters, trainer_kwargs",
     [
