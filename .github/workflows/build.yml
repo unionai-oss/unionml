@@ -22,6 +22,8 @@ jobs:
 
     env:
       UNIONML_CI: "1"
+      AWS_ACCESS_KEY_ID: minio
+      AWS_SECRET_ACCESS_KEY: miniostorage
 
     steps:
     - uses: actions/checkout@v2
@@ -53,11 +55,6 @@ jobs:
       run: |
         flytectl sandbox start --source .
         flytectl config init
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: minio
-        aws-secret-access-key: miniostorage
     - name: Pytest
       run: |
         pytest tests/${{ matrix.test-dir }}
