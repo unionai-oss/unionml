@@ -18,7 +18,7 @@ NO_CLUSTER_MSG = "🛑 no demo cluster found"
 RETRY_ERROR = "failed to create workflow in propeller namespaces"
 
 
-def _wait_for_flyte_cluster(remote: FlyteRemote, max_retries: int = 30, wait: int = 3):
+def _wait_for_flyte_cluster(remote: FlyteRemote, max_retries: int = 100, wait: int = 3):
     for _ in range(30):
         try:
             projects, *_ = remote.client.list_projects_paginated(limit=5, token=None)
