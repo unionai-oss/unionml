@@ -18,7 +18,7 @@ NO_CLUSTER_MSG = "🛑 no demo cluster found"
 RETRY_ERROR = "failed to create workflow in propeller namespaces"
 
 
-def _wait_for_flyte_cluster(remote: FlyteRemote, max_retries: int = 100, wait: int = 3):
+def _wait_for_flyte_cluster(remote: FlyteRemote, max_retries: int = 300, wait: int = 3):
     for _ in range(30):
         try:
             projects, *_ = remote.client.list_projects_paginated(limit=5, token=None)
@@ -39,7 +39,7 @@ def flyte_remote():
         if p_status.stdout.decode().strip() == NO_CLUSTER_MSG:
             # if a demo cluster didn't exist already, then start one.
             cluster_preexists = False
-            subprocess.call(["flytectl", FLYTECTL_CMD, "start", "--source", "."])
+            subprocess.run(["flytectl", FLYTECTL_CMD, "start", "--source", "."])
 
         remote = FlyteRemote(
             config=Config.auto(),
@@ -53,7 +53,7 @@ def flyte_remote():
     finally:
         if not cluster_preexists:
             # only teardown the demo cluster if it didn't preexist
-            subprocess.call(["flytectl", FLYTECTL_CMD, "teardown"])
+            subprocess.run(["flytectl", FLYTECTL_CMD, "teardown"])
 
 
 def _import_model_from_file(module_name: str, file_path: Path) -> Model:
