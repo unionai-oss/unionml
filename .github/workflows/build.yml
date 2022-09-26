@@ -49,11 +49,6 @@ jobs:
     - name: Install FlyteCTL
       if: ${{ matrix.test-dir == 'integration' }}
       uses: unionai-oss/flytectl-setup-action@master
-    - name: Setup Flyte Sandbox
-      if: ${{ matrix.test-dir == 'integration' }}
-      run: |
-        flytectl sandbox start --source .
-        flytectl config init
     - name: Pytest
       run: |
         pytest tests/${{ matrix.test-dir }}
