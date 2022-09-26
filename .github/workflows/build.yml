@@ -17,7 +17,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        test-dir: ["unit", "integration"]
         python-version: ["3.7", "3.8", "3.9", "3.10"]
+
+    env:
+      UNIONML_CI: "1"
+      AWS_ACCESS_KEY_ID: minio
+      AWS_SECRET_ACCESS_KEY: miniostorage
 
     steps:
     - uses: actions/checkout@v2
@@ -35,14 +41,23 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install awscli
         pip install -r requirements.txt -r requirements-dev.txt -r requirements-docs.txt
         pip install --no-deps -e .
     - name: Lint
       run: |
         pre-commit run --all-files --show-diff-on-failure
-    - name: Unit tests with pytest
+    - name: Install FlyteCTL
+      if: ${{ matrix.test-dir == 'integration' }}
+      uses: unionai-oss/flytectl-setup-action@master
+    - name: Setup Flyte Sandbox
+      if: ${{ matrix.test-dir == 'integration' }}
       run: |
-        pytest tests/unit
+        flytectl sandbox start --source .
+        flytectl config init
+    - name: Pytest
+      run: |
+        pytest tests/${{ matrix.test-dir }}
     - name: Build Docs
       # build error AttributeError: 'document' object has no attribute 'findall'
       # in the furo theme, see: https://github.com/unionai-oss/unionml/runs/6786848582?check_suite_focus=true#step:8:2531
