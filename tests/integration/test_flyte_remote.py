@@ -18,30 +18,42 @@ NO_CLUSTER_MSG = "🛑 no demo cluster found"
 RETRY_ERROR = "failed to create workflow in propeller namespaces"
 
 
+def _wait_for_flyte_cluster(remote: FlyteRemote, max_retries: int = 30, wait: int = 3):
+    for _ in range(30):
+        try:
+            projects, *_ = remote.client.list_projects_paginated(limit=5, token=None)
+            return projects
+        except Exception:
+            time.sleep(wait)
+
+    raise TimeoutError("timeout expired waiting for Flyte cluster to start.")
+
+
 @pytest.fixture(scope="session")
 def flyte_remote():
-    p_status = subprocess.run(["flytectl", FLYTECTL_CMD, "status"], capture_output=True)
-
     cluster_preexists = True
-    if p_status.stdout.decode().strip() == NO_CLUSTER_MSG:
-        # if a demo cluster didn't exist already, then start one.
-        cluster_preexists = False
-        subprocess.run(["flytectl", FLYTECTL_CMD, "start", "--source", "."])
+    try:
+        p_status = subprocess.run(["flytectl", FLYTECTL_CMD, "status"], capture_output=True)
 
-    remote = FlyteRemote(
-        config=Config.auto(),
-        default_project="flytesnacks",
-        default_domain="development",
-    )
-    projects, *_ = remote.client.list_projects_paginated(limit=5, token=None)
-    assert "flytesnacks" in [p.id for p in projects]
-    assert "flytesnacks" in [p.name for p in projects]
+        cluster_preexists = True
+        if p_status.stdout.decode().strip() == NO_CLUSTER_MSG:
+            # if a demo cluster didn't exist already, then start one.
+            cluster_preexists = False
+            subprocess.call(["flytectl", FLYTECTL_CMD, "start", "--source", "."])
 
-    yield remote
-
-    if not cluster_preexists:
-        # only teardown the demo cluster if it didn't preexist
-        subprocess.run(["flytectl", FLYTECTL_CMD, "teardown"])
+        remote = FlyteRemote(
+            config=Config.auto(),
+            default_project="flytesnacks",
+            default_domain="development",
+        )
+        projects = _wait_for_flyte_cluster(remote)
+        assert "flytesnacks" in [p.id for p in projects]
+        assert "flytesnacks" in [p.name for p in projects]
+        yield remote
+    finally:
+        if not cluster_preexists:
+            # only teardown the demo cluster if it didn't preexist
+            subprocess.call(["flytectl", FLYTECTL_CMD, "teardown"])
 
 
 def _import_model_from_file(module_name: str, file_path: Path) -> Model:
