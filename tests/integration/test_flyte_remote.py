@@ -1,4 +1,5 @@
 import importlib.util
+import os
 import subprocess
 import sys
 import time
@@ -13,8 +14,8 @@ from grpc._channel import _InactiveRpcError
 
 from unionml import Model
 
-FLYTECTL_CMD = "demo"
-NO_CLUSTER_MSG = "🛑 no demo cluster found"
+FLYTECTL_CMD = "sandbox" if os.getenv("UNIONML_CI", False) else "demo"
+NO_CLUSTER_MSG = "🛑 no demo cluster found" if FLYTECTL_CMD == "demo" else "🛑 no Sandbox found"
 RETRY_ERROR = "failed to create workflow in propeller namespaces"
 
 

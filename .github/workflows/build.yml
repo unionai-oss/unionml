@@ -21,6 +21,7 @@ jobs:
         python-version: ["3.7", "3.8", "3.9", "3.10"]
 
     env:
+      UNIONML_CI: "1"
       AWS_ACCESS_KEY_ID: minio
       AWS_SECRET_ACCESS_KEY: miniostorage
 
@@ -49,6 +50,11 @@ jobs:
     - name: Install FlyteCTL
       if: ${{ matrix.test-dir == 'integration' }}
       uses: unionai-oss/flytectl-setup-action@master
+    - name: Setup Flyte Sandbox
+      if: ${{ matrix.test-dir == 'integration' }}
+      run: |
+        flytectl sandbox start --source .
+        flytectl config init
     - name: Pytest
       run: |
         pytest tests/${{ matrix.test-dir }}
