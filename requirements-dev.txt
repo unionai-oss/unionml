@@ -7,7 +7,6 @@ flytekitplugins-sqlalchemy
 pre_commit
 pytest
 pytest-mock
-pytest-xdist
 tensorflow
 torch
 types-requests

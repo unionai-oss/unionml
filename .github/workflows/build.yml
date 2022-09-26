@@ -57,7 +57,7 @@ jobs:
         flytectl config init
     - name: Pytest
       run: |
-        pytest -n auto tests/${{ matrix.test-dir }}
+        pytest tests/${{ matrix.test-dir }}
     - name: Build Docs
       # build error AttributeError: 'document' object has no attribute 'findall'
       # in the furo theme, see: https://github.com/unionai-oss/unionml/runs/6786848582?check_suite_focus=true#step:8:2531
