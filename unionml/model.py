@@ -679,6 +679,7 @@ class Model(TrackedInstance):
             raise ValueError("You must specify a registry in `model.remote` when deploying to a remote cluster.")
 
         # if user wants to deploy by patching, then we implicitly want to allow for uncommitted changes.
+        is_explicit_app_version = app_version is not None
         app_version = app_version or remote.get_app_version(allow_uncommitted=allow_uncommitted or patch)
         image = remote.get_image_fqn(self, app_version, self._image_name)
         os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
@@ -686,8 +687,8 @@ class Model(TrackedInstance):
         logger.info(f"Using remote endpoint {_remote.config.platform.endpoint}")
         remote.create_project(_remote, self._project)
         if patch:
-            app_version = f"{app_version}-patch{uuid.uuid4().hex[:7]}"
-        if not patch:
+            app_version = app_version if is_explicit_app_version else f"{app_version}-patch{uuid.uuid4().hex[:7]}"
+        else:
             logger.info(
                 "Building docker image. If no dependencies have changed, use the `patch` arg to bypass "
                 "docker build process"
