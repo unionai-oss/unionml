@@ -3,7 +3,6 @@ import os
 import subprocess
 import sys
 import time
-import uuid
 from pathlib import Path
 from typing import Any, Dict, Type
 
@@ -121,10 +120,7 @@ def test_unionml_deployment(
         project=project,
         domain="development",
     )
-    app_version = str(uuid.uuid4())
-
-    model.remote_deploy(app_version=app_version)
-
+    app_version: str = model.remote_deploy(allow_uncommitted=True)
     kwargs = {"hyperparameters": hyperparameters, "trainer_kwargs": trainer_kwargs}
 
     # this is a hack to account for lag between project and propeller namespace creation
@@ -132,7 +128,7 @@ def test_unionml_deployment(
     _assert_model_artifact(model_artifact, model.model_type)
 
     # test patch deployment
-    patch_app_version = model.remote_deploy(app_version=app_version, patch=True)
+    patch_app_version = model.remote_deploy(patch=True)
 
     # the default (latest) workflow version should be the same as explicitly passing in the patch app version
     execution_latest = _retry_execution(lambda: model.remote_train(wait=False, **kwargs))  # type: ignore
