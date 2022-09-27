@@ -115,6 +115,7 @@ def test_unionml_deployment(
     )
     project = "unionml-integration-tests"
     model.name = f"{model.name}-{ml_framework}"
+    model.dataset.name = f"{model.dataset.name}-{ml_framework}"
     model.remote(
         dockerfile=f"ci/py{''.join(str(x) for x in sys.version_info[:2])}/Dockerfile",
         project=project,
