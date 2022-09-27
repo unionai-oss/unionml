@@ -117,7 +117,7 @@ class Model(TrackedInstance):
         # dynamically defined types
         self._hyperparameter_type: Optional[Type] = None
 
-        self._docker_install_path: Optional[str] = None
+        self._patch_destination_dir: Optional[str] = None
 
     @property
     def artifact(self) -> Optional[ModelArtifact]:
@@ -640,7 +640,7 @@ class Model(TrackedInstance):
         self._dockerfile = dockerfile
         self._project = project
         self._domain = domain
-        self._docker_install_path = patch_destination_dir
+        self._patch_destination_dir = patch_destination_dir
 
     @property
     def _remote(self) -> Optional[FlyteRemote]:
@@ -712,7 +712,7 @@ class Model(TrackedInstance):
                 domain=_remote.default_domain,
                 version=app_version,
                 patch=patch,
-                docker_install_path=self._docker_install_path,
+                patch_destination_dir=self._patch_destination_dir,
             )
 
         return app_version

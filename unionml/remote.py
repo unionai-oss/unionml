@@ -116,7 +116,7 @@ def deploy_wf(
     domain: str,
     version: str,
     patch: bool = False,
-    docker_install_path: str = None,
+    patch_destination_dir: str = None,
 ):
     """Register all tasks, workflows, and launchplans needed to execute the workflow."""
     logger.info(f"Deploying workflow {wf.name}")
@@ -133,7 +133,7 @@ def deploy_wf(
         # TODO: Rely on default Python interpreter for now, this will break custom Spark containers
         fast_serialization_settings = FastSerializationSettings(
             enabled=True,
-            destination_dir=docker_install_path,
+            destination_dir=patch_destination_dir,
             distribution_location=native_url,
         )
 
