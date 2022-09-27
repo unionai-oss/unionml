@@ -614,7 +614,7 @@ class Model(TrackedInstance):
         registry: Optional[str] = None,
         image_name: str = None,
         dockerfile: str = "Dockerfile",
-        docker_install_path: str = "/root",
+        patch_destination_dir: str = "/root",
         config_file: Optional[str] = None,
         project: Optional[str] = None,
         domain: Optional[str] = None,
@@ -624,7 +624,9 @@ class Model(TrackedInstance):
         :param registry: Docker registry used to push UnionML app.
         :param image_name: image name to give to the Docker image associated with the UnionML app.
         :param dockerfile: path to the Dockerfile used to package the UnionML app.
-        :param docker_install_path: path where the UnionML source is installed within the docker image.
+        :param patch_destination_dir: path where the UnionML source is installed within the docker image, and in case of
+                                    patch registration, this would be replaced. In Flyte terms, patch registration is
+                                    often called fast-registration.
         :param config_file: path to the `flytectl config <https://docs.flyte.org/projects/flytectl/en/latest/>`__ to use for
             deploying your UnionML app to a Flyte backend.
         :param project: deploy your app to this Flyte project name.
@@ -636,7 +638,7 @@ class Model(TrackedInstance):
         self._dockerfile = dockerfile
         self._project = project
         self._domain = domain
-        self._docker_install_path = docker_install_path
+        self._docker_install_path = patch_destination_dir
 
     @property
     def _remote(self) -> Optional[FlyteRemote]:
