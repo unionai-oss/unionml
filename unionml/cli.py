@@ -57,20 +57,19 @@ def deploy(
     allow_uncommitted: bool = typer.Option(
         False,
         "--allow-uncommitted",
-        help="proceed with deployment even with uncommitted changes",
+        help="Deploy uncommitted changes in the unionml project",
     ),
-    no_deps: bool = typer.Option(
+    patch: bool = typer.Option(
         False,
-        "--no-deps",
-        help="Do not rebuild the container and just patch the code. Useful, for iterating once the dependencies have"
-        " already been baked into the container image.",
+        "--patch",
+        help="Bypass Docker build process and update the UnionML app source code using the latest available image.",
     ),
 ):
     """Deploy model to a Flyte backend."""
     typer.echo(f"[unionml] deploying {app}")
     model = get_model(app)
     try:
-        model.remote_deploy(allow_uncommitted=allow_uncommitted, no_deps=no_deps)
+        model.remote_deploy(allow_uncommitted=allow_uncommitted, patch=patch)
     except VersionFetchError as e:
         typer.echo(f"[unionml] failed to get app version: {e}", err=True)
         typer.echo(

@@ -2,6 +2,7 @@
 
 import inspect
 import os
+import uuid
 from collections import OrderedDict
 from dataclasses import asdict, dataclass, field, is_dataclass, make_dataclass
 from functools import partial
@@ -21,6 +22,7 @@ from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.types.pickle import FlytePickle
 
 import unionml.type_guards as type_guards
+from unionml._logging import logger
 from unionml.dataset import Dataset
 from unionml.defaults import DEFAULT_RESOURCES
 from unionml.utils import inner_task, is_keras_model, is_pytorch_model
@@ -656,38 +658,47 @@ class Model(TrackedInstance):
         )
         return self.__remote__
 
-    def remote_deploy(self, app_version: str = None, allow_uncommitted: bool = True, no_deps: bool = True):
+    def remote_deploy(self, app_version: str = None, allow_uncommitted: bool = False, patch: bool = False) -> str:
         """
         Deploy model services to a Flyte backend.
 
-        :param app_version: str the version to use to register
-        :param allow_uncommitted: bool This flag indicates if git uncommitted files should be ignored
-        :param no_deps: bool This flag indicates that no dependencies have changed and hence only code can be moved
+        :param app_version: the version to use to deploy the UnionML app.
+        :param allow_uncommitted: If True, deploys uncommitted changes in the unionml project. Otherwise, raise a
+            :py:class`~unionml.remote.VersionFetchError`
+        :param patch: if True, this bypasses the Docker build process and only updates the UnionML app source code using
+            the latest available image.
+        :returns: app version string
         """
+        from unionml import remote
+
         if self._remote is None:
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
 
-        from unionml import remote
-
-        app_version = app_version or remote.get_app_version(allow_uncommitted=allow_uncommitted)
-        image = remote.get_image_fqn(self, app_version, self._image_name)
-
-        os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
         _remote = self._remote
+        if not _remote.config.platform.endpoint.startswith("localhost") and self.registry is None:
+            raise ValueError("You must specify a registry in `model.remote` when deploying to a remote cluster.")
 
-        print(f"[unionml] Using remote endpoint {_remote.config.platform.endpoint}")
+        # if user wants to deploy by patching, then we implicitly want to allow for uncommitted changes.
+        app_version = app_version or remote.get_app_version(allow_uncommitted=allow_uncommitted or patch)
+        image = remote.get_image_fqn(self, app_version, self._image_name)
+        os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
+
+        logger.info(f"Using remote endpoint {_remote.config.platform.endpoint}")
         remote.create_project(_remote, self._project)
-        if not no_deps:
-            print(f"[unionml] building docker image, if no dependencies have changed, then you can use the no_deps arg")
+        if patch:
+            app_version = f"{app_version}-patch{uuid.uuid4().hex[:7]}"
+        if not patch:
+            logger.info(
+                "Building docker image. If no dependencies have changed, use the `patch` arg to bypass "
+                "docker build process"
+            )
             if _remote.config.platform.endpoint.startswith("localhost"):
                 # assume that a localhost flyte_admin_url means that we want to use Flyte sandbox
                 remote.sandbox_docker_build(self, image)
             else:
                 remote.docker_build_push(self, image)
-        else:
-            if not _remote.config.platform.endpoint.startswith("localhost") and self.registry is None:
-                raise ValueError("You must specify a registry in `model.remote` when deploying to a remote cluster.")
 
+        logger.info(f"Deploying app version {app_version}")
         for wf in [
             self.train_workflow(),
             self.predict_workflow(),
@@ -700,9 +711,11 @@ class Model(TrackedInstance):
                 project=_remote.default_project,
                 domain=_remote.default_domain,
                 version=app_version,
-                no_deps=no_deps,
+                patch=patch,
                 docker_install_path=self._docker_install_path,
             )
+
+        return app_version
 
     def remote_train(
         self,
@@ -719,7 +732,7 @@ class Model(TrackedInstance):
         """Train a model object on a remote Flyte backend.
 
         :param app_version: if provided, executes a training job using the specified UnionML app version. By default,
-            this uses the current git sha of the repo, which versions your UnionML app.
+            this uses the latest app version deployed on the Flyte remote cluster..
         :param wait: if True, this is a synchronous operation, returning a ``ModelArtifact``. Otherwise, this
             function returns a ``FlyteWorkflowExecution``.
         :param hyperparameters: a dictionary mapping hyperparameter names to values. This is passed into the
@@ -733,13 +746,11 @@ class Model(TrackedInstance):
         :param trainer_kwargs: a dictionary mapping training parameter names to values. There training parameters
             are determined by the keyword-only arguments of the ``model.trainer`` function.
         :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.Dataset.reader` method signature.
+        :returns: the trained model if wait is ``True``, or a ``FlyteWorkflowExecution`` object if wait is ``False``.
         """
         if self._remote is None:
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
 
-        from unionml import remote
-
-        app_version = app_version or remote.get_app_version(allow_uncommitted=True)
         train_wf = self._remote.fetch_workflow(name=self.train_workflow_name, version=app_version)
         execution = self._remote.execute(
             train_wf,
@@ -760,7 +771,7 @@ class Model(TrackedInstance):
             },
         )
         console_url = self._remote.generate_console_url(execution)
-        print(
+        logger.info(
             f"Executing {train_wf.id.name}, execution name: {execution.id.name}."
             f"\nGo to {console_url} to see the execution in the console."
         )
@@ -787,7 +798,7 @@ class Model(TrackedInstance):
         arguments that will be forwarded to the :meth:`unionml.Dataset.reader` method as the feature source.
 
         :param app_version: if provided, executes a prediction job using the specified UnionML app version. By default,
-            this uses the current git sha of the repo, which versions your UnionML app.
+            this uses the latest app version deployed on the Flyte remote cluster.
         :param model_version: if provided, executes a prediction job using the specified model version. By default, this
             uses the latest Flyte execution id as the model version.
         :param wait: if True, this is a synchronous operation, returning a ``ModelArtifact``. Otherwise, this
@@ -798,18 +809,14 @@ class Model(TrackedInstance):
             - :meth:`unionml.dataset.Dataset.feature_loader`
             - :meth:`unionml.dataset.Dataset.feature_transformer`
         :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.Dataset.reader` method signature.
+        :returns: the predictions if wait is ``True``, or a ``FlyteWorkflowExecution`` object if wait is ``False``.
         """
         if self._remote is None:
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
 
         from unionml import remote
 
-        app_version = app_version or remote.get_app_version(allow_uncommitted=True)
         model_artifact = remote.get_model_artifact(self, app_version, model_version)
-
-        if (features is not None and len(reader_kwargs) > 0) or (features is None and len(reader_kwargs) == 0):
-            raise ValueError("You must provide only one of `features` or `reader_kwargs`")
-
         inputs = {"model_object": model_artifact.model_object}
         if features is None:
             workflow_name = self.predict_workflow_name
@@ -835,7 +842,7 @@ class Model(TrackedInstance):
             type_hints=type_hints,
         )
         console_url = self._remote.generate_console_url(execution)
-        print(
+        logger.info(
             f"Executing {predict_wf.id.name}, execution name: {execution.id.name}."
             f"\nGo to {console_url} to see the execution in the console."
         )
@@ -858,9 +865,9 @@ class Model(TrackedInstance):
         if self._remote is None:
             raise ValueError("You must call `model.remote` to attach a remote backend to this model.")
         if not execution.is_done:
-            print(f"Waiting for execution {execution.id.name} to complete...")
+            logger.info(f"Waiting for execution {execution.id.name} to complete...")
             execution = self.remote_wait(execution)
-            print("Done.")
+            logger.info("Done.")
 
         with self._remote.remote_context():
             try:
