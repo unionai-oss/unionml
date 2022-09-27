@@ -3,9 +3,8 @@ import os
 import subprocess
 import sys
 import time
-import uuid
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Type
 
 import pytest
 from flytekit.configuration import Config
@@ -13,6 +12,7 @@ from flytekit.remote import FlyteRemote
 from grpc._channel import _InactiveRpcError
 
 from unionml import Model
+from unionml.model import ModelArtifact
 
 FLYTECTL_CMD = "sandbox" if os.getenv("UNIONML_CI", False) else "demo"
 NO_CLUSTER_MSG = "🛑 no demo cluster found" if FLYTECTL_CMD == "demo" else "🛑 no Sandbox found"
@@ -79,6 +79,13 @@ def _retry_execution(fn, n_retries: int = 100, wait_time: int = 3):
             time.sleep(wait_time)
 
 
+def _assert_model_artifact(model_artifact: ModelArtifact, model_type: Type):
+    assert isinstance(model_artifact.model_object, model_type)
+    assert isinstance(model_artifact.metrics, dict)
+    assert isinstance(model_artifact.metrics["test"], float)
+    assert isinstance(model_artifact.metrics["train"], float)
+
+
 @pytest.mark.parametrize(
     "ml_framework, hyperparameters, trainer_kwargs",
     [
@@ -108,25 +115,32 @@ def test_unionml_deployment(
     )
     project = "unionml-integration-tests"
     model.name = f"{model.name}-{ml_framework}"
+    model.dataset.name = f"{model.dataset.name}-{ml_framework}"
     model.remote(
         dockerfile=f"ci/py{''.join(str(x) for x in sys.version_info[:2])}/Dockerfile",
         project=project,
         domain="development",
     )
-    app_version = str(uuid.uuid4())
-
-    model.remote_deploy(app_version=app_version)
+    app_version: str = model.remote_deploy(allow_uncommitted=True)
+    kwargs = {"hyperparameters": hyperparameters, "trainer_kwargs": trainer_kwargs}
 
     # this is a hack to account for lag between project and propeller namespace creation
-    model_artifact = _retry_execution(
-        lambda: model.remote_train(
-            app_version=app_version,
-            wait=True,
-            hyperparameters=hyperparameters,
-            trainer_kwargs=trainer_kwargs,
-        )
+    model_artifact = _retry_execution(lambda: model.remote_train(app_version=app_version, wait=True, **kwargs))
+    _assert_model_artifact(model_artifact, model.model_type)
+
+    # test patch deployment
+    patch_app_version = model.remote_deploy(patch=True)
+
+    # the default (latest) workflow version should be the same as explicitly passing in the patch app version
+    execution_latest = _retry_execution(lambda: model.remote_train(wait=False, **kwargs))  # type: ignore
+    execution_patch_explicit = _retry_execution(
+        lambda: model.remote_train(app_version=patch_app_version, wait=False, **kwargs)
     )
-    assert isinstance(model_artifact.model_object, model.model_type)
-    assert isinstance(model_artifact.metrics, dict)
-    assert isinstance(model_artifact.metrics["test"], float)
-    assert isinstance(model_artifact.metrics["train"], float)
+    assert execution_latest.spec.launch_plan.version == patch_app_version
+    assert execution_patch_explicit.spec.launch_plan.version == patch_app_version
+
+    model.remote_load(execution_latest)
+    _assert_model_artifact(model.artifact, model.model_type)  # type: ignore
+
+    model.remote_load(execution_patch_explicit)
+    _assert_model_artifact(model.artifact, model.model_type)  # type: ignore

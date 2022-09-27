@@ -12,7 +12,7 @@ import typer
 import uvicorn
 from cookiecutter.main import cookiecutter
 
-from unionml.remote import get_app_version, get_model, get_model_execution
+from unionml.remote import VersionFetchError, get_app_version, get_model, get_model_execution
 
 sys.path.append(os.curdir)
 
@@ -57,24 +57,26 @@ def deploy(
     allow_uncommitted: bool = typer.Option(
         False,
         "--allow-uncommitted",
-        help="proceed with deployment even with uncommitted changes",
+        help="Deploy uncommitted changes in the unionml project",
+    ),
+    patch: bool = typer.Option(
+        False,
+        "--patch",
+        help="Bypass Docker build process and update the UnionML app source code using the latest available image.",
     ),
 ):
     """Deploy model to a Flyte backend."""
     typer.echo(f"[unionml] deploying {app}")
     model = get_model(app)
     try:
-        app_version = get_app_version(allow_uncommitted=allow_uncommitted)
-    except Exception as e:
+        model.remote_deploy(allow_uncommitted=allow_uncommitted, patch=patch)
+    except VersionFetchError as e:
         typer.echo(f"[unionml] failed to get app version: {e}", err=True)
         typer.echo(
             "[unionml] Please commit your changes or explicitly ignore this using the --allow-uncommitted flag.",
             err=True,
         )
         raise typer.Exit(code=1)
-
-    try:
-        model.remote_deploy(app_version)
     except Exception as e:
         typer.echo(f"[unionml] failed to deploy {app}: {e}", err=True)
         raise typer.Exit(code=1)
