@@ -122,12 +122,12 @@ def deploy_wf(
     project: str,
     domain: str,
     version: str,
-    patch: bool = False,
+    no_deps: bool = False,
     docker_install_path: str = None,
 ):
     """Register all tasks, workflows, and launchplans needed to execute the workflow."""
     logger.info(f"Deploying workflow {wf.name}")
-    if patch:
+    if no_deps:
         # Todo: add switch for non-fast - skip the zipping and uploading and no fastserializationsettings
         # Create a zip file containing all the entries.
         detected_root = repo.find_common_root(["."])

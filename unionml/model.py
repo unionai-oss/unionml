@@ -656,8 +656,14 @@ class Model(TrackedInstance):
         )
         return self.__remote__
 
-    def remote_deploy(self, app_version: str = None, allow_uncommitted: bool = True, patch: bool = True):
-        """Deploy model services to a Flyte backend."""
+    def remote_deploy(self, app_version: str = None, allow_uncommitted: bool = True, no_deps: bool = True):
+        """
+        Deploy model services to a Flyte backend.
+
+        :param app_version: str the version to use to register
+        :param allow_uncommitted: bool This flag indicates if git uncommitted files should be ignored
+        :param no_deps: bool This flag indicates that no dependencies have changed and hence only code can be moved
+        """
         if self._remote is None:
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
 
@@ -669,12 +675,18 @@ class Model(TrackedInstance):
         os.environ["FLYTE_INTERNAL_IMAGE"] = image or ""
         _remote = self._remote
 
+        print(f"[unionml] Using remote endpoint {_remote.config.platform.endpoint}")
         remote.create_project(_remote, self._project)
-        if _remote.config.platform.endpoint.startswith("localhost"):
-            # assume that a localhost flyte_admin_url means that we want to use Flyte sandbox
-            remote.sandbox_docker_build(self, image)
+        if not no_deps:
+            print(f"[unionml] building docker image, if no dependencies have changed, then you can use the no_deps arg")
+            if _remote.config.platform.endpoint.startswith("localhost"):
+                # assume that a localhost flyte_admin_url means that we want to use Flyte sandbox
+                remote.sandbox_docker_build(self, image)
+            else:
+                remote.docker_build_push(self, image)
         else:
-            remote.docker_build_push(self, image)
+            if not _remote.config.platform.endpoint.startswith("localhost") and self.registry is None:
+                raise ValueError("You must specify a registry in `model.remote` when deploying to a remote cluster.")
 
         for wf in [
             self.train_workflow(),
@@ -688,7 +700,7 @@ class Model(TrackedInstance):
                 project=_remote.default_project,
                 domain=_remote.default_domain,
                 version=app_version,
-                patch=patch,
+                no_deps=no_deps,
                 docker_install_path=self._docker_install_path,
             )
 

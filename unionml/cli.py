@@ -59,9 +59,9 @@ def deploy(
         "--allow-uncommitted",
         help="proceed with deployment even with uncommitted changes",
     ),
-    patch: bool = typer.Option(
+    no_deps: bool = typer.Option(
         False,
-        "--patch",
+        "--no-deps",
         help="Do not rebuild the container and just patch the code. Useful, for iterating once the dependencies have"
         " already been baked into the container image.",
     ),
@@ -70,7 +70,7 @@ def deploy(
     typer.echo(f"[unionml] deploying {app}")
     model = get_model(app)
     try:
-        model.remote_deploy(allow_uncommitted=allow_uncommitted, patch=patch)
+        model.remote_deploy(allow_uncommitted=allow_uncommitted, no_deps=no_deps)
     except VersionFetchError as e:
         typer.echo(f"[unionml] failed to get app version: {e}", err=True)
         typer.echo(
