@@ -307,7 +307,7 @@ on some partition of the data:
 @model.trainer(cache=True, cache_version="1")
 def trainer(
     module: nn.Module,
-    dataset: torch.utils.data.Subset,
+    dataset: QuickDrawDataset,
     *,
     num_epochs: int = 20,
     batch_size: int = 256,

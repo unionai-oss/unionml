@@ -61,6 +61,8 @@ def init(hyperparameters: dict) -> LogisticRegression:
     return LogisticRegression(**hyperparameters)
 ```
 
+
+(model_trainer)=
 ### {meth}`~unionml.model.Model.trainer`
 
 The `trainer` function should contain all the logic for training a model from
@@ -79,6 +81,8 @@ be updated as a function of the `features` and `target` dataframes.
 In this example, the function body simply invokes the sklearn API standard `.fit` method for
 training, however you can implement any arbitrary training logic in the `trainer` function.
 ```
+
+(model_predictor)=
 
 ### {meth}`~unionml.model.Model.predictor`
 

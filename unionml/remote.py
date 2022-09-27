@@ -87,7 +87,10 @@ def sandbox_docker_build(model: Model, image_fqn: str):
             "`flytectl demo start --source .`"
         )
 
-    _, build_logs = sandbox_container.exec_run(["docker", "build", "/root", "--tag", image_fqn], stream=True)
+    _, build_logs = sandbox_container.exec_run(
+        ["docker", "build", "/root", "--tag", image_fqn, "--file", f"/root/{model.dockerfile}"],
+        stream=True,
+    )
     for line in build_logs:
         logger.info(line.decode().strip())
 

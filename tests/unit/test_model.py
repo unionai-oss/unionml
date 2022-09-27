@@ -1,97 +1,19 @@
+"""Test UnionML Model object.
+
+Fixtures are defined in conftest.py
+"""
+
 import io
 import typing
 from inspect import signature
 
 import pandas as pd
 import pytest
+from flytekit import task, workflow
 from flytekit.core.python_function_task import PythonFunctionTask
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
 
-from unionml import Dataset, Model
 from unionml.model import BaseHyperparameters, ModelArtifact
-
-
-@pytest.fixture(scope="function")
-def mock_data() -> pd.DataFrame:
-    return pd.DataFrame(
-        {
-            "x": [1, 2, 3, 4] * 25,
-            "x2": [1, 2, 3, 4] * 25,
-            "x3": [1, 2, 3, 4] * 25,
-            "y": [0, 1, 0, 1] * 25,
-        }
-    )
-
-
-@pytest.fixture(scope="function", params=[{"custom_init": True}, {"custom_init": False}])
-def raw_model(request, mock_data) -> Model:
-
-    dataset = Dataset(
-        features=["x"],
-        targets=["y"],
-        test_size=0.2,
-        shuffle=True,
-        random_state=123,
-    )
-
-    @dataset.reader
-    def reader(sample_frac: float, random_state: int) -> pd.DataFrame:
-        return mock_data.sample(frac=sample_frac, random_state=random_state)
-
-    @dataset.loader
-    def loader(raw_data: pd.DataFrame, head: typing.Optional[int] = None) -> pd.DataFrame:
-        if head is not None:
-            return raw_data.head(head)
-        return raw_data
-
-    model = Model(
-        name="test_model",
-        init=None if request.param["custom_init"] else LogisticRegression,
-        hyperparameter_config={"C": float, "max_iter": int},
-        dataset=dataset,
-    )
-
-    if request.param["custom_init"]:
-        # define custom init function
-        @model.init
-        def init_fn(hyperparameters: dict) -> LogisticRegression:
-            return LogisticRegression(**hyperparameters)
-
-    return model
-
-
-@pytest.fixture(scope="function")
-def trainer():
-    def _trainer(model: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> LogisticRegression:
-        return model.fit(features, target.squeeze())
-
-    return _trainer
-
-
-@pytest.fixture(scope="function")
-def predictor():
-    def _predictor(model: LogisticRegression, features: pd.DataFrame) -> typing.List[float]:
-        return [float(x) for x in model.predict(features)]
-
-    return _predictor
-
-
-@pytest.fixture(scope="function")
-def evaluator():
-    def _evaluator(model: LogisticRegression, features: pd.DataFrame, target: pd.DataFrame) -> float:
-        predictions = model.predict(features)
-        return float(accuracy_score(target, predictions))
-
-    return _evaluator
-
-
-@pytest.fixture(scope="function")
-def model(raw_model, trainer, predictor, evaluator):
-    raw_model.trainer(trainer)
-    raw_model.predictor(predictor)
-    raw_model.evaluator(evaluator)
-    return raw_model
 
 
 def test_model_decorators(model, trainer, predictor, evaluator):
@@ -218,3 +140,57 @@ def test_model_saver_and_loader_fileobj(model):
     model.save(fileobj)
     loaded_model_obj = model.load(fileobj)
     assert model_obj.get_params() == loaded_model_obj.get_params()
+
+
+def test_model_train_task_in_flyte_workflow(model, mock_data):
+    """Test that the unionml.Model-derived training task can be used in regular Flyte workflows."""
+
+    ModelInternals = typing.NamedTuple("ModelInternals", [("coef", typing.List[float]), ("intercept", float)])
+
+    train_task = model.train_task()
+
+    @task
+    def get_model_internals(model_object: LogisticRegression) -> ModelInternals:
+        """Task that gets coefficients and biases of the model."""
+        return ModelInternals(coef=model_object.coef_[0].tolist(), intercept=model_object.intercept_.tolist()[0])
+
+    @workflow
+    def wf(data: pd.DataFrame) -> ModelInternals:
+        model_artifact = train_task(
+            hyperparameters={"C": 1.0, "max_iter": 1000},
+            data=data,
+            loader_kwargs={},
+            splitter_kwargs={},
+            parser_kwargs={},
+        )
+        return get_model_internals(model_object=model_artifact.model_object)
+
+    output = wf(data=mock_data)
+    assert isinstance(output.coef, list)
+    assert all(isinstance(x, float) for x in output.coef)
+    assert isinstance(output.intercept, float)
+
+
+def test_model_predict_task_in_flyte_workflow(model, mock_data):
+    """Test that the unionml.Model-derived prediction task can be used in regular Flyte workflows."""
+    model_obj = LogisticRegression()
+    model_obj.fit(mock_data[["x", "x2", "x3"]], mock_data["y"])
+
+    predict_task = model.predict_task()
+
+    @task
+    def normalize_predictions(predictions: typing.List[float]) -> typing.List[float]:
+        """Task that normalizes predictions."""
+        s = pd.Series(predictions)
+        return (s - s.mean() / s.std()).tolist()
+
+    @workflow
+    def wf(model_obj: LogisticRegression, features: pd.DataFrame) -> typing.List[float]:
+        predictions = predict_task(model_object=model_obj, data=features)
+        return normalize_predictions(predictions=predictions)
+
+    normalized_predictions = wf(model_obj=model_obj, features=mock_data[["x", "x2", "x3"]])
+
+    assert all(isinstance(x, float) for x in normalized_predictions)
+    assert any(x < 0 for x in normalized_predictions)
+    assert any(x > 0 for x in normalized_predictions)

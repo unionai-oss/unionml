@@ -18,9 +18,11 @@ from flytekit.configuration import Config
 from flytekit.core.tracker import TrackedInstance
 from flytekit.remote import FlyteRemote
 from flytekit.remote.executions import FlyteWorkflowExecution
+from flytekit.types.pickle import FlytePickle
 
 import unionml.type_guards as type_guards
 from unionml.dataset import Dataset
+from unionml.defaults import DEFAULT_RESOURCES
 from unionml.utils import inner_task, is_keras_model, is_pytorch_model
 
 
@@ -107,8 +109,8 @@ class Model(TrackedInstance):
         self._predict_from_features_task = None
 
         # user-provided task kwargs
-        self._train_task_kwargs = None
-        self._predict_task_kwargs = None
+        self._train_task_kwargs: Optional[Dict[str, Any]] = None
+        self._predict_task_kwargs: Optional[Dict[str, Any]] = None
 
         # dynamically defined types
         self._hyperparameter_type: Optional[Type] = None
@@ -191,8 +193,18 @@ class Model(TrackedInstance):
         self._init = fn
         return self._init
 
-    def trainer(self, fn=None, **train_task_kwargs):
-        """Register a function for training a model object."""
+    def trainer(self, fn: Callable = None, **train_task_kwargs):
+        """Register a function for training a model object.
+
+        This function is the primary entrypoint for defining your application's model-training behavior.
+
+        See the :ref:`User Guide <model_trainer>` for more.
+
+        :param fn: function to use as the trainer.
+        :param train_task_kwargs: keyword arguments to pass into the
+            :doc:`flytekit task <flytekit:generated/flytekit.task>` that will be composed of the input ``fn`` and
+            functions defined in the bound :py:class:`~unionml.dataset.Dataset`.
+        """
         if fn is None:
             return partial(self.trainer, **train_task_kwargs)
 
@@ -210,17 +222,31 @@ class Model(TrackedInstance):
 
         type_guards.guard_trainer(fn, self.model_type, expected_types)
         self._trainer = fn
-        self._train_task_kwargs = train_task_kwargs
+        self._train_task_kwargs = {"requests": DEFAULT_RESOURCES, "limits": DEFAULT_RESOURCES, **train_task_kwargs}
         return self._trainer
 
     def predictor(self, fn=None, **predict_task_kwargs):
-        """Register a function that generates predictions from a model object."""
+        """Register a function that generates predictions from a model object.
+
+        This function is the primary entrypoint for defining your application's prediction behavior.
+
+        See the :ref:`User Guide <model_predictor>` for more.
+
+        :param fn: function to use as the predictor.
+        :param train_task_kwargs: keyword arguments to pass into the
+            :doc:`flytekit task <flytekit:generated/flytekit.task>` that will be composed of the input ``fn`` and
+            functions defined in the bound :py:class:`~unionml.dataset.Dataset`.
+        """
         if fn is None:
             return partial(self.predictor, **predict_task_kwargs)
 
         type_guards.guard_predictor(fn, self.model_type, self._dataset.feature_type)
         self._predictor = fn
-        self._predict_task_kwargs = predict_task_kwargs
+        self._predict_task_kwargs = {
+            "requests": DEFAULT_RESOURCES,
+            "limits": DEFAULT_RESOURCES,
+            **predict_task_kwargs,
+        }
         return self._predictor
 
     def evaluator(self, fn):
@@ -568,14 +594,20 @@ class Model(TrackedInstance):
         self.artifact = ModelArtifact(self.load(model_path))
         return self.artifact.model_object
 
-    def serve(self, app: FastAPI, remote: bool = False, model_version: str = "latest"):
+    def serve(
+        self,
+        app: FastAPI,
+        remote: bool = False,
+        app_version: Optional[str] = None,
+        model_version: str = "latest",
+    ):
         """Create a FastAPI serving app.
 
         :param app: A ``FastAPI`` app to use for model serving.
         """
         from unionml.fastapi import serving_app
 
-        serving_app(self, app, remote=remote, model_version=model_version)
+        serving_app(self, app, remote=remote, app_version=app_version, model_version=model_version)
 
     def remote(
         self,
@@ -706,7 +738,6 @@ class Model(TrackedInstance):
             },
             project=self._remote.default_project,
             domain=self._remote.default_domain,
-            wait=wait,
             type_hints={
                 "hyperparameters": self.hyperparameter_type,
                 "loader_kwargs": self._dataset.loader_kwargs_type,
@@ -719,9 +750,11 @@ class Model(TrackedInstance):
             f"Executing {train_wf.id.name}, execution name: {execution.id.name}."
             f"\nGo to {console_url} to see the execution in the console."
         )
+
         if not wait:
             return execution
 
+        self.remote_wait(execution)
         self.remote_load(execution)
         return self.artifact
 
@@ -816,8 +849,13 @@ class Model(TrackedInstance):
             print("Done.")
 
         with self._remote.remote_context():
+            try:
+                model_object = execution.outputs.get("model_object", as_type=self.model_type)
+            except ValueError:
+                model_object = execution.outputs.get("model_object", as_type=FlytePickle)
+
             self.artifact = ModelArtifact(
-                execution.outputs.get("model_object", as_type=self.model_type),
+                model_object,
                 execution.outputs["hyperparameters"],
                 execution.outputs["metrics"],
             )
@@ -900,7 +938,11 @@ class Model(TrackedInstance):
             import torch
 
             deserialized_model = torch.load(file, *args, **kwargs)
-            model = model_type(**deserialized_model["hyperparameters"])
+            if self._init_callable is not None:
+                model = self._init(deserialized_model["hyperparameters"])
+            else:
+                model = model_type(**deserialized_model["hyperparameters"])
+
             model.load_state_dict(deserialized_model["model_obj"])
             return model
         elif is_keras_model(model_type):
