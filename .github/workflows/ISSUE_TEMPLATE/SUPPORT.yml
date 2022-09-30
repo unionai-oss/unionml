@@ -1,0 +1,51 @@
+name: Contact Support
+description: Contact support and get help
+title: Contact Support
+labels: 'support'
+assignees: 
+body:
+  - type: markdown
+    attributes:
+      value: |
+        # Contact Support
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe your issue or question here
+      placeholder: Tell us what you need help with
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain your problem.
+      placeholder: Add screenshots here
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: If applicable, add logs to help explain your problem.
+      placeholder: Add logs here
+    validations:
+      required: false
+  - type: input
+    id: contact
+    attributes:
+      label: Contact Details
+      description: How can we get in touch with you?
+      placeholder: ex.
+    validations:
+      required: true
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](/CODE_OF_CONDUCT.md)
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
+
