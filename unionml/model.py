@@ -514,15 +514,19 @@ class Model(TrackedInstance):
 
         :param hyperparameters: a dictionary mapping hyperparameter names to values. This is passed into the
             ``init`` callable to initialize a model object.
-        :param loader_kwargs: key-word arguments to pass to the registered :meth:`unionml.Dataset.loader` function.
+        :param loader_kwargs: key-word arguments to pass to the registered 
+            - :meth:`unionml.Dataset.loader` function.
             This will override any defaults set in the function definition.
-        :param splitter_kwargs: key-word arguments to pass to the registered :meth:`unionml.Dataset.splitter` function.
+        :param splitter_kwargs: key-word arguments to pass to the registered 
+            - :meth:`unionml.Dataset.splitter` function.
             This will override any defaults set in the function definition.
-        :param parser_kwargs: key-word arguments to pass to the registered :meth:`unionml.Dataset.parser` function.
+        :param parser_kwargs: key-word arguments to pass to the registered 
+            - :meth:`unionml.Dataset.parser` function.
             This will override any defaults set in the function definition.
         :param trainer_kwargs: a dictionary mapping training parameter names to values. There training parameters
             are determined by the keyword-only arguments of the ``model.trainer`` function.
-        :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.Dataset.reader` method signature.
+        :param reader_kwargs: keyword arguments that correspond to the 
+            - :meth:`unionml.Dataset.reader` method signature.
         """
         trainer_kwargs = {} if trainer_kwargs is None else trainer_kwargs
         model_obj, hyperparameters, metrics = self.train_workflow()(
