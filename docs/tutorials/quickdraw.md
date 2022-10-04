@@ -254,8 +254,8 @@ def train_quickdraw(module: nn.Module, dataset: QuickDrawDataset, num_epochs: in
     return module
 ```
 
-Why did we do through all of this trouble to implementing the dataset and model classes/functions
-instead of embedding it inside our UnionML app?
+Why did we go through all of this trouble to implement the dataset and model classes/functions
+instead of embedding it in our UnionML app?
 
 Well, it often makes sense to separate the concerns of the dataset/model implementation from the
 application code that will scale or serve it, especially for more complex projects. Depending on the
