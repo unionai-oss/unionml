@@ -466,8 +466,8 @@ class Model(TrackedInstance):
             **self._predict_task_kwargs,
         )
         def predict_task(model_object, **kwargs):
-            parsed_data = self._dataset._parser(kwargs[data_arg_name], **self._dataset.parser_kwargs)
-            features = parsed_data[self._dataset._parser_feature_key]
+            parsed_data = self.dataset._parser(kwargs[data_arg_name], **self._dataset.parser_kwargs)
+            features = self.dataset._feature_transformer(parsed_data[self._dataset._parser_feature_key])
             return self._predictor(model_object, features)
 
         self._predict_task = predict_task

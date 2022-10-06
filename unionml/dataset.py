@@ -323,11 +323,17 @@ class Dataset(TrackedInstance):
         splits = self._splitter(data, **splitter_kwargs)
 
         if len(splits) == 1:
-            return {"train": self._parser(splits[0], **parser_kwargs)}
+            train_data = [*self._parser(splits[0], **parser_kwargs)]
+            train_data[self._parser_feature_key] = self._feature_transformer(train_data[self._parser_feature_key])
+            return {"train": train_data}
 
         train_split, test_split = splits
-        train_data = self._parser(train_split, **parser_kwargs)
-        test_data = self._parser(test_split, **parser_kwargs)
+        train_data = [*self._parser(train_split, **parser_kwargs)]
+        test_data = [*self._parser(test_split, **parser_kwargs)]
+
+        train_data[self._parser_feature_key] = self._feature_transformer(train_data[self._parser_feature_key])
+        test_data[self._parser_feature_key] = self._feature_transformer(test_data[self._parser_feature_key])
+
         return {
             "train": train_data,
             "test": test_data,
