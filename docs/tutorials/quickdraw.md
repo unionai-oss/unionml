@@ -397,7 +397,7 @@ gr.Interface(
 ).launch()
 ```
 
-You might notice that the model may not perform as well as you might expect...
+You might notice that the model may not perform as you might expect it...
 welcome to the world of machine learning practice! To obtain a better model given
 a fixed dataset, feel free to play around with the model hyperparameters or even
 switch up the model type/architecture that's defined in the `trainer` function.
