@@ -9,7 +9,7 @@ ports:
     onOpen: open-browser
 github:
   prebuilds:
-    master: true
+    main: true
     branches: true
     pullRequests: true
     pullRequestsFromForks: true
