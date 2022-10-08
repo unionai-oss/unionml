@@ -37,6 +37,12 @@ To learn more, check out the 📖 [Documentation](https://unionml.readthedocs.io
 
 ## Installing
 
+Install using conda:
+
+```bash
+conda install -c conda-forge unionml
+```
+
 Install using pip:
 
 ```bash
