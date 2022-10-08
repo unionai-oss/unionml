@@ -466,8 +466,8 @@ class Model(TrackedInstance):
             **self._predict_task_kwargs,
         )
         def predict_task(model_object, **kwargs):
-            parsed_data = self._dataset._parser(kwargs[data_arg_name], **self._dataset.parser_kwargs)
-            features = parsed_data[self._dataset._parser_feature_key]
+            parsed_data = self.dataset._parser(kwargs[data_arg_name], **self._dataset.parser_kwargs)
+            features = self.dataset._feature_transformer(parsed_data[self._dataset._parser_feature_key])
             return self._predictor(model_object, features)
 
         self._predict_task = predict_task
@@ -523,6 +523,17 @@ class Model(TrackedInstance):
         :param trainer_kwargs: a dictionary mapping training parameter names to values. There training parameters
             are determined by the keyword-only arguments of the ``model.trainer`` function.
         :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.Dataset.reader` method signature.
+
+        The train method invokes an execution graph that composes together the following functions to train and evaluate a model:
+
+            - :meth:`unionml.Dataset.reader`
+            - :meth:`unionml.Dataset.loader`
+            - :meth:`unionml.Dataset.splitter`
+            - :meth:`unionml.Dataset.parser`
+            - :meth:`unionml.Model.trainer`
+            - :meth:`unionml.Model.predictor`
+            - :meth:`unionml.Model.evaluator`
+
         """
         trainer_kwargs = {} if trainer_kwargs is None else trainer_kwargs
         model_obj, hyperparameters, metrics = self.train_workflow()(
