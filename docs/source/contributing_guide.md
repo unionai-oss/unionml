@@ -44,6 +44,10 @@ Install dependencies:
 pip install -r requirements-dev.txt
 ```
 
+```
+pip install -r requirements-docs.txt
+```
+
 ### `pre-commit` Setup
 
 This project uses [pre-commit](https://pre-commit.com/) to ensure code standards. Follow the
