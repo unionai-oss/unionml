@@ -19,8 +19,9 @@ kernelspec:
 
 +++
 
-The MNIST dataset is considered to be the "hello world" example of machine
-learning. In that same spirit, we'll be making the "hello world" UnionML app
+The MNIST dataset is an acronym that stands for the Modified National Institute of Standards and Technology(MNIST) dataset. It is a dataset of 60,000 small square 28×28 pixel grayscale images of handwritten single digits between 0 and 9.
+
+The MNIST dataset is considered to be the "hello world" example of machine learning. In that same spirit, we'll be making the "hello world" UnionML app
 using this dataset and a simple linear classifier with
 [sklearn](https://scikit-learn.org/stable/index.html).
 
@@ -42,6 +43,8 @@ This tutorial is adapted from this [sklearn guide](https://scikit-learn.org/stab
 > make sure that the newly installed packages are correctly imported in the next line below.
 +++
 
+## Step 1: Setup and importing libraries
+
 First let's import our dependencies and create the UnionML `Dataset` and `Model`
 objects:
 
@@ -62,6 +65,14 @@ from unionml import Dataset, Model
 dataset = Dataset(name="mnist_dataset", test_size=0.2, shuffle=True, targets=["class"])
 model = Model(name="mnist_classifier", init=LogisticRegression, dataset=dataset)
 ```
+Here are the following functions used above:
+- `dataset` - It is the central source that consist of multiple rows and columns of data, to be used for training a model.
+- `model` - It refers to thr training of the machine to predict or recognize patterns. Here Logistic Regression is initiated (`init`), which predicts the probability of a binary (yes/no) event occurring. 
+- `test-size` - It is the function that indicates the percentage of the data that should be held over for testing. In this case the dataset is divided into test-set(20%) and training set(80%) for evaluation.
+- `shuffle` - It randomly shuffles data from a dataset within attributes(column of a dataset) before validation split.
+- `targets` - It is an argument that accepts a list of strings referring to the column names.
+
+## Step 2: Storage and caching of data
 
 For convenience, we cache the dataset so that MNIST loading is faster upon subsequent calls
 to the `fetch_openml` function:
@@ -73,8 +84,11 @@ from joblib import Memory
 memory = Memory(Path.home() / "tmp")
 fetch_openml_cached = memory.cache(fetch_openml)
 ```
+Here we use `/ "temp"` for shortlife fast storage. The function `fetch_openml` caches the HTTP result from the OpenML server.
 
-Next, we define our core UnionML app functions:
+## Step 3: Setup of UnionML Core functions 
+
+Run the following command to define our core UnionML app functions:
 
 ```{code-cell} ipython3
 @dataset.reader(cache=True, cache_version="1")
@@ -125,8 +139,15 @@ def evaluator(
 ) -> float:
     return float(accuracy_score(target.squeeze(), estimator.predict(features)))
 ```
+The above functions help you create a UnionML App with features like:
+- `dataset.reader()` - Register a [reader](https://unionml.readthedocs.io/en/latest/generated_api_reference/unionml.dataset.Dataset.html#unionml.dataset.Dataset.reader) function for getting data from some external source.
+- `model.init` - Register a function for [initializing](https://unionml.readthedocs.io/en/latest/generated_api_reference/unionml.model.Model.html#unionml.model.Model.init) a model object.
+-  `model.trainer` - Register a function for [training](https://unionml.readthedocs.io/en/latest/generated_api_reference/unionml.model.Model.html#unionml.model.Model.trainer) a model object.
+-  `model.predictor` - Register a function that generates [predictions](https://unionml.readthedocs.io/en/latest/generated_api_reference/unionml.model.Model.html#unionml.model.Model.predictor) from a model object.
+-  `model.evaluator` - Register a function for [producing metrics](https://unionml.readthedocs.io/en/latest/generated_api_reference/unionml.model.Model.html#unionml.model.Model.evaluator) for given model object.
 
-## Training a Model Locally
+
+## Step 4: Training a Model Locally
 
 Then we can train our model locally:
 
@@ -141,13 +162,22 @@ estimator, metrics = model.train(
 features = reader().sample(5, random_state=42).drop(["class"], axis="columns")
 print(estimator, metrics, sep="\n")
 ```
+The above codes represent the following functions and arguments:
+- `hyperparameters` - Parameters that control the learning process of the model and defines the parameters which the model will ultimately learn. 
+- `classifier__penalty` - It imposes a penalty to the logistic model for having too many variables. Here, L2 regularization penalizes the sum of squares of the weights.
+- `classifier__C` - It is inverse of regularization strength. Smaller values specify stronger regularization.
+- `classifier__max_iter` - It determines the maximum number of passes over the training data (aka epochs). By default it is set to 1,000.
+- `sample()` - It returns a random sample of items from an axis of object. 
+- `random_state` - Argument if set to a particular integer, will return same rows as sample in every iteration.
+- `drop()` - Function returns a new object with labels in requested axis removed. (`labels` : Index or column labels to drop; `axis` : Whether to drop labels from the index (0 / "index") or columns (1 / "columns").)
 
-## Serving on a Gradio Widget
 
-Finally, let's create a `gradio` widget by simply using the `model.predict` method into
+## Step 5: Serving on a Gradio Widget
+
+Finally, let's create a `gradio` widget by simply using the [`model.predict`](https://unionml.readthedocs.io/en/latest/generated_api_reference/unionml.model.Model.html#unionml.model.Model.predict) method into
 the `gradio.Interface` object.
 
-Before we do this, however, we want to define a `feature_loader` function to handle the raw input
+Before we do this, however, we want to define a [`feature_loader`](https://unionml.readthedocs.io/en/latest/dataset.html#feature-loader) function to handle the raw input
 coming from the `gradio` widget:
 
 ```{code-cell} ipython3
