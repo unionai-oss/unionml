@@ -23,7 +23,7 @@ The MNIST dataset is an acronym that stands for the Modified National Institute 
 
 The MNIST dataset is considered to be the "hello world" example of machine learning. In that same spirit, we'll be making the "hello world" UnionML app
 using this dataset and a simple linear classifier with
-[sklearn](https://scikit-learn.org/stable/index.html).
+[sklearn](https://scikit-learn.org/stable/index.html)
 
 With this dataset, we'll see just how easy it is to create a single-script UnionML app.
 
