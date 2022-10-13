@@ -34,3 +34,7 @@
 ## Note to Reviewers
 
 <!-- Add notes to reviewers if applicable -->
+
+## Open in Gitpod
+
+<!-- Gitpod badge will be automatically added here by the bot -->
