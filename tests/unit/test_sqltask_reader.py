@@ -44,9 +44,7 @@ def test_sqlite_dataset_reader(mock_sqlite_db, task_cls, task_config_cls, uri_fn
 
     sqlite_task = task_cls(
         name="test_sqlite_db",
-        query_template="""
-        SELECT x1, x2, x3, y FROM mock_table LIMIT {{.inputs.limit}}
-        """,
+        query_template="SELECT x1, x2, x3, y FROM mock_table LIMIT {{.inputs.limit}}",
         inputs=kwtypes(limit=int),
         output_schema_type=pd.DataFrame,
         task_config=task_config_cls(uri=uri_fn(mock_sqlite_db)),

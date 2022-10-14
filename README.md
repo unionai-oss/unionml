@@ -110,3 +110,7 @@ By defining these four methods, you've created a minimal **UnionML App** that yo
 ## Contributing
 
 All contributions are welcome 🤝 ! Check out the [contribution guide](https://unionml.readthedocs.io/en/latest/contributing.html) to learn more about how to contribute.
+
+### Gitpod
+
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/unionai-oss/unionml)

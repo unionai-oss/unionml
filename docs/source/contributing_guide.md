@@ -41,7 +41,7 @@ source activate ~/venvs/unionml/bin/activate
 Install dependencies:
 
 ```
-pip install -r requirements-dev.txt
+pip install -r requirements-docs.txt
 ```
 
 ### `pre-commit` Setup
