@@ -69,7 +69,7 @@ model = Model(name="mnist_classifier", init=LogisticRegression, dataset=dataset)
 Here are the following functions used above:
 
 - `dataset` - It is the central source that consist of multiple rows and columns of data, to be used for training a model.
-- `model` - It refers to thr training of the machine to predict or recognize patterns. Here Logistic Regression is initiated (`init`), which predicts the probability of a binary (yes/no) event occurring. 
+- `model` - It refers to thr training of the machine to predict or recognize patterns. Here Logistic Regression is initiated (`init`), which predicts the probability of a binary (yes/no) event occurring.
 - `test-size` - It is the function that indicates the percentage of the data that should be held over for testing. In this case the dataset is divided into test-set(20%) and training set(80%) for evaluation.
 - `shuffle` - It randomly shuffles data from a dataset within attributes(column of a dataset) before validation split.
 - `targets` - It is an argument that accepts a list of strings referring to the column names.
@@ -89,7 +89,7 @@ fetch_openml_cached = memory.cache(fetch_openml)
 
 Here we use `/ "temp"` for shortlife fast storage. The function `fetch_openml` caches the HTTP result from the OpenML server.
 
-## Step 3: Setup of UnionML Core functions 
+## Step 3: Setup of UnionML Core functions
 
 Run the following command to define our core UnionML app functions:
 
@@ -169,11 +169,11 @@ print(estimator, metrics, sep="\n")
 
 The above codes represent the following functions and arguments:
 
-- `hyperparameters` - Parameters that control the learning process of the model and defines the parameters which the model will ultimately learn. 
+- `hyperparameters` - Parameters that control the learning process of the model and defines the parameters which the model will ultimately learn.
 - `classifier__penalty` - It imposes a penalty to the logistic model for having too many variables. Here, L2 regularization penalizes the sum of squares of the weights.
 - `classifier__C` - It is inverse of regularization strength. Smaller values specify stronger regularization.
 - `classifier__max_iter` - It determines the maximum number of passes over the training data (aka epochs). By default it is set to 1,000.
-- `sample()` - It returns a random sample of items from an axis of object. 
+- `sample()` - It returns a random sample of items from an axis of object.
 - `random_state` - Argument if set to a particular integer, will return same rows as sample in every iteration.
 - `drop()` - Function returns a new object with labels in requested axis removed. (`labels` : Index or column labels to drop; `axis` : Whether to drop labels from the index (0 / "index") or columns (1 / "columns").)
 
