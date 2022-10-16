@@ -65,7 +65,9 @@ from unionml import Dataset, Model
 dataset = Dataset(name="mnist_dataset", test_size=0.2, shuffle=True, targets=["class"])
 model = Model(name="mnist_classifier", init=LogisticRegression, dataset=dataset)
 ```
+
 Here are the following functions used above:
+
 - `dataset` - It is the central source that consist of multiple rows and columns of data, to be used for training a model.
 - `model` - It refers to thr training of the machine to predict or recognize patterns. Here Logistic Regression is initiated (`init`), which predicts the probability of a binary (yes/no) event occurring. 
 - `test-size` - It is the function that indicates the percentage of the data that should be held over for testing. In this case the dataset is divided into test-set(20%) and training set(80%) for evaluation.
@@ -84,6 +86,7 @@ from joblib import Memory
 memory = Memory(Path.home() / "tmp")
 fetch_openml_cached = memory.cache(fetch_openml)
 ```
+
 Here we use `/ "temp"` for shortlife fast storage. The function `fetch_openml` caches the HTTP result from the OpenML server.
 
 ## Step 3: Setup of UnionML Core functions 
@@ -139,13 +142,14 @@ def evaluator(
 ) -> float:
     return float(accuracy_score(target.squeeze(), estimator.predict(features)))
 ```
+
 The above functions help you create a UnionML App with features like:
+
 - `dataset.reader()` - Register a [reader](https://unionml.readthedocs.io/en/latest/generated_api_reference/unionml.dataset.Dataset.html#unionml.dataset.Dataset.reader) function for getting data from some external source.
 - `model.init` - Register a function for [initializing](https://unionml.readthedocs.io/en/latest/generated_api_reference/unionml.model.Model.html#unionml.model.Model.init) a model object.
--  `model.trainer` - Register a function for [training](https://unionml.readthedocs.io/en/latest/generated_api_reference/unionml.model.Model.html#unionml.model.Model.trainer) a model object.
--  `model.predictor` - Register a function that generates [predictions](https://unionml.readthedocs.io/en/latest/generated_api_reference/unionml.model.Model.html#unionml.model.Model.predictor) from a model object.
--  `model.evaluator` - Register a function for [producing metrics](https://unionml.readthedocs.io/en/latest/generated_api_reference/unionml.model.Model.html#unionml.model.Model.evaluator) for given model object.
-
+- `model.trainer` - Register a function for [training](https://unionml.readthedocs.io/en/latest/generated_api_reference/unionml.model.Model.html#unionml.model.Model.trainer) a model object.
+- `model.predictor` - Register a function that generates [predictions](https://unionml.readthedocs.io/en/latest/generated_api_reference/unionml.model.Model.html#unionml.model.Model.predictor) from a model object.
+- `model.evaluator` - Register a function for [producing metrics](https://unionml.readthedocs.io/en/latest/generated_api_reference/unionml.model.Model.html#unionml.model.Model.evaluator) for given model object.
 
 ## Step 4: Training a Model Locally
 
@@ -162,7 +166,9 @@ estimator, metrics = model.train(
 features = reader().sample(5, random_state=42).drop(["class"], axis="columns")
 print(estimator, metrics, sep="\n")
 ```
+
 The above codes represent the following functions and arguments:
+
 - `hyperparameters` - Parameters that control the learning process of the model and defines the parameters which the model will ultimately learn. 
 - `classifier__penalty` - It imposes a penalty to the logistic model for having too many variables. Here, L2 regularization penalizes the sum of squares of the weights.
 - `classifier__C` - It is inverse of regularization strength. Smaller values specify stronger regularization.
@@ -170,7 +176,6 @@ The above codes represent the following functions and arguments:
 - `sample()` - It returns a random sample of items from an axis of object. 
 - `random_state` - Argument if set to a particular integer, will return same rows as sample in every iteration.
 - `drop()` - Function returns a new object with labels in requested axis removed. (`labels` : Index or column labels to drop; `axis` : Whether to drop labels from the index (0 / "index") or columns (1 / "columns").)
-
 
 ## Step 5: Serving on a Gradio Widget
 
