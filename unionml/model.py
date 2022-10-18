@@ -391,6 +391,9 @@ class Model(TrackedInstance):
         for output_name, promise in predict_node.outputs.items():
             wf.add_workflow_output(output_name, promise)
 
+        if self._callbacks:
+            self.callbacks_workflow(False, wf, predict_node.outputs)
+
         return wf
 
     def predict_from_features_workflow(self):
@@ -406,6 +409,9 @@ class Model(TrackedInstance):
         predict_node = wf.add_entity(predict_task, **{k: wf.inputs[k] for k in wf.inputs})
         for output_name, promise in predict_node.outputs.items():
             wf.add_workflow_output(output_name, promise)
+
+        if self._callbacks:
+            self.callbacks_workflow(True, wf, predict_node.outputs)
 
         return wf
 
@@ -615,24 +621,19 @@ class Model(TrackedInstance):
                 features=self._dataset.get_features(features),
             )
 
-        if self._callbacks:
-            self.callbacks_workflow(features is not None, wf)
-
         return wf
 
-    def callbacks_workflow(self, has_features: bool, wf: Workflow):
+    def callbacks_workflow(self, has_features: bool, wf: Workflow, predict_outputs: Dict[str, Any]):
         """Create a Flyte callback workflow using raw features."""
-        predict_task = self.predict_from_features_task() if has_features else self.predict_task()
-        model_arg_name, *_ = predict_task.python_interface.inputs.keys()
-        wf.add_workflow_input("model_object", predict_task.python_interface.inputs[model_arg_name])
+        predict_promise, *_ = predict_outputs.values()
 
         if has_features:
             for callback in self._callbacks:
                 wf.add_entity(
-                    self.callback_provided_features_task(callback),
+                    self.callback_from_features_task(callback),
                     model_object=wf.inputs["model_object"],
                     features=wf.inputs["features"],
-                    predictions=wf.inputs["predictions"],
+                    predictions=predict_promise,
                 )
         else:
             for node in wf.nodes:
@@ -644,17 +645,19 @@ class Model(TrackedInstance):
             dataset_promise, *_ = node.outputs.values()
             for callback in self._callbacks:
                 wf.add_entity(
-                    self.callback_features_from_reader_task(callback),
+                    self.callback_with_reader_task(callback),
                     model_object=wf.inputs["model_object"],
                     data=dataset_promise,
-                    predictions=wf.inputs["predictions"],
+                    predictions=predict_promise,
                 )
 
         return wf
 
-    def callback_features_from_reader_task(self, callback: Callable):
-        if self.__callback_tasks and callback.__qualname__ in self.__callback_tasks:
-            return self.__callback_task[callback.__qualname__]
+    def callback_with_reader_task(self, callback: Callable):
+        task_cache_name = callback.__qualname__ + ":reader"
+
+        if self.__callback_tasks and task_cache_name in self.__callback_tasks:
+            return self.__callback_tasks[task_cache_name]
 
         # assume that dataset_datatype is a dict with only a single entry
         [(data_arg_name, data_arg_type)] = self._dataset.dataset_datatype.items()
@@ -671,18 +674,20 @@ class Model(TrackedInstance):
             input_parameters=OrderedDict([(p.name, p) for p in [model_param, data_param, prediction_param]]),
             return_annotation=None,
         )
-        def callback_task(model_object, **kwargs) -> None:
+        def callback_with_reader_task(model_object, **kwargs) -> None:
             predictions = kwargs.pop("predictions")
             parsed_data = self.dataset._parser(kwargs[data_arg_name], **self._dataset.parser_kwargs)
             features: Any = self.dataset._feature_transformer(parsed_data[self._dataset._parser_feature_key])
             return self.__callbacks[callback.__qualname__](model_object, features, predictions)
 
-        self.__callback_tasks[callback.__qualname__] = callback_task
-        return callback_task
+        self.__callback_tasks[task_cache_name] = callback_with_reader_task
+        return callback_with_reader_task
 
-    def callback_provided_features_task(self, callback: Callable):
-        if self.__callback_tasks and callback.__qualname__ in self.__callback_tasks:
-            return self.__callback_task[callback.__qualname__]
+    def callback_from_features_task(self, callback: Callable):
+        task_cache_name = callback.__qualname__ + ":features"
+
+        if self.__callback_tasks and task_cache_name in self.__callback_tasks:
+            return self.__callback_tasks[task_cache_name]
 
         callback_sig = signature(callback)
         model_param, features_param, prediction_param = callback_sig.parameters.values()
@@ -696,11 +701,11 @@ class Model(TrackedInstance):
             input_parameters=OrderedDict([(p.name, p) for p in [model_param, features_param, prediction_param]]),
             return_annotation=None,
         )
-        def callback_task(model_object, features, predictions) -> None:
+        def callback_from_features_task(model_object, features, predictions) -> None:
             return self.__callbacks[callback.__qualname__](model_object, features, predictions)
 
-        self.__callback_tasks[callback.__qualname__] = callback_task
-        return callback_task
+        self.__callback_tasks[task_cache_name] = callback_from_features_task
+        return callback_from_features_task
 
     def save(self, file: Union[str, os.PathLike, IO], *args, **kwargs):
         """Save the model object to disk."""
