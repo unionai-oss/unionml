@@ -109,6 +109,8 @@ class Model(TrackedInstance):
         self._train_task = None
         self._predict_task = None
         self._predict_from_features_task = None
+        self.__callbacks: Dict[str, Callable] = {}
+        self.__callback_tasks: Dict[str, Any] = {}
 
         # user-provided task kwargs
         self._train_task_kwargs: Optional[Dict[str, Any]] = None
@@ -118,6 +120,21 @@ class Model(TrackedInstance):
         self._hyperparameter_type: Optional[Type] = None
 
         self._patch_destination_dir: Optional[str] = None
+
+    @property
+    def _callbacks(self) -> List[Callable]:
+        return list(self.__callbacks.values())
+
+    @_callbacks.setter
+    def _callbacks(self, callbacks) -> List[Callable]:
+        if len(self._callbacks):
+            raise ValueError("Callbacks have already been set on this model. You can only set callbacks once.")
+
+        # Replace the content of the __callbacks dict without creating a new dict
+        self.__callbacks.clear()
+        self.__callbacks.update({callback.__qualname__: callback for callback in callbacks})
+
+        return self._callbacks
 
     @property
     def artifact(self) -> Optional[ModelArtifact]:
@@ -227,7 +244,7 @@ class Model(TrackedInstance):
         self._train_task_kwargs = {"requests": DEFAULT_RESOURCES, "limits": DEFAULT_RESOURCES, **train_task_kwargs}
         return self._trainer
 
-    def predictor(self, fn=None, **predict_task_kwargs):
+    def predictor(self, fn=None, callbacks: Union[List[Callable], None] = None, **predict_task_kwargs):
         """Register a function that generates predictions from a model object.
 
         This function is the primary entrypoint for defining your application's prediction behavior.
@@ -240,7 +257,7 @@ class Model(TrackedInstance):
             functions defined in the bound :py:class:`~unionml.dataset.Dataset`.
         """
         if fn is None:
-            return partial(self.predictor, **predict_task_kwargs)
+            return partial(self.predictor, callbacks=callbacks, **predict_task_kwargs)
 
         type_guards.guard_predictor(fn, self.model_type, self._dataset.feature_type)
         self._predictor = fn
@@ -249,6 +266,21 @@ class Model(TrackedInstance):
             "limits": DEFAULT_RESOURCES,
             **predict_task_kwargs,
         }
+
+        # Checked after predictor since we need the predictor's return type.
+        if callbacks is not None:
+            for cb in callbacks:
+                if not callable(cb):
+                    raise ValueError("Callback must be a callable function.")
+
+                type_guards.guard_callback(
+                    predictor=fn,
+                    callback=cb,
+                    expected_model_type=self.model_type,
+                    expected_data_type=self._dataset.feature_type,
+                )
+            self._callbacks = callbacks
+
         return self._predictor
 
     def evaluator(self, fn):
@@ -358,6 +390,7 @@ class Model(TrackedInstance):
         )
         for output_name, promise in predict_node.outputs.items():
             wf.add_workflow_output(output_name, promise)
+
         return wf
 
     def predict_from_features_workflow(self):
@@ -367,11 +400,13 @@ class Model(TrackedInstance):
         wf = Workflow(name=self.predict_from_features_workflow_name)
         for i, (arg, type) in enumerate(predict_task.python_interface.inputs.items()):
             # assume that the first argument is the model object
+            print(f"adding input in predict_from_features_workflow: {(arg, type)}")
             wf.add_workflow_input("model_object" if i == 0 else arg, type)
 
         predict_node = wf.add_entity(predict_task, **{k: wf.inputs[k] for k in wf.inputs})
         for output_name, promise in predict_node.outputs.items():
             wf.add_workflow_output(output_name, promise)
+
         return wf
 
     def train_task(self):
@@ -570,12 +605,102 @@ class Model(TrackedInstance):
                 "ModelArtifact not found. You must train a model first with the `train` method before generating "
                 "predictions."
             )
+
+        wf: Workflow
         if features is None:
-            return self.predict_workflow()(model_object=self.artifact.model_object, **reader_kwargs)
-        return self.predict_from_features_workflow()(
-            model_object=self.artifact.model_object,
-            features=self._dataset.get_features(features),
+            wf = self.predict_workflow()(model_object=self.artifact.model_object, **reader_kwargs)
+        else:
+            wf = self.predict_from_features_workflow()(
+                model_object=self.artifact.model_object,
+                features=self._dataset.get_features(features),
+            )
+
+        if self._callbacks:
+            self.callbacks_workflow(features is not None, wf)
+
+        return wf
+
+    def callbacks_workflow(self, has_features: bool, wf: Workflow):
+        """Create a Flyte callback workflow using raw features."""
+        predict_task = self.predict_from_features_task() if has_features else self.predict_task()
+        model_arg_name, *_ = predict_task.python_interface.inputs.keys()
+        wf.add_workflow_input("model_object", predict_task.python_interface.inputs[model_arg_name])
+
+        if has_features:
+            for callback in self._callbacks:
+                wf.add_entity(
+                    self.callback_provided_features_task(callback),
+                    model_object=wf.inputs["model_object"],
+                    features=wf.inputs["features"],
+                    predictions=wf.inputs["predictions"],
+                )
+        else:
+            for node in wf.nodes:
+                if node.metadata.name == "dataset_task":
+                    break
+            else:
+                raise RuntimeError("Dataset task not found in parent workflow")
+
+            dataset_promise, *_ = node.outputs.values()
+            for callback in self._callbacks:
+                wf.add_entity(
+                    self.callback_features_from_reader_task(callback),
+                    model_object=wf.inputs["model_object"],
+                    data=dataset_promise,
+                    predictions=wf.inputs["predictions"],
+                )
+
+        return wf
+
+    def callback_features_from_reader_task(self, callback: Callable):
+        if self.__callback_tasks and callback.__qualname__ in self.__callback_tasks:
+            return self.__callback_task[callback.__qualname__]
+
+        # assume that dataset_datatype is a dict with only a single entry
+        [(data_arg_name, data_arg_type)] = self._dataset.dataset_datatype.items()
+        data_param = Parameter(data_arg_name, kind=Parameter.KEYWORD_ONLY, annotation=data_arg_type)
+
+        callback_sig = signature(callback)
+        model_param, _, prediction_param = callback_sig.parameters.values()
+        model_param = model_param.replace(name="model_object")
+        prediction_param = prediction_param.replace(name="predictions")
+
+        # TODO: make sure return type is not None
+        @inner_task(
+            unionml_obj=self,
+            input_parameters=OrderedDict([(p.name, p) for p in [model_param, data_param, prediction_param]]),
+            return_annotation=None,
         )
+        def callback_task(model_object, **kwargs) -> None:
+            predictions = kwargs.pop("predictions")
+            parsed_data = self.dataset._parser(kwargs[data_arg_name], **self._dataset.parser_kwargs)
+            features: Any = self.dataset._feature_transformer(parsed_data[self._dataset._parser_feature_key])
+            return self.__callbacks[callback.__qualname__](model_object, features, predictions)
+
+        self.__callback_tasks[callback.__qualname__] = callback_task
+        return callback_task
+
+    def callback_provided_features_task(self, callback: Callable):
+        if self.__callback_tasks and callback.__qualname__ in self.__callback_tasks:
+            return self.__callback_task[callback.__qualname__]
+
+        callback_sig = signature(callback)
+        model_param, features_param, prediction_param = callback_sig.parameters.values()
+        model_param = model_param.replace(name="model_object")
+        features_param = features_param.replace(name="features")
+        prediction_param = prediction_param.replace(name="predictions")
+
+        # TODO: make sure return type is not None
+        @inner_task(
+            unionml_obj=self,
+            input_parameters=OrderedDict([(p.name, p) for p in [model_param, features_param, prediction_param]]),
+            return_annotation=None,
+        )
+        def callback_task(model_object, features, predictions) -> None:
+            return self.__callbacks[callback.__qualname__](model_object, features, predictions)
+
+        self.__callback_tasks[callback.__qualname__] = callback_task
+        return callback_task
 
     def save(self, file: Union[str, os.PathLike, IO], *args, **kwargs):
         """Save the model object to disk."""
