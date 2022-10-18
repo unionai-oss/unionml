@@ -668,20 +668,24 @@ class Model(TrackedInstance):
         model_param = model_param.replace(name="model_object")
         prediction_param = prediction_param.replace(name="predictions")
 
-        # TODO: make sure return type is not None
-        @inner_task(
-            unionml_obj=self,
-            input_parameters=OrderedDict([(p.name, p) for p in [model_param, data_param, prediction_param]]),
-            return_annotation=None,
-        )
         def callback_with_reader_task(model_object, **kwargs) -> None:
             predictions = kwargs.pop("predictions")
             parsed_data = self.dataset._parser(kwargs[data_arg_name], **self._dataset.parser_kwargs)
             features: Any = self.dataset._feature_transformer(parsed_data[self._dataset._parser_feature_key])
             return self.__callbacks[callback.__qualname__](model_object, features, predictions)
 
-        self.__callback_tasks[task_cache_name] = callback_with_reader_task
-        return callback_with_reader_task
+        # The actual flyte tasks need to have unique names, but don't have to be python identifiers,
+        # we don't depend on this format to load the task, that is handled by task_config
+        callback_with_reader_task.__name__ += f"@{callback.__qualname__}"
+
+        self.__callback_tasks[task_cache_name] = inner_task(
+            unionml_obj=self,
+            input_parameters=OrderedDict([(p.name, p) for p in [model_param, data_param, prediction_param]]),
+            return_annotation=None,
+            task_config={"unionml:variant": callback.__qualname__},
+        )(callback_with_reader_task)
+
+        return self.__callback_tasks[task_cache_name]
 
     def callback_from_features_task(self, callback: Callable):
         task_cache_name = callback.__qualname__ + ":features"
@@ -695,17 +699,21 @@ class Model(TrackedInstance):
         features_param = features_param.replace(name="features")
         prediction_param = prediction_param.replace(name="predictions")
 
-        # TODO: make sure return type is not None
-        @inner_task(
-            unionml_obj=self,
-            input_parameters=OrderedDict([(p.name, p) for p in [model_param, features_param, prediction_param]]),
-            return_annotation=None,
-        )
         def callback_from_features_task(model_object, features, predictions) -> None:
             return self.__callbacks[callback.__qualname__](model_object, features, predictions)
 
-        self.__callback_tasks[task_cache_name] = callback_from_features_task
-        return callback_from_features_task
+        # The actual flyte tasks need to have unique names, but don't have to be python identifiers,
+        # we don't depend on this format to load the task, that is handled by task_config
+        callback_from_features_task.__name__ += f"@{callback.__qualname__}"
+
+        self.__callback_tasks[task_cache_name] = inner_task(
+            unionml_obj=self,
+            input_parameters=OrderedDict([(p.name, p) for p in [model_param, features_param, prediction_param]]),
+            return_annotation=None,
+            task_config={"unionml:variant": callback.__qualname__},
+        )(callback_from_features_task)
+
+        return self.__callback_tasks[task_cache_name]
 
     def save(self, file: Union[str, os.PathLike, IO], *args, **kwargs):
         """Save the model object to disk."""
