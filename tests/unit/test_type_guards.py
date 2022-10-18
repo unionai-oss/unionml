@@ -258,7 +258,7 @@ def test_guard_evaluator(evaluator_fn, is_valid):
             type_guards.guard_evaluator(evaluator_fn, ModelType, [DatasetType, DatasetType])
 
 
-# valid evaluators
+# valid predictors
 def predictor_valid(model_obj: ModelType, features: DatasetType) -> float:
     ...
 
@@ -296,6 +296,63 @@ def test_guard_predictor(predictor_fn, is_valid):
     else:
         with pytest.raises(TypeError):
             type_guards.guard_predictor(predictor_fn, ModelType, DatasetType)
+
+
+# valid callbacks, assuming use of predictor_valid signature above
+def callback_valid(model_obj: ModelType, features: DatasetType, prediction: float) -> None:
+    ...
+
+
+# invalid callbacks, same assumptions as above
+def callback_wrong_model_type(model_obj: AnotherModelType, features: DatasetType, prediction: float) -> None:
+    ...
+
+
+def callback_wrong_prediction_dtype(model_obj: ModelType, features: DatasetType, prediction: str) -> None:
+    ...
+
+
+def callback_wrong_features_dtype(model_obj: ModelType, features: AnotherDatasetType, prediction: float) -> None:
+    ...
+
+
+def callback_wrong_missing_data(model_obj: ModelType, prediction: float) -> None:
+    ...
+
+
+def callback_wrong_missing_prediction(model_obj: ModelType, features: DatasetType) -> None:
+    ...
+
+
+def callback_wrong_dtype_nargs(
+    model_obj: ModelType, features: DatasetType, prediction: float, prediction2: float
+) -> None:
+    ...
+
+
+def callback_wrong_return_annotation(model_obj: ModelType, features: DatasetType, prediction: float) -> bool:
+    ...
+
+
+@pytest.mark.parametrize(
+    "callback_fn, is_valid",
+    [
+        [callback_valid, True],
+        [callback_wrong_model_type, False],
+        [callback_wrong_prediction_dtype, False],
+        [callback_wrong_features_dtype, False],
+        [callback_wrong_missing_data, False],
+        [callback_wrong_missing_prediction, False],
+        [callback_wrong_dtype_nargs, False],
+        [callback_wrong_return_annotation, False],
+    ],
+)
+def test_guard_callback(callback_fn, is_valid):
+    if is_valid:
+        type_guards.guard_callback(callback_fn, predictor_valid, ModelType, DatasetType)
+    else:
+        with pytest.raises(TypeError):
+            type_guards.guard_callback(callback_fn, predictor_valid, ModelType, DatasetType)
 
 
 # types
