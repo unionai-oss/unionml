@@ -397,7 +397,7 @@ class Model(TrackedInstance):
             wf.add_workflow_output(output_name, promise)
 
         if self.callbacks:
-            self.add_workflow_callbacks(False, wf, predict_node.outputs)
+            self.add_workflow_callbacks(wf, predict_node.outputs, has_features=False)
 
         return wf
 
@@ -416,7 +416,7 @@ class Model(TrackedInstance):
             wf.add_workflow_output(output_name, promise)
 
         if self.callbacks:
-            self.add_workflow_callbacks(True, wf, predict_node.outputs)
+            self.add_workflow_callbacks(wf, predict_node.outputs, has_features=True)
 
         return wf
 
