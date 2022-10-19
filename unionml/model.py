@@ -7,7 +7,7 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass, field, is_dataclass, make_dataclass
 from functools import partial
 from inspect import Parameter, signature
-from typing import IO, Any, Callable, Dict, List, NamedTuple, Optional, Tuple, Type, Union
+from typing import IO, Any, Callable, Dict, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Type, Union
 
 import joblib
 import pandas as pd
@@ -122,19 +122,25 @@ class Model(TrackedInstance):
         self._patch_destination_dir: Optional[str] = None
 
     @property
-    def _callbacks(self) -> List[Callable]:
-        return list(self.__callbacks.values())
+    def callbacks(self) -> Dict[str, Callable]:
+        # Return a copy of the callbacks dict so that it cannot be modified.
+        return dict(self.__callbacks.items())
 
-    @_callbacks.setter
-    def _callbacks(self, callbacks) -> List[Callable]:
-        if len(self._callbacks):
+    @callbacks.setter
+    def callbacks(self, callbacks) -> Dict[str, Callable]:
+        if len(self.callbacks):
             raise ValueError("Callbacks have already been set on this model. You can only set callbacks once.")
 
         # Replace the content of the __callbacks dict without creating a new dict
         self.__callbacks.clear()
-        self.__callbacks.update({callback.__qualname__: callback for callback in callbacks})
+        if isinstance(callbacks, Mapping):
+            self.__callbacks.update(callbacks)
+        elif isinstance(callbacks, Sequence):
+            self.__callbacks.update({callback.__qualname__: callback for callback in callbacks})
+        else:
+            raise ValueError("Callbacks must be a mapping or sequence.")
 
-        return self._callbacks
+        return self.callbacks
 
     @property
     def artifact(self) -> Optional[ModelArtifact]:
@@ -279,7 +285,8 @@ class Model(TrackedInstance):
                     expected_model_type=self.model_type,
                     expected_data_type=self._dataset.feature_type,
                 )
-            self._callbacks = callbacks
+
+            self.callbacks = {cb.__qualname__: cb for cb in callbacks}
 
         return self._predictor
 
@@ -391,7 +398,7 @@ class Model(TrackedInstance):
         for output_name, promise in predict_node.outputs.items():
             wf.add_workflow_output(output_name, promise)
 
-        if self._callbacks:
+        if self.callbacks:
             self.callbacks_workflow(False, wf, predict_node.outputs)
 
         return wf
@@ -410,7 +417,7 @@ class Model(TrackedInstance):
         for output_name, promise in predict_node.outputs.items():
             wf.add_workflow_output(output_name, promise)
 
-        if self._callbacks:
+        if self.callbacks:
             self.callbacks_workflow(True, wf, predict_node.outputs)
 
         return wf
@@ -628,7 +635,7 @@ class Model(TrackedInstance):
         predict_promise, *_ = predict_outputs.values()
 
         if has_features:
-            for callback in self._callbacks:
+            for callback in self.callbacks.values():
                 wf.add_entity(
                     self.callback_from_features_task(callback),
                     model_object=wf.inputs["model_object"],
@@ -643,7 +650,7 @@ class Model(TrackedInstance):
                 raise RuntimeError("Dataset task not found in parent workflow")
 
             dataset_promise, *_ = node.outputs.values()
-            for callback in self._callbacks:
+            for callback in self.callbacks.values():
                 wf.add_entity(
                     self.callback_with_reader_task(callback),
                     model_object=wf.inputs["model_object"],

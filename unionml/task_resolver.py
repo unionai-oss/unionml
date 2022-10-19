@@ -34,7 +34,7 @@ class TaskResolver(TrackedInstance, TaskResolverMixin):
         task_method = getattr(_unionml_obj, task_name)
         if task_name.startswith("callback"):
             model: Model = _unionml_obj
-            return task_method(model.__callbacks[task_variant])
+            return task_method(model.callbacks[task_variant])
 
         return task_method()
 
