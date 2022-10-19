@@ -179,7 +179,7 @@ def guard_callback(callback: Callable, predictor: Callable, expected_model_type:
         raise TypeError("The 'predictor' function needs a return type annotation.")
 
     if sig.return_annotation is not _empty and sig.return_annotation is not None:
-        raise TypeError(f"The 'callback[{callback.__qualname__}]' function must have None as it's return annotation.")
+        raise TypeError(f"The 'callback[{callback.__name__}]' function must have None as it's return annotation.")
 
     actual_model_type = params[0].annotation
     actual_params = [
@@ -188,7 +188,7 @@ def guard_callback(callback: Callable, predictor: Callable, expected_model_type:
 
     if len(actual_params) != 2:
         raise TypeError(
-            f"Callback functions (callback[{callback.__qualname__}]) must take both 'features' and 'prediction' arguments, found {actual_params}"
+            f"Callback functions (callback[{callback.__name__}]) must take both 'features' and 'prediction' arguments, found {actual_params}"
         )
 
     actual_features, actual_prediction = actual_params
@@ -201,7 +201,7 @@ def guard_callback(callback: Callable, predictor: Callable, expected_model_type:
         and actual_model_type not in get_args(expected_model_type)
     ):
         raise TypeError(
-            f"The type of the first argument of the callback[{callback.__qualname__}] function must be compatible with the expected output "
+            f"The type of the first argument of the callback[{callback.__name__}] function must be compatible with the expected output "
             f"type: {expected_model_type}. Found {actual_model_type}"
         )
 
@@ -213,7 +213,7 @@ def guard_callback(callback: Callable, predictor: Callable, expected_model_type:
         and actual_features not in get_args(expected_data_type)
     ):
         raise TypeError(
-            f"The type of the second argument of the callback[{callback.__qualname__}] function must be compatible with the expected output "
+            f"The type of the second argument of the callback[{callback.__name__}] function must be compatible with the expected output "
             f"type: {expected_data_type}. Found {actual_features}"
         )
 
@@ -225,7 +225,7 @@ def guard_callback(callback: Callable, predictor: Callable, expected_model_type:
         and actual_prediction not in get_args(expected_prediction_type)
     ):
         raise TypeError(
-            f"The type of the third argument of the callback[{callback.__qualname__}] function must be compatible with the expected output "
+            f"The type of the third argument of the callback[{callback.__name__}] function must be compatible with the expected output "
             f"type: {expected_prediction_type}. Found {actual_prediction}"
         )
 
