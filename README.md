@@ -1,5 +1,7 @@
 <p align="center">
+  <a href="https://www.union.ai/unionml">
   <img src="https://raw.githubusercontent.com/unionai-oss/unionml/main/docs/source/_static/images/union-logo.svg" alt="Union.ai Logo" width="100">
+  </a>
 </p>
 
 <h1 align="center">UnionML</h1>
