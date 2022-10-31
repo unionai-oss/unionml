@@ -19,10 +19,12 @@ kernelspec:
 
 +++
 
-The MNIST dataset is considered to be the "hello world" example of machine
-learning. In that same spirit, we'll be making the "hello world" UnionML app
-using this dataset and a simple linear classifier with
-[sklearn](https://scikit-learn.org/stable/index.html).
+The MNIST dataset is considered to be the "hello world" dataset of machine
+learning. It is a dataset of 60,000 small square 28×28 pixel grayscale images
+of handwritten single digits between 0 and 9.
+
+In that same spirit, we'll be making the "hello world" UnionML app using this
+dataset and a simple linear classifier with [sklearn](https://scikit-learn.org/stable/index.html).
 
 With this dataset, we'll see just how easy it is to create a single-script UnionML app.
 
@@ -38,12 +40,14 @@ This tutorial is adapted from this [sklearn guide](https://scikit-learn.org/stab
 ```
 
 +++ {"tags": ["remove-cell"]}
-> If you're running this notebook in google colab, you need to restart the kernel to
-> make sure that the newly installed packages are correctly imported in the next line below.
+> If you're running this notebook in google colab, you need to restart the
+> kernel to make sure that the newly installed packages are correctly imported
+> in the next line below.
 +++
 
-First let's import our dependencies and create the UnionML `Dataset` and `Model`
-objects:
+## Setup and importing libraries
+
+First let's import our dependencies and create the UnionML `Dataset` and `Model` objects:
 
 ```{code-cell} ipython3
 from typing import List, Union
@@ -58,13 +62,28 @@ from sklearn.metrics import accuracy_score
 
 from unionml import Dataset, Model
 
-
 dataset = Dataset(name="mnist_dataset", test_size=0.2, shuffle=True, targets=["class"])
-model = Model(name="mnist_classifier", init=LogisticRegression, dataset=dataset)
+model = Model(name="mnist_classifier", dataset=dataset)
 ```
 
-For convenience, we cache the dataset so that MNIST loading is faster upon subsequent calls
-to the `fetch_openml` function:
+Let's break down the code cell above.
+
+We first define a {class}`~unionml.dataset.Dataset>`, which defines the specification for data that
+can be used for training and prediction. We also give it a few keyword options:
+- `test_size`: this indicated the percentage of the data that should be held
+  over for testing. In this case the dataset is divided into test-set (20%) and
+  training set (80%) for evaluation.
+- `shuffle`: this randomly shuffles the data before splitting into train/test splits.
+- `targets`: this accepts a list of strings referring to the column names of the dataset.
+
+Then we define a {class}`~unionml.model.Model>`, which refers to the specification
+for how to actually train the model, evaluate it, and generate predictions from
+it. Note that we bind the `dataset` we just defined to the `model`.
+
+## Caching Data
+
+For convenience, we cache the dataset so that MNIST loading is faster upon
+subsequent calls to the `fetch_openml` function:
 
 ```{code-cell} ipython3
 from pathlib import Path
@@ -74,7 +93,12 @@ memory = Memory(Path.home() / "tmp")
 fetch_openml_cached = memory.cache(fetch_openml)
 ```
 
-Next, we define our core UnionML app functions:
+We do this so we don't have to re-download the dataset it every time we need to
+train a model.
+
+## Define Core UnionML Functions
+
+Run the following command to define our core UnionML app functions:
 
 ```{code-cell} ipython3
 @dataset.reader(cache=True, cache_version="1")
@@ -126,6 +150,20 @@ def evaluator(
     return float(accuracy_score(target.squeeze(), estimator.predict(features)))
 ```
 
+The `Dataset` and `Model` objects expose function decorators where we define
+the behavior of our machine learning app:
+
+- {meth}`~unionml.dataset.Dataset.reader` - Register a function for getting data
+  from some external source.
+- {meth}`~unionml.model.Model.init` - Register a function for initializing a
+  model object. This is equivalent to specifying a class or callable using the
+  `init` kwarg in the `Model` constructor.
+- {meth}`~unionml.model.Model.trainer` - Register a function for training a
+  model object.
+- {meth}`~unionml.model.Model.predictor` - Register a function that generates
+  predictions from a model object.
+- {meth}`~unionml.model.Model.evaluator` - Register a function for evaluating given model object.
+
 ## Training a Model Locally
 
 Then we can train our model locally:
@@ -138,17 +176,22 @@ estimator, metrics = model.train(
         "classifier__max_iter": 1000,
     }
 )
-features = reader().sample(5, random_state=42).drop(["class"], axis="columns")
 print(estimator, metrics, sep="\n")
 ```
 
+Note that we pass a dictionary of `hyperparameters` when we invoke
+{meth}`evaluating <~unionml.model.Model.train>`,
+which, in this case, follows the sklearn conventions for specifying
+hyperparameters for [sklearn `Pipeline`s](https://scikit-learn.org/stable/modules/compose.html#nested-parameters)
+
 ## Serving on a Gradio Widget
 
-Finally, let's create a `gradio` widget by simply using the `model.predict` method into
-the `gradio.Interface` object.
+Finally, let's create a `gradio` widget by simply using the
+{meth}`~unionml.model.Model.predict` method in the `gradio.Interface`
+object.
 
-Before we do this, however, we want to define a `feature_loader` function to handle the raw input
-coming from the `gradio` widget:
+Before we do this, however, we want to define a {meth}`~unionml.dataset.Dataset.feature_loader`
+function to handle the raw input coming from the `gradio` widget:
 
 ```{code-cell} ipython3
 import numpy as np
@@ -163,8 +206,8 @@ def feature_loader(data: np.ndarray) -> pd.DataFrame:
     )
 ```
 
-We also need to take care to handle the `None` case when we press
-the `clear` button on the widget using a `lambda` function:
+We also need to take care to handle the `None` case when we press the `clear`
+button on the widget using a `lambda` function:
 
 ```{code-cell} ipython3
 :tags: [remove-output]
@@ -181,6 +224,7 @@ gr.Interface(
 ```
 
 You might notice that the model may not perform as well as you might expect...
-welcome to the world of machine learning practice! To obtain a better model given
-a fixed dataset, feel free to play around with the model hyperparameters or even
-switch up the model type/architecture that's defined in the `trainer` function.
+welcome to the world of machine learning practice! To obtain a better model
+given a fixed dataset, feel free to play around with the model hyperparameters
+or even switch up the model type/architecture that's defined in the `trainer`
+function.
