@@ -53,8 +53,10 @@ jobs:
     - name: Setup Flyte Sandbox
       if: ${{ matrix.test-dir == 'integration' }}
       run: |
-        flytectl sandbox start --source .
+        flytectl demo start --source .
         flytectl config init
+        export KUBECONFIG=$KUBECONFIG:$HOME/.kube/config:$HOME/.flyte/k3s/k3s.yaml
+        export FLYTECTL_CONFIG=$HOME/.flyte/config-sandbox.yaml
     - name: Pytest
       run: |
         pytest tests/${{ matrix.test-dir }}
