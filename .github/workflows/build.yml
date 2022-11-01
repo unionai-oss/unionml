@@ -55,6 +55,7 @@ jobs:
       run: |
         flytectl demo start --source .
         flytectl config init
+        sleep 30
     - name: Pytest
       run: |
         pytest tests/${{ matrix.test-dir }}
