@@ -5,6 +5,7 @@ import os
 import uuid
 from collections import OrderedDict
 from dataclasses import asdict, dataclass, field, is_dataclass, make_dataclass
+from datetime import timedelta
 from functools import partial
 from inspect import Parameter, signature
 from typing import IO, Any, Callable, Dict, List, NamedTuple, Optional, Tuple, Type, Union
@@ -14,7 +15,7 @@ import pandas as pd
 import sklearn
 from dataclasses_json import dataclass_json
 from fastapi import FastAPI
-from flytekit import Workflow
+from flytekit import LaunchPlan, Workflow
 from flytekit.configuration import Config
 from flytekit.core.tracker import TrackedInstance
 from flytekit.remote import FlyteRemote
@@ -25,6 +26,7 @@ import unionml.type_guards as type_guards
 from unionml._logging import logger
 from unionml.dataset import Dataset
 from unionml.defaults import DEFAULT_RESOURCES
+from unionml.schedule import create_scheduled_launchplan
 from unionml.utils import inner_task, is_keras_model, is_pytorch_model
 
 
@@ -117,8 +119,10 @@ class Model(TrackedInstance):
 
         # dynamically defined types
         self._hyperparameter_type: Optional[Type] = None
-
         self._patch_destination_dir: Optional[str] = None
+
+        # scheduled launchplans
+        self._scheduled_launchplans: List[LaunchPlan] = []
 
     @property
     def predict_callbacks(self) -> Tuple[Callable, ...]:
@@ -720,15 +724,23 @@ class Model(TrackedInstance):
         )
         return self.__remote__
 
-    def remote_deploy(self, app_version: str = None, allow_uncommitted: bool = False, patch: bool = False) -> str:
+    def remote_deploy(
+        self,
+        app_version: str = None,
+        allow_uncommitted: bool = False,
+        patch: bool = False,
+        schedule: bool = True,
+    ) -> str:
         """
         Deploy model services to a Flyte backend.
 
-        :param app_version: the version to use to deploy the UnionML app.
+        :param app_version: the version to use to deploy the UnionML app. If None, uses gitsha as the version.
         :param allow_uncommitted: If True, deploys uncommitted changes in the unionml project. Otherwise, raise a
             :py:class`~unionml.remote.VersionFetchError`
         :param patch: if True, this bypasses the Docker build process and only updates the UnionML app source code using
             the latest available image.
+        :param schedule: if ``bool``, indicates whether or not to deploy the
+            scheduled launch plans.
         :returns: app version string
         """
         from unionml import remote
@@ -762,12 +774,14 @@ class Model(TrackedInstance):
                 remote.docker_build_push(self, image)
 
         logger.info(f"Deploying app version {app_version}")
+
+        # deploy workflows and underlying tasks
         for wf in [
             self.train_workflow(),
             self.predict_workflow(),
             self.predict_from_features_workflow(),
         ]:
-            remote.deploy_wf(
+            remote.deploy_workflow(
                 wf,
                 _remote,
                 image,
@@ -777,6 +791,17 @@ class Model(TrackedInstance):
                 patch=patch,
                 patch_destination_dir=self._patch_destination_dir,
             )
+
+        # deploy launchplans
+        if schedule:
+            for lp in self._scheduled_launchplans:
+                remote.deploy_launchplan(
+                    lp,
+                    remote=_remote,
+                    project=_remote.default_project,
+                    domain=_remote.default_domain,
+                    version=app_version,
+                )
 
         return app_version
 
@@ -795,7 +820,7 @@ class Model(TrackedInstance):
         """Train a model object on a remote Flyte backend.
 
         :param app_version: if provided, executes a training job using the specified UnionML app version. By default,
-            this uses the latest app version deployed on the Flyte remote cluster..
+            this uses the latest app version deployed on the Flyte remote cluster.
         :param wait: if True, this is a synchronous operation, returning a ``ModelArtifact``. Otherwise, this
             function returns a ``FlyteWorkflowExecution``.
         :param hyperparameters: a dictionary mapping hyperparameter names to values. This is passed into the
@@ -966,6 +991,134 @@ class Model(TrackedInstance):
         execution = self._remote.wait(execution)
         predictions, *_ = execution.outputs.values()
         return predictions
+
+    def schedule_training(
+        self,
+        name: str,
+        *,
+        expression: Optional[str] = None,
+        offset: Optional[str] = None,
+        fixed_rate: Optional[timedelta] = None,
+        reader_time_arg: Optional[str] = None,
+        **kwargs,
+    ):
+        """Schedule the training service when the UnionML app is deployed.
+
+        :param name: unique name of the launch plan
+        :param expression: a cron expression (see
+            `here <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression>`__)
+            or valid croniter schedule for e.g. `@daily`, `@hourly`, `@weekly`, `@yearly`
+            (see `here <https://github.com/kiorky/croniter#keyword-expressions>`__).
+        :param offset: duration to offset the schedule, must be a valid ISO 8601
+            duration. Only used if ``expression`` is specified.
+        :param fixed_rate: a :class:`~datetime.timedelta` object representing fixed
+            rate with which to run the workflow.
+        :param kwargs: additional keyword arguments to pass to
+            :class:`~flytekit.LaunchPlan`
+        """
+        launchplan = create_scheduled_launchplan(
+            self.train_workflow(),
+            name,
+            expression=expression,
+            offset=offset,
+            fixed_rate=fixed_rate,
+            reader_time_arg=reader_time_arg,
+            **kwargs,
+        )
+        self._scheduled_launchplans.append(launchplan)
+
+    def schedule_prediction(
+        self,
+        name: str,
+        *,
+        expression: Optional[str] = None,
+        offset: Optional[str] = None,
+        fixed_rate: Optional[timedelta] = None,
+        reader_time_arg: Optional[str] = None,
+        **kwargs,
+    ):
+        """Schedule the prediction service when the UnionML app is deployed.
+
+        :param name: unique name of the launch plan
+        :param expression: a cron expression (see
+            `here <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression>`__)
+            or valid croniter schedule for e.g. `@daily`, `@hourly`, `@weekly`, `@yearly`
+            (see `here <https://github.com/kiorky/croniter#keyword-expressions>`__).
+        :param offset: duration to offset the schedule, must be a valid ISO 8601
+            duration. Only used if ``expression`` is specified.
+        :param fixed_rate: a :class:`~datetime.timedelta` object representing fixed
+            rate with which to run the workflow.
+        :param kwargs: additional keyword arguments to pass to
+            :class:`~flytekit.LaunchPlan`
+        """
+        launchplan = create_scheduled_launchplan(
+            self.predict_workflow(),
+            name,
+            expression=expression,
+            offset=offset,
+            fixed_rate=fixed_rate,
+            reader_time_arg=reader_time_arg,
+            **kwargs,
+        )
+        self._scheduled_launchplans.append(launchplan)
+
+    def activate_schedules(
+        self,
+        app_version: str = None,
+        schedule_names: List[str] = None,
+    ):
+        """Activate the deployed schedules.
+
+        :param app_version: the version to use to fetch the scheduled launchplans. If None, uses gitsha as the version.
+        :param schedule_names: names of schedules to activate.
+        """
+        from unionml import remote
+
+        if self._remote is None:
+            raise RuntimeError("First configure the remote client with the `Model.remote` method")
+
+        _remote = self._remote
+        app_version = app_version or remote.get_app_version()
+
+        for lp in self._scheduled_launchplans:
+            if schedule_names and lp.name not in schedule_names:
+                continue
+            remote.activate_launchplan(
+                lp,
+                remote=_remote,
+                project=_remote.default_project,
+                domain=_remote.default_domain,
+                version=app_version,
+            )
+
+    def deactivate_schedules(
+        self,
+        app_version: str = None,
+        schedule_names: List[str] = None,
+    ):
+        """Deactivate the deployed schedules.
+
+        :param app_version: the version to use to fetch the scheduled launchplans. If None, uses gitsha as the version.
+        :param schedule_names: names of schedules to deactivate.
+        """
+        from unionml import remote
+
+        if self._remote is None:
+            raise RuntimeError("First configure the remote client with the `Model.remote` method")
+
+        _remote = self._remote
+        app_version = app_version or remote.get_app_version()
+
+        for lp in self._scheduled_launchplans:
+            if schedule_names and lp.name not in schedule_names:
+                continue
+            remote.deactivate_launchplan(
+                lp,
+                remote=_remote,
+                project=_remote.default_project,
+                domain=_remote.default_domain,
+                version=app_version,
+            )
 
     @property
     def model_type(self) -> Type:

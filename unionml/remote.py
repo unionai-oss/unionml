@@ -7,7 +7,9 @@ import typing
 
 import docker
 import git
+from flytekit import LaunchPlan
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.core.workflow import WorkflowBase
 from flytekit.models import filters
 from flytekit.models.admin.common import Sort
 from flytekit.models.project import Project
@@ -108,8 +110,8 @@ def docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Imag
         logger.info(line)
 
 
-def deploy_wf(
-    wf,
+def deploy_workflow(
+    wf: WorkflowBase,
     remote: FlyteRemote,
     image: str,
     project: str,
@@ -119,7 +121,7 @@ def deploy_wf(
     patch_destination_dir: str = None,
 ):
     """Register all tasks, workflows, and launchplans needed to execute the workflow."""
-    logger.info(f"Deploying workflow {wf.name}")
+    logger.info(f"Deploying workflow '{wf.name}'")
     fast_serialization_settings = None
     if patch:
         # Create a zip file containing all the entries.
@@ -145,6 +147,40 @@ def deploy_wf(
     )
 
     remote.register_workflow(wf, serialization_settings, version)
+
+
+def deploy_launchplan(
+    lp: LaunchPlan,
+    remote: FlyteRemote,
+    project: str,
+    domain: str,
+    version: str,
+):
+    logger.info(f"Deploying launchplan '{lp.name}'")
+    remote.register_launch_plan(lp, version=version, project=project, domain=domain)
+    activate_launchplan(lp, remote, project, domain, version)
+
+
+def activate_launchplan(
+    lp: LaunchPlan,
+    remote: FlyteRemote,
+    project: str,
+    domain: str,
+    version: str,
+):
+    lp_id = remote.fetch_launch_plan(project, domain, lp.name, version).id
+    remote.client.update_launch_plan(lp_id, "ACTIVE")
+
+
+def deactivate_launchplan(
+    lp: LaunchPlan,
+    remote: FlyteRemote,
+    project: str,
+    domain: str,
+    version: str,
+):
+    lp_id = remote.fetch_launch_plan(project, domain, lp.name, version).id
+    remote.client.update_launch_plan(lp_id, "INACTIVE")
 
 
 def get_model_execution(
