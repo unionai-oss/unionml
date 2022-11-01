@@ -72,7 +72,7 @@ pytest tests/unit
 Optionally, you can run integration tests locally. First install [flytectl](https://docs.flyte.org/projects/flytectl/en/latest/#installation), then:
 
 ```
-python tests/integration
+pytest tests/integration
 ```
 
 ### Installing
