@@ -229,9 +229,6 @@ def guard_callback(callback: Callable, predictor: Callable, expected_model_type:
             f"type: {expected_prediction_type}. Found {actual_prediction}"
         )
 
-    if sig.return_annotation is _empty:
-        raise TypeError("The 'predictor' function needs a return type annotation.")
-
 
 def guard_feature_loader(feature_loader: Callable, expected_data_type: Type):
     """Ensure that the feature loader return type needs to match the parser data input."""

@@ -7,7 +7,7 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass, field, is_dataclass, make_dataclass
 from functools import partial
 from inspect import Parameter, signature
-from typing import IO, Any, Callable, Dict, List, Mapping, NamedTuple, Optional, Tuple, Type, Union
+from typing import IO, Any, Callable, Dict, List, NamedTuple, Optional, Tuple, Type, Union
 
 import joblib
 import pandas as pd
@@ -109,8 +109,7 @@ class Model(TrackedInstance):
         self._train_task = None
         self._predict_task = None
         self._predict_from_features_task = None
-        self.__callbacks: Dict[str, Callable] = {}
-        self.__callback_tasks: Dict[str, Any] = {}
+        self._predict_callbacks: Tuple[Callable, ...] = ()
 
         # user-provided task kwargs
         self._train_task_kwargs: Optional[Dict[str, Any]] = None
@@ -122,23 +121,17 @@ class Model(TrackedInstance):
         self._patch_destination_dir: Optional[str] = None
 
     @property
-    def callbacks(self) -> Dict[str, Callable]:
-        # Return a copy of the callbacks dict so that it cannot be modified.
-        return dict(self.__callbacks.items())
+    def predict_callbacks(self) -> Tuple[Callable, ...]:
+        return self._predict_callbacks
 
-    @callbacks.setter
-    def callbacks(self, callbacks) -> Dict[str, Callable]:
-        if len(self.callbacks):
-            raise ValueError("Callbacks have already been set on this model. You can only set callbacks once.")
+    @predict_callbacks.setter
+    def predict_callbacks(self, callbacks) -> Tuple[Callable, ...]:
+        if len(self.predict_callbacks):
+            raise ValueError("Callbacks have already been set on this model. You can only set predict callbacks once.")
 
-        # Replace the content of the __callbacks dict without creating a new dict
-        if isinstance(callbacks, Mapping):
-            self.__callbacks.clear()
-            self.__callbacks.update(callbacks)
-        else:
-            raise ValueError("Callbacks must be a mapping of function name to callable.")
+        self._predict_callbacks = callbacks
 
-        return self.callbacks
+        return self.predict_callbacks
 
     @property
     def artifact(self) -> Optional[ModelArtifact]:
@@ -284,7 +277,7 @@ class Model(TrackedInstance):
                     expected_data_type=self._dataset.feature_type,
                 )
 
-            self.callbacks = {cb.__name__: cb for cb in callbacks}
+            self.predict_callbacks = tuple(callbacks)
 
         return self._predictor
 
@@ -396,9 +389,6 @@ class Model(TrackedInstance):
         for output_name, promise in predict_node.outputs.items():
             wf.add_workflow_output(output_name, promise)
 
-        if self.callbacks:
-            self.add_workflow_callbacks(wf, predict_node.outputs, has_features=False)
-
         return wf
 
     def predict_from_features_workflow(self):
@@ -414,9 +404,6 @@ class Model(TrackedInstance):
         predict_node = wf.add_entity(predict_task, **{k: wf.inputs[k] for k in wf.inputs})
         for output_name, promise in predict_node.outputs.items():
             wf.add_workflow_output(output_name, promise)
-
-        if self.callbacks:
-            self.add_workflow_callbacks(wf, predict_node.outputs, has_features=True)
 
         return wf
 
@@ -514,7 +501,15 @@ class Model(TrackedInstance):
         def predict_task(model_object, **kwargs):
             parsed_data = self.dataset._parser(kwargs[data_arg_name], **self._dataset.parser_kwargs)
             features = self.dataset._feature_transformer(parsed_data[self._dataset._parser_feature_key])
-            return self._predictor(model_object, features)
+            predictions = self._predictor(model_object, features)
+
+            for callback in self.predict_callbacks:
+                try:
+                    callback(model_object, features, predictions)
+                except Exception as e:
+                    logger.exception(f"Error in post-prediction callback[{callback.__name__}]: {e}")
+
+            return predictions
 
         self._predict_task = predict_task
         return predict_task
@@ -542,7 +537,15 @@ class Model(TrackedInstance):
             **self._predict_task_kwargs,
         )
         def predict_from_features_task(model_object, features):
-            return self._predictor(model_object, features)
+            predictions = self._predictor(model_object, features)
+
+            for callback in self.predict_callbacks:
+                try:
+                    callback(model_object, features, predictions)
+                except Exception as e:
+                    logger.exception(f"Error in post-prediction callback[{callback.__name__}]: {e}")
+
+            return predictions
 
         self._predict_from_features_task = predict_from_features_task
         return predict_from_features_task
@@ -629,117 +632,6 @@ class Model(TrackedInstance):
         # TODO(review,zevisert): Should local predict run callbacks too?
 
         return wf
-
-    def add_workflow_callbacks(self, wf: Workflow, predict_outputs: Dict[str, Any], has_features: bool):
-        """Append callback tasks to an existing workflow."""
-        predict_promise, *_ = predict_outputs.values()
-
-        if has_features:
-            for callback in self.callbacks.values():
-                wf.add_entity(
-                    self.callback_from_features_task(callback),
-                    model_object=wf.inputs["model_object"],
-                    features=wf.inputs["features"],
-                    predictions=predict_promise,
-                )
-        else:
-            for node in wf.nodes:
-                if node.metadata.name == "dataset_task":
-                    break
-            else:
-                raise RuntimeError("Dataset task not found in parent workflow")
-
-            dataset_promise, *_ = node.outputs.values()
-            for callback in self.callbacks.values():
-                wf.add_entity(
-                    self.callback_from_dataset_task(callback),
-                    model_object=wf.inputs["model_object"],
-                    data=dataset_promise,
-                    predictions=predict_promise,
-                )
-
-        return wf
-
-    def callback_from_dataset_task(self, callback: Callable):
-        """Create a task to add to a workflow that will invoke a callback function.
-
-        The created task will use the dataset feature transform to acquire
-        features used in the prediction task.
-
-        :param callback: A callback function to execute after predictions are made.
-        """
-
-        # The actual flyte tasks need to have unique names, but those don't have to be python identifiers.
-        # We don't depend on this format to load the task, that is handled by task_config.
-        task_name = f"callback_from_dataset_task@{callback.__name__}"
-
-        if self.__callback_tasks and task_name in self.__callback_tasks:
-            return self.__callback_tasks[task_name]
-
-        # assume that dataset_datatype is a dict with only a single entry
-        [(data_arg_name, data_arg_type)] = self._dataset.dataset_datatype.items()
-        data_param = Parameter(data_arg_name, kind=Parameter.KEYWORD_ONLY, annotation=data_arg_type)
-
-        callback_sig = signature(callback)
-        model_param, _, prediction_param = callback_sig.parameters.values()
-        model_param = model_param.replace(name="model_object")
-        prediction_param = prediction_param.replace(name="predictions")
-
-        def callback_from_dataset_task(model_object, **kwargs) -> None:
-            predictions = kwargs.pop("predictions")
-            parsed_data = self.dataset._parser(kwargs[data_arg_name], **self._dataset.parser_kwargs)
-            features: Any = self.dataset._feature_transformer(parsed_data[self._dataset._parser_feature_key])
-            return self.__callbacks[callback.__name__](model_object, features, predictions)
-
-        # The actual flyte tasks need to have unique names, but those don't have to be python identifiers.
-        # We don't depend on this format to load the task, that is handled by task_config.
-        callback_from_dataset_task.__name__ += f"@{callback.__name__}"
-
-        self.__callback_tasks[task_name] = inner_task(
-            unionml_obj=self,
-            input_parameters=OrderedDict([(p.name, p) for p in [model_param, data_param, prediction_param]]),
-            return_annotation=None,
-            task_config={"unionml:variant": callback.__name__},
-        )(callback_from_dataset_task)
-
-        return self.__callback_tasks[task_name]
-
-    def callback_from_features_task(self, callback: Callable):
-        """Create a task to add to a workflow that will invoke a callback function.
-
-        The created task will assumes features exist as workflow inputs. This is
-        analogous to how the predict_from_features_task operates.
-
-        :param callback: A callback function to execute after predictions are made.
-        """
-
-        task_name = f"callback_from_features_task@{callback.__name__}"
-
-        if self.__callback_tasks and task_name in self.__callback_tasks:
-            return self.__callback_tasks[task_name]
-
-        callback_sig = signature(callback)
-        model_param, features_param, prediction_param = callback_sig.parameters.values()
-        model_param = model_param.replace(name="model_object")
-        features_param = features_param.replace(name="features")
-        prediction_param = prediction_param.replace(name="predictions")
-
-        def callback_from_features_task(model_object, features, predictions) -> None:
-            return self.__callbacks[callback.__name__](model_object, features, predictions)
-
-        callback_from_features_task.__name__ = task_name
-
-        # Needed to rename the task function, now apply the decorator
-        actual_task = inner_task(
-            unionml_obj=self,
-            input_parameters=OrderedDict([(p.name, p) for p in [model_param, features_param, prediction_param]]),
-            return_annotation=None,
-            task_config={"unionml:variant": callback.__name__},
-        )(callback_from_features_task)
-
-        self.__callback_tasks[task_name] = actual_task
-
-        return actual_task
 
     def save(self, file: Union[str, os.PathLike, IO], *args, **kwargs):
         """Save the model object to disk."""
