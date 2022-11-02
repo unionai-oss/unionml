@@ -50,6 +50,9 @@ jobs:
     - name: Install FlyteCTL
       if: ${{ matrix.test-dir == 'integration' }}
       uses: unionai-oss/flytectl-setup-action@master
+    - uses: actions/setup-go@v3
+      with:
+        go-version: '>=1.17.0'
     - name: Setup Flyte Sandbox
       if: ${{ matrix.test-dir == 'integration' }}
       run: |
