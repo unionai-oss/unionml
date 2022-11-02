@@ -659,8 +659,8 @@ class Model(TrackedInstance):
             return self.__remote__
 
         config = Config.auto(config_file=self._config_file)
-        if config.platform.endpoint.startswith("localhost"):
-            config = Config.for_sandbox()
+        # if config.platform.endpoint.startswith("localhost"):
+        #     config = Config.for_sandbox()
 
         self.__remote__ = FlyteRemote(
             config=config,
