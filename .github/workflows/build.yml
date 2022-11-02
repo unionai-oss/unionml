@@ -60,7 +60,7 @@ jobs:
         pushd flytectl
         make compile
         popd
-        .flytectl/bin/flytectl demo start --source . --image ghcr.io/flyteorg/flyte-sandbox-bundled:ytkc_tst1
+        ./flytectl/bin/flytectl demo start --source . --image ghcr.io/flyteorg/flyte-sandbox-bundled:ytkc_tst1
         cp config.yaml ~/.flyte/config.yaml
     - name: Pytest
       run: |
