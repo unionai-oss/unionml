@@ -51,7 +51,9 @@ def flyte_remote():
         assert "flytesnacks" in [p.id for p in projects]
         assert "flytesnacks" in [p.name for p in projects]
         yield remote
-        r = subprocess.run(["kubectl", "--kubeconfig", f"{os.environ['HOME']}/.flyte/k3s/k3s.yaml", "-n", "flyte", "get", "pods"])
+        r = subprocess.run(
+            ["kubectl", "--kubeconfig", f"{os.environ['HOME']}/.flyte/k3s/k3s.yaml", "-n", "flyte", "get", "pods"]
+        )
         print(f"{r}")
     finally:
         if not cluster_preexists:
@@ -86,6 +88,7 @@ def _assert_model_artifact(model_artifact: ModelArtifact, model_type: Type):
     assert isinstance(model_artifact.metrics, dict)
     assert isinstance(model_artifact.metrics["test"], float)
     assert isinstance(model_artifact.metrics["train"], float)
+
 
 @pytest.mark.parametrize(
     "ml_framework, hyperparameters, trainer_kwargs",
