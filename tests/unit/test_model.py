@@ -5,6 +5,7 @@ Fixtures are defined in conftest.py
 
 import io
 import typing
+from datetime import timedelta
 from inspect import signature
 
 import pandas as pd
@@ -13,25 +14,29 @@ from flytekit import task, workflow
 from flytekit.core.python_function_task import PythonFunctionTask
 from sklearn.linear_model import LogisticRegression
 
-from unionml.model import BaseHyperparameters, ModelArtifact
+from unionml.model import BaseHyperparameters, Model, ModelArtifact
 
 
-def test_model_decorators(model, trainer, predictor, evaluator):
+def test_model_decorators(model: Model, trainer, predictor, evaluator):
     assert model._trainer == trainer
     assert model._predictor == predictor
     assert model._evaluator == evaluator
 
 
-def test_model_train_task(model, mock_data):
+def test_model_train_task(model: Model, mock_data: pd.DataFrame):
     train_task = model.train_task()
+
+    assert model._dataset._reader is not None
+    assert model._evaluator is not None
+
     reader_ret_type = signature(model._dataset._reader).return_annotation
-    eval_ret_type = signature(model._evaluator).return_annotation
+    eval_ret_type = typing.cast(typing.Type, signature(model._evaluator).return_annotation)
 
     assert isinstance(train_task, PythonFunctionTask)
     assert issubclass(train_task.python_interface.inputs["hyperparameters"], BaseHyperparameters)
     assert train_task.python_interface.inputs["data"] == reader_ret_type
     assert train_task.python_interface.outputs["model_object"].__module__ == "flytekit.types.pickle.pickle"
-    assert train_task.python_interface.outputs["metrics"] == typing.Dict[str, eval_ret_type]
+    assert train_task.python_interface.outputs["metrics"] == typing.Dict[str, eval_ret_type]  # type: ignore
 
     outputs = train_task(
         hyperparameters={"C": 1.0, "max_iter": 1000},
@@ -45,7 +50,7 @@ def test_model_train_task(model, mock_data):
 
 
 @pytest.mark.parametrize("custom_init", [True, False])
-def test_model_train(model, custom_init):
+def test_model_train(model: Model, custom_init):
     if custom_init:
         # disable default model initialization
         model._init_cls = None
@@ -74,7 +79,7 @@ def test_model_train(model, custom_init):
         {"parser_kwargs": {"features": ["x2", "x3"], "targets": ["y"]}},
     ],
 )
-def test_model_train_from_data(model, dataset_kwargs):
+def test_model_train_from_data(model: Model, dataset_kwargs):
     model_object, metrics = model.train(
         hyperparameters={"C": 1.0, "max_iter": 1000},
         sample_frac=1.0,
@@ -86,7 +91,7 @@ def test_model_train_from_data(model, dataset_kwargs):
     assert isinstance(metrics["test"], float)
 
 
-def test_model_predict_task(model, mock_data):
+def test_model_predict_task(model: Model, mock_data: pd.DataFrame):
     predict_task = model.predict_task()
 
     assert isinstance(predict_task, PythonFunctionTask)
@@ -103,9 +108,10 @@ def test_model_predict_task(model, mock_data):
     assert predictions == alt_predictions
 
 
-def test_model_predict_from_features_task(model, mock_data):
+def test_model_predict_from_features_task(model: Model, mock_data: pd.DataFrame):
     predict_from_features_task = model.predict_from_features_task()
 
+    assert model._dataset._reader is not None
     assert isinstance(predict_from_features_task, PythonFunctionTask)
     assert (
         predict_from_features_task.python_interface.inputs["model_object"].__module__ == "flytekit.types.pickle.pickle"
@@ -123,7 +129,7 @@ def test_model_predict_from_features_task(model, mock_data):
     assert all(isinstance(x, float) for x in predictions)
 
 
-def test_model_saver_and_loader_filepath(model, tmp_path):
+def test_model_saver_and_loader_filepath(model: Model, tmp_path):
     model_path = tmp_path / "model.joblib"
     model_obj, _ = model.train(hyperparameters={"C": 1.0, "max_iter": 1000}, sample_frac=1.0, random_state=42)
     output_path, *_ = model.save(model_path)
@@ -134,7 +140,7 @@ def test_model_saver_and_loader_filepath(model, tmp_path):
     assert model_obj.get_params() == loaded_model_obj.get_params()
 
 
-def test_model_saver_and_loader_fileobj(model):
+def test_model_saver_and_loader_fileobj(model: Model):
     fileobj = io.BytesIO()
     model_obj, _ = model.train(hyperparameters={"C": 1.0, "max_iter": 1000}, sample_frac=1.0, random_state=42)
     model.save(fileobj)
@@ -142,7 +148,7 @@ def test_model_saver_and_loader_fileobj(model):
     assert model_obj.get_params() == loaded_model_obj.get_params()
 
 
-def test_model_train_task_in_flyte_workflow(model, mock_data):
+def test_model_train_task_in_flyte_workflow(model: Model, mock_data: pd.DataFrame):
     """Test that the unionml.Model-derived training task can be used in regular Flyte workflows."""
 
     ModelInternals = typing.NamedTuple("ModelInternals", [("coef", typing.List[float]), ("intercept", float)])
@@ -171,7 +177,7 @@ def test_model_train_task_in_flyte_workflow(model, mock_data):
     assert isinstance(output.intercept, float)
 
 
-def test_model_predict_task_in_flyte_workflow(model, mock_data):
+def test_model_predict_task_in_flyte_workflow(model: Model, mock_data: pd.DataFrame):
     """Test that the unionml.Model-derived prediction task can be used in regular Flyte workflows."""
     model_obj = LogisticRegression()
     model_obj.fit(mock_data[["x", "x2", "x3"]], mock_data["y"])
@@ -194,3 +200,26 @@ def test_model_predict_task_in_flyte_workflow(model, mock_data):
     assert all(isinstance(x, float) for x in normalized_predictions)
     assert any(x < 0 for x in normalized_predictions)
     assert any(x > 0 for x in normalized_predictions)
+
+
+def test_model_schedule(model: Model):
+    """Test that scheduling multiple models with different names will product an error."""
+    expression = "0 * * * *"
+    fixed_rate = timedelta(days=1)
+
+    model.schedule_training(f"{model.name}_training_schedule_expression", expression=expression)
+    model.schedule_prediction(f"{model.name}_prediction_schedule_expression", expression=expression)
+
+    model.schedule_training(f"{model.name}_training_schedule_fixed_rate", fixed_rate=fixed_rate)
+    model.schedule_prediction(f"{model.name}_prediction_schedule_fixed_rate", fixed_rate=fixed_rate)
+
+    assert len(model.scheduled_launchplans) == 4
+    assert model.scheduled_launchplan_names == set(
+        f"{model.name}_{x}"
+        for x in (
+            "training_schedule_expression",
+            "prediction_schedule_expression",
+            "training_schedule_fixed_rate",
+            "prediction_schedule_fixed_rate",
+        )
+    )

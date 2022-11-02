@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, field, is_dataclass, make_dataclass
 from datetime import timedelta
 from functools import partial
 from inspect import Parameter, signature
-from typing import IO, Any, Callable, Dict, List, NamedTuple, Optional, Tuple, Type, Union
+from typing import IO, Any, Callable, Dict, List, NamedTuple, Optional, Set, Tuple, Type, Union
 
 import joblib
 import pandas as pd
@@ -207,6 +207,16 @@ class Model(TrackedInstance):
     def predict_from_features_workflow_name(self):
         """Name of the prediction workflow used to generate predictions from raw features."""
         return f"{self.name}.predict_from_features"
+
+    @property
+    def scheduled_launchplans(self) -> List[LaunchPlan]:
+        """Scheduled launch plans for running jobs at a specified cadence."""
+        return self._scheduled_launchplans
+
+    @property
+    def scheduled_launchplan_names(self) -> Set[str]:
+        """Names of all the scheduled launchplans."""
+        return set(lp.name for lp in self.scheduled_launchplans)
 
     def init(self, fn):
         """Register a function for initializing a model object."""
@@ -739,8 +749,7 @@ class Model(TrackedInstance):
             :py:class`~unionml.remote.VersionFetchError`
         :param patch: if True, this bypasses the Docker build process and only updates the UnionML app source code using
             the latest available image.
-        :param schedule: if ``bool``, indicates whether or not to deploy the
-            scheduled launch plans.
+        :param schedule: indicates whether or not to deploy the training and prediction schedules.
         :returns: app version string
         """
         from unionml import remote
@@ -1009,20 +1018,29 @@ class Model(TrackedInstance):
             `here <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression>`__)
             or valid croniter schedule for e.g. `@daily`, `@hourly`, `@weekly`, `@yearly`
             (see `here <https://github.com/kiorky/croniter#keyword-expressions>`__).
-        :param offset: duration to offset the schedule, must be a valid ISO 8601
-            duration. Only used if ``expression`` is specified.
+        :param offset: duration to offset the schedule, must be a valid
+            `ISO 8601 duration <https://en.wikipedia.org/wiki/ISO_8601>__. Only
+            used if ``expression`` is specified.
         :param fixed_rate: a :class:`~datetime.timedelta` object representing fixed
             rate with which to run the workflow.
+        :param reader_time_arg: if not ``None``, the name of the
+            :meth:`~unionml.dataset.Dataset.reader` argument that will receive
+            the kickoff ``datetime`` of the scheduled launchplan.
         :param kwargs: additional keyword arguments to pass to
             :class:`~flytekit.LaunchPlan`
         """
+        if name in self.scheduled_launchplan_names:
+            raise ValueError(
+                f"Scheduled job {name} just have a unique name. Existing "
+                f"schedules: {self.scheduled_launchplan_names}"
+            )
         launchplan = create_scheduled_launchplan(
             self.train_workflow(),
             name,
             expression=expression,
             offset=offset,
             fixed_rate=fixed_rate,
-            reader_time_arg=reader_time_arg,
+            time_arg=reader_time_arg,
             **kwargs,
         )
         self._scheduled_launchplans.append(launchplan)
@@ -1042,32 +1060,41 @@ class Model(TrackedInstance):
         :param name: unique name of the launch plan
         :param expression: a cron expression (see
             `here <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression>`__)
-            or valid croniter schedule for e.g. `@daily`, `@hourly`, `@weekly`, `@yearly`
+            or valid croniter schedule for e.g. `@hourly`, `@daily`, `@weekly`, `@monthly`, `@yearly`
             (see `here <https://github.com/kiorky/croniter#keyword-expressions>`__).
-        :param offset: duration to offset the schedule, must be a valid ISO 8601
-            duration. Only used if ``expression`` is specified.
+        :param offset: duration to offset the schedule, must be a valid
+            `ISO 8601 duration <https://en.wikipedia.org/wiki/ISO_8601>__. Only
+            used if ``expression`` is specified.
         :param fixed_rate: a :class:`~datetime.timedelta` object representing fixed
             rate with which to run the workflow.
+        :param reader_time_arg: if not ``None``, the name of the
+            :meth:`~unionml.dataset.Dataset.reader` argument that will receive
+            the kickoff ``datetime`` of the scheduled launchplan.
         :param kwargs: additional keyword arguments to pass to
             :class:`~flytekit.LaunchPlan`
         """
+        if name in self.scheduled_launchplan_names:
+            raise ValueError(
+                f"Scheduled job {name} just have a unique name. Existing "
+                f"schedules: {self.scheduled_launchplan_names}"
+            )
         launchplan = create_scheduled_launchplan(
             self.predict_workflow(),
             name,
             expression=expression,
             offset=offset,
             fixed_rate=fixed_rate,
-            reader_time_arg=reader_time_arg,
+            time_arg=reader_time_arg,
             **kwargs,
         )
         self._scheduled_launchplans.append(launchplan)
 
-    def activate_schedules(
+    def remote_activate_schedules(
         self,
         app_version: str = None,
         schedule_names: List[str] = None,
     ):
-        """Activate the deployed schedules.
+        """Activate deployed schedules.
 
         :param app_version: the version to use to fetch the scheduled launchplans. If None, uses gitsha as the version.
         :param schedule_names: names of schedules to activate.
@@ -1091,12 +1118,12 @@ class Model(TrackedInstance):
                 version=app_version,
             )
 
-    def deactivate_schedules(
+    def remote_deactivate_schedules(
         self,
         app_version: str = None,
         schedule_names: List[str] = None,
     ):
-        """Deactivate the deployed schedules.
+        """Deactivate deployed schedules.
 
         :param app_version: the version to use to fetch the scheduled launchplans. If None, uses gitsha as the version.
         :param schedule_names: names of schedules to deactivate.

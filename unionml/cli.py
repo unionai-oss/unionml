@@ -4,6 +4,7 @@ import copy
 import json
 import os
 import sys
+import typing
 from enum import Enum
 from pathlib import Path
 
@@ -64,12 +65,17 @@ def deploy(
         "--patch",
         help="Bypass Docker build process and update the UnionML app source code using the latest available image.",
     ),
+    schedule: bool = typer.Option(
+        True,
+        "--schedule/--no-schedule",
+        help="Indicates whether or not to deploy the training and prediction schedules.",
+    ),
 ):
     """Deploy model to a Flyte backend."""
     typer.echo(f"[unionml] deploying {app}")
     model = get_model(app)
     try:
-        model.remote_deploy(allow_uncommitted=allow_uncommitted, patch=patch)
+        model.remote_deploy(allow_uncommitted=allow_uncommitted, patch=patch, schedule=schedule)
     except VersionFetchError as e:
         typer.echo(f"[unionml] failed to get app version: {e}", err=True)
         typer.echo(
@@ -80,6 +86,38 @@ def deploy(
     except Exception as e:
         typer.echo(f"[unionml] failed to deploy {app}: {e}", err=True)
         raise typer.Exit(code=1)
+
+
+@app.command()
+def activate_schedules(
+    app: str,
+    app_version: str = typer.Option(None, "--app-version", "-v", help="App version"),
+    schedule_names: typing.List[str] = typer.Option(
+        None,
+        "--name",
+        help="Name of the schedule to activate. This option can be specified multiple times.",
+    ),
+):
+    """Activate training and prediction schedules specified in your UnionML app."""
+    typer.echo(f"[unionml] activating schedules {schedule_names} for {app}")
+    model = get_model(app)
+    model.remote_activate_schedules(app_version=app_version, schedule_names=schedule_names)
+
+
+@app.command()
+def deactivate_schedules(
+    app: str,
+    app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
+    schedule_names: typing.List[str] = typer.Option(
+        None,
+        "--name",
+        help="Name of the schedule to deactivate. This option can be specified multiple times.",
+    ),
+):
+    """Deactivate training and prediction schedules specified in your UnionML app."""
+    typer.echo(f"[unionml] deactivating schedules {schedule_names} for {app}")
+    model = get_model(app)
+    model.remote_activate_schedules(app_version=app_version, schedule_names=schedule_names)
 
 
 @app.command()

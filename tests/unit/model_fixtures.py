@@ -42,7 +42,7 @@ def raw_model(request, mock_data) -> Model:
         return raw_data
 
     model = Model(
-        name="test_model",
+        name=f"test_model_{request.param_index}",
         init=None if request.param["custom_init"] else LogisticRegression,
         hyperparameter_config={"C": float, "max_iter": int},
         dataset=dataset,

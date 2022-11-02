@@ -8,6 +8,8 @@ from typing import Any, Dict, Type
 
 import pytest
 from flytekit.configuration import Config
+from flytekit.exceptions.user import FlyteEntityNotExistException
+from flytekit.models.common import NamedEntityIdentifier
 from flytekit.remote import FlyteRemote
 from grpc._channel import _InactiveRpcError
 
@@ -86,6 +88,15 @@ def _assert_model_artifact(model_artifact: ModelArtifact, model_type: Type):
     assert isinstance(model_artifact.metrics["train"], float)
 
 
+def _launch_plan_is_active(remote: FlyteRemote, launch_plan_name: str):
+    lp = remote.fetch_launch_plan(name=launch_plan_name)
+    try:
+        remote.client.get_active_launch_plan(NamedEntityIdentifier(lp.id.project, lp.id.domain, lp.id.name))
+        return True
+    except FlyteEntityNotExistException:
+        return False
+
+
 @pytest.mark.parametrize(
     "ml_framework, hyperparameters, trainer_kwargs",
     [
@@ -116,13 +127,29 @@ def test_unionml_deployment(
     project = "unionml-integration-tests"
     model.name = f"{model.name}-{ml_framework}"
     model.dataset.name = f"{model.dataset.name}-{ml_framework}"
+
+    # cconfigure remote
     model.remote(
         dockerfile=f"ci/py{''.join(str(x) for x in sys.version_info[:2])}/Dockerfile",
         project=project,
         domain="development",
     )
+
+    # schedule launchplans, which should be automatically activated with the remote_deploy() call
+    training_schedule_name = f"{model.name}_training_schedule"
+    prediction_schedule_name = f"{model.name}_prediction_schedule"
+    model.schedule_training(training_schedule_name, expression="0 * * * *")
+    model.schedule_prediction(prediction_schedule_name, expression="0 * * * *")
+
     app_version: str = model.remote_deploy(allow_uncommitted=True)
     kwargs = {"hyperparameters": hyperparameters, "trainer_kwargs": trainer_kwargs}
+
+    assert _launch_plan_is_active(model._remote, training_schedule_name)
+    assert _launch_plan_is_active(model._remote, prediction_schedule_name)
+
+    model.remote_deactivate_schedules(app_version, [training_schedule_name, prediction_schedule_name])
+    assert not _launch_plan_is_active(model._remote, training_schedule_name)
+    assert not _launch_plan_is_active(model._remote, prediction_schedule_name)
 
     # this is a hack to account for lag between project and propeller namespace creation
     model_artifact = _retry_execution(lambda: model.remote_train(app_version=app_version, wait=True, **kwargs))
