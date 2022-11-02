@@ -53,7 +53,11 @@ jobs:
     - name: Setup Flyte Sandbox
       if: ${{ matrix.test-dir == 'integration' }}
       run: |
-        ./flytectl demo start --source . --image ghcr.io/flyteorg/flyte-sandbox-bundled:ytkc_tst1
+        git clone git@github.com:flyteorg/flytectl.git
+        pushd flytectl
+        make compile
+        popd
+        .flytectl/bin/flytectl demo start --source . --image ghcr.io/flyteorg/flyte-sandbox-bundled:ytkc_tst1
         cp config.yaml ~/.flyte/config.yaml
     - name: Pytest
       run: |
