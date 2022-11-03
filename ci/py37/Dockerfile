@@ -17,8 +17,8 @@ ENV PATH="${VENV}/bin:$PATH"
 # Install Python dependencies
 # This assumes that the build context is the root of the unionml repo
 COPY ./requirements.txt /root
-COPY ./requirements-dev.txt /root
-RUN pip install -r /root/requirements-dev.txt
+COPY ./requirements-ci.txt /root
+RUN pip install -r /root/requirements-ci.txt
 
 # Copy the actual code
 COPY . /root

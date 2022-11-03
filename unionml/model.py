@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, field, is_dataclass, make_dataclass
 from datetime import timedelta
 from functools import partial
 from inspect import Parameter, signature
-from typing import IO, Any, Callable, Dict, List, NamedTuple, Optional, Set, Tuple, Type, Union
+from typing import IO, Any, Callable, Dict, List, NamedTuple, Optional, Tuple, Type, Union
 
 import joblib
 import pandas as pd
@@ -18,6 +18,7 @@ from fastapi import FastAPI
 from flytekit import LaunchPlan, Workflow
 from flytekit.configuration import Config
 from flytekit.core.tracker import TrackedInstance
+from flytekit.core.type_engine import LiteralsResolver
 from flytekit.remote import FlyteRemote
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.types.pickle import FlytePickle
@@ -122,7 +123,8 @@ class Model(TrackedInstance):
         self._patch_destination_dir: Optional[str] = None
 
         # scheduled launchplans
-        self._scheduled_launchplans: List[LaunchPlan] = []
+        self._training_schedules: List[LaunchPlan] = []
+        self._prediction_schedules: List[LaunchPlan] = []
 
     @property
     def predict_callbacks(self) -> Tuple[Callable, ...]:
@@ -209,14 +211,24 @@ class Model(TrackedInstance):
         return f"{self.name}.predict_from_features"
 
     @property
-    def scheduled_launchplans(self) -> List[LaunchPlan]:
-        """Scheduled launch plans for running jobs at a specified cadence."""
-        return self._scheduled_launchplans
+    def training_schedules(self) -> List[LaunchPlan]:
+        """Scheduled training jobs."""
+        return self._training_schedules
 
     @property
-    def scheduled_launchplan_names(self) -> Set[str]:
-        """Names of all the scheduled launchplans."""
-        return set(lp.name for lp in self.scheduled_launchplans)
+    def training_schedule_names(self) -> List[str]:
+        """Names of all the training schedules."""
+        return [lp.name for lp in self.training_schedules]
+
+    @property
+    def prediction_schedules(self) -> List[LaunchPlan]:
+        """Scheduled prediction jobs."""
+        return self._prediction_schedules
+
+    @property
+    def prediction_schedule_names(self) -> List[str]:
+        """Names of all the prediction schedules."""
+        return [lp.name for lp in self.prediction_schedules]
 
     def init(self, fn):
         """Register a function for initializing a model object."""
@@ -803,7 +815,7 @@ class Model(TrackedInstance):
 
         # deploy launchplans
         if schedule:
-            for lp in self._scheduled_launchplans:
+            for lp in [*self.training_schedules, *self.prediction_schedules]:
                 remote.deploy_launchplan(
                     lp,
                     remote=_remote,
@@ -954,10 +966,10 @@ class Model(TrackedInstance):
             raise ValueError("You must call `model.remote` to attach a remote backend to this model.")
         return self._remote.wait(execution, **kwargs)
 
-    def remote_load(self, execution: FlyteWorkflowExecution):
-        """Load a ``ModelArtifact`` based on the provided Flyte execution.
+    def _remote_fetch_output(self, execution: FlyteWorkflowExecution) -> LiteralsResolver:
+        """Fetch output from a Flyte execution.
 
-        :param execution: a Flyte workflow execution, which is the output of ``remote_train(..., wait=False)`` .
+        :param execution: a Flyte workflow execution, which is the output of ``remote_predict(..., wait=False)`` .
         """
         if self._remote is None:
             raise ValueError("You must call `model.remote` to attach a remote backend to this model.")
@@ -965,18 +977,32 @@ class Model(TrackedInstance):
             logger.info(f"Waiting for execution {execution.id.name} to complete...")
             execution = self.remote_wait(execution)
             logger.info("Done.")
+        return execution.outputs
 
+    def _remote_load_model_artifact(self, execution: FlyteWorkflowExecution) -> ModelArtifact:
+        """Load a model artifact from an execution"""
+        if self._remote is None:
+            raise ValueError("You must call `model.remote` to attach a remote backend to this model.")
+        outputs = self._remote_fetch_output(execution)
         with self._remote.remote_context():
             try:
-                model_object = execution.outputs.get("model_object", as_type=self.model_type)
+                model_object = outputs.get("model_object", as_type=self.model_type)
             except ValueError:
-                model_object = execution.outputs.get("model_object", as_type=FlytePickle)
-
-            self.artifact = ModelArtifact(
+                model_object = outputs.get("model_object", as_type=FlytePickle)
+            return ModelArtifact(
                 model_object,
-                execution.outputs["hyperparameters"],
-                execution.outputs["metrics"],
+                outputs["hyperparameters"],
+                outputs["metrics"],
             )
+
+    def remote_load(self, execution: FlyteWorkflowExecution):
+        """Load a ``ModelArtifact`` based on the provided Flyte execution.
+
+        :param execution: a Flyte workflow execution, which is the output of ``remote_train(..., wait=False)`` .
+        """
+        if self._remote is None:
+            raise ValueError("You must call `model.remote` to attach a remote backend to this model.")
+        self.artifact = self._remote_load_model_artifact(execution)
 
     def remote_list_model_versions(self, app_version: str = None, limit: int = 10) -> List[str]:
         """Lists all the model versions of this UnionML app, in reverse chronological order.
@@ -990,15 +1016,37 @@ class Model(TrackedInstance):
         app_version = app_version or remote.get_app_version(allow_uncommitted=True)
         return remote.list_model_versions(self, app_version=app_version, limit=limit)
 
-    def remote_fetch_predictions(self, execution: FlyteWorkflowExecution) -> Any:
+    def remote_list_prediction_ids(self, app_version: str = None, limit: int = 10) -> List[str]:
+        """Lists all the prediction ids of this UnionML app, in reverse chronological order.
+
+        Prediction ids are unique identifiers given to each batch prediction run that's executed
+        remotely on a Flyte cluster.
+
+        :param app_version: if provided, lists the model versions associated with this app version. By default,
+            this uses the current git sha of the repo, which versions your UnionML app.
+        :param limit: limit the number results to fetch.
+        """
+        from unionml import remote
+
+        app_version = app_version or remote.get_app_version(allow_uncommitted=True)
+        return remote.list_prediction_ids(self, app_version=app_version, limit=limit)
+
+    def remote_fetch_model(self, execution: FlyteWorkflowExecution) -> Any:
         """Fetch predictions from a Flyte execution.
 
         :param execution: a Flyte workflow execution, which is the output of ``remote_predict(..., wait=False)`` .
         """
         if self._remote is None:
             raise ValueError("You must call `model.remote` to attach a remote backend to this model.")
-        execution = self._remote.wait(execution)
-        predictions, *_ = execution.outputs.values()
+        return self._remote_load_model_artifact(execution)
+
+    def remote_fetch_predictions(self, execution: FlyteWorkflowExecution) -> Any:
+        """Fetch predictions from a Flyte execution.
+
+        :param execution: a Flyte workflow execution, which is the output of ``remote_predict(..., wait=False)`` .
+        """
+        outputs = self._remote_fetch_output(execution)
+        predictions, *_ = outputs.values()
         return predictions
 
     def schedule_training(
@@ -1029,10 +1077,9 @@ class Model(TrackedInstance):
         :param kwargs: additional keyword arguments to pass to
             :class:`~flytekit.LaunchPlan`
         """
-        if name in self.scheduled_launchplan_names:
+        if name in self.training_schedule_names:
             raise ValueError(
-                f"Scheduled job {name} just have a unique name. Existing "
-                f"schedules: {self.scheduled_launchplan_names}"
+                f"Scheduled job {name} just have a unique name. Existing " f"schedules: {self.training_schedule_names}"
             )
         launchplan = create_scheduled_launchplan(
             self.train_workflow(),
@@ -1043,7 +1090,7 @@ class Model(TrackedInstance):
             time_arg=reader_time_arg,
             **kwargs,
         )
-        self._scheduled_launchplans.append(launchplan)
+        self._training_schedules.append(launchplan)
 
     def schedule_prediction(
         self,
@@ -1073,10 +1120,10 @@ class Model(TrackedInstance):
         :param kwargs: additional keyword arguments to pass to
             :class:`~flytekit.LaunchPlan`
         """
-        if name in self.scheduled_launchplan_names:
+        if name in self.prediction_schedule_names:
             raise ValueError(
                 f"Scheduled job {name} just have a unique name. Existing "
-                f"schedules: {self.scheduled_launchplan_names}"
+                f"schedules: {self.prediction_schedule_names}"
             )
         launchplan = create_scheduled_launchplan(
             self.predict_workflow(),
@@ -1087,7 +1134,7 @@ class Model(TrackedInstance):
             time_arg=reader_time_arg,
             **kwargs,
         )
-        self._scheduled_launchplans.append(launchplan)
+        self._prediction_schedules.append(launchplan)
 
     def remote_activate_schedules(
         self,
@@ -1107,7 +1154,7 @@ class Model(TrackedInstance):
         _remote = self._remote
         app_version = app_version or remote.get_app_version()
 
-        for lp in self._scheduled_launchplans:
+        for lp in [*self.training_schedules, *self.prediction_schedules]:
             if schedule_names and lp.name not in schedule_names:
                 continue
             remote.activate_launchplan(
@@ -1136,7 +1183,7 @@ class Model(TrackedInstance):
         _remote = self._remote
         app_version = app_version or remote.get_app_version()
 
-        for lp in self._scheduled_launchplans:
+        for lp in [*self.training_schedules, *self.prediction_schedules]:
             if schedule_names and lp.name not in schedule_names:
                 continue
             remote.deactivate_launchplan(
@@ -1146,6 +1193,47 @@ class Model(TrackedInstance):
                 domain=_remote.default_domain,
                 version=app_version,
             )
+
+    def remote_list_scheduled_training_runs(
+        self,
+        schedule_name: str,
+        app_version: str = None,
+        limit: int = 5,
+    ) -> List[FlyteWorkflowExecution]:
+        """Lists executions associated with a training schedule, sorted from most to least recent.
+
+        :param schedule_name: fetch runs for this training schedule.
+        :param limit: number of executions to list.
+        :returns: a list of :class:`~flytekit.remote.execution.FlyteWorkflowExecution` objects
+        """
+        from unionml import remote
+
+        if self._remote is None:
+            raise RuntimeError("First configure the remote client with the `Model.remote` method")
+        if schedule_name not in self.training_schedule_names:
+            raise ValueError(
+                f"Schedule '{schedule_name}' does not exist. Must be one of {self.training_schedule_names}"
+            )
+        return remote.get_scheduled_runs(self._remote, schedule_name, app_version=app_version, limit=limit)
+
+    def remote_list_scheduled_prediction_runs(
+        self, schedule_name: str, app_version: str = None, limit: int = 5
+    ) -> List[FlyteWorkflowExecution]:
+        """Lists executions associated with a prediction schedule, sorted from most to least recent.
+
+        :param schedule_name: fetch runs for this prediction schedule.
+        :param limit: number of executions to list.
+        :returns: a list of :class:`~flytekit.remote.execution.FlyteWorkflowExecution` objects
+        """
+        from unionml import remote
+
+        if self._remote is None:
+            raise RuntimeError("First configure the remote client with the `Model.remote` method")
+        if schedule_name not in self.prediction_schedule_names:
+            raise ValueError(
+                f"Schedule '{schedule_name}' does not exist. Must be one of {self.prediction_schedule_names}"
+            )
+        return remote.get_scheduled_runs(self._remote, schedule_name, app_version=app_version, limit=limit)
 
     @property
     def model_type(self) -> Type:

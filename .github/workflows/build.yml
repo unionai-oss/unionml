@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test-dir: ["unit"]
+        test-dir: ["unit", "integration"]
         python-version: ["3.7", "3.8", "3.9", "3.10"]
 
     env:

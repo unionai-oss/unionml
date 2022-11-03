@@ -13,7 +13,7 @@ import typer
 import uvicorn
 from cookiecutter.main import cookiecutter
 
-from unionml.remote import VersionFetchError, get_app_version, get_model, get_model_execution
+from unionml.remote import VersionFetchError, get_app_version, get_model, get_model_execution, get_prediction_execution
 
 sys.path.append(os.curdir)
 
@@ -29,6 +29,10 @@ class AppTemplate(str, Enum):
     basic_aws_lambda = "basic-aws-lambda"
     basic_aws_lambda_s3 = "basic-aws-lambda-s3"
     quickdraw = "quickdraw"
+
+
+class PredictionOutputFormats(str, Enum):
+    json = "json"
 
 
 @app.command()
@@ -174,12 +178,57 @@ def list_model_versions(
     ),
 ):
     r"""List all model versions."""
-
     model = get_model(app)
     app_version = app_version or get_app_version(allow_uncommitted=True)
     typer.echo(f"[unionml] app: {app} - listing model versions for app version={app_version}")
     for model_version in model.remote_list_model_versions(app_version, limit):
         typer.echo(f"- {model_version}")
+
+
+@app.command("list-prediction-ids")
+def list_prediction_ids(
+    app: str,
+    app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
+    limit: int = typer.Option(
+        10, "--limit", help="Maximum number of model versions to list, sorted in descending order of time of execution."
+    ),
+):
+    r"""List all batch prediction identifiers."""
+    model = get_model(app)
+    app_version = app_version or get_app_version(allow_uncommitted=True)
+    typer.echo(f"[unionml] app: {app} - listing prediction ids for app version={app_version}")
+    for prediction_id in model.remote_list_prediction_ids(app_version, limit):
+        typer.echo(f"- {prediction_id}")
+
+
+@app.command()
+def list_scheduled_training_runs(
+    app: str,
+    schedule_name,
+    app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
+    limit: int = typer.Option(5, "--limit", help="number of "),
+):
+    r"""List scheduled training runs by schedule name."""
+    model = get_model(app)
+    app_version = app_version or get_app_version(allow_uncommitted=True)
+    typer.echo(f"[unionml] app: {app} - listing scheduled training runs for schedule '{schedule_name}'")
+    for run in model.remote_list_scheduled_training_runs(schedule_name, app_version=app_version, limit=limit):
+        typer.echo(f"- {run.id.name}")
+
+
+@app.command()
+def list_scheduled_prediction_runs(
+    app: str,
+    schedule_name,
+    app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
+    limit: int = typer.Option(5, "--limit", help="number of "),
+):
+    r"""List scheduled prediction runs by schedule name."""
+    model = get_model(app)
+    app_version = app_version or get_app_version(allow_uncommitted=True)
+    typer.echo(f"[unionml] app: {app} - listing scheduled training runs for schedule '{schedule_name}'")
+    for run in model.remote_list_scheduled_training_runs(schedule_name, app_version=app_version, limit=limit):
+        typer.echo(f"- {run.id.name}")
 
 
 @app.command("fetch-model")
@@ -200,6 +249,32 @@ def fetch_model(
         save_kwargs = json.loads(kwargs)
     model.save(output_file, **save_kwargs)
     typer.echo(f"[unionml] app: {app} - saving model version {execution.id.name} to {output_file}")
+
+
+@app.command("fetch-predictions")
+def fetch_predictions(
+    app: str,
+    app_version: str = typer.Option(None, "--app-version", "-v", help="app version"),
+    prediction_id: str = typer.Option("latest", "--prediction-id", "-m", help="prediction id"),
+    output_file: str = typer.Option(None, "--output-file", "-o", help="output file path"),
+    output_format: str = typer.Option(
+        PredictionOutputFormats.json,
+        "--output-format",
+        "-f",
+        help="Output format of the file. Currently only json-serializable prediction outputs are supported.",
+    ),
+):
+    r"""Fetch a model object from the remote backend."""
+    model = get_model(app)
+    app_version = app_version or get_app_version(allow_uncommitted=True)
+    execution = get_prediction_execution(model, app_version, prediction_id=prediction_id)
+    predictions = model.remote_fetch_predictions(execution)
+    if output_format == "json":
+        with open(output_file) as f:
+            json.dump(predictions, f)
+    else:
+        raise ValueError(f"output_format '{output_format}' not recognized.")
+    typer.echo(f"[unionml] app: {app} - saving predictions {execution.id.name} to {output_file}")
 
 
 @app.callback()

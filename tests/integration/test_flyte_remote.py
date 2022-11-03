@@ -120,6 +120,8 @@ def test_unionml_deployment(
     hyperparameters: Dict[str, Any],
     trainer_kwargs: Dict[str, Any],
 ):
+    if ml_framework != "sklearn":
+        pytest.skip("Don't run Flyte cluster tests on other frameworks due to memory load on " "docker image in CI.")
     model = _import_model_from_file(
         f"tests.integration.{ml_framework}_app.quickstart",
         Path(__file__).parent / f"{ml_framework}_app" / "quickstart.py",
@@ -128,7 +130,7 @@ def test_unionml_deployment(
     model.name = f"{model.name}-{ml_framework}"
     model.dataset.name = f"{model.dataset.name}-{ml_framework}"
 
-    # cconfigure remote
+    # configure remote
     model.remote(
         dockerfile=f"ci/py{''.join(str(x) for x in sys.version_info[:2])}/Dockerfile",
         project=project,
@@ -138,8 +140,8 @@ def test_unionml_deployment(
     # schedule launchplans, which should be automatically activated with the remote_deploy() call
     training_schedule_name = f"{model.name}_training_schedule"
     prediction_schedule_name = f"{model.name}_prediction_schedule"
-    model.schedule_training(training_schedule_name, expression="0 * * * *")
-    model.schedule_prediction(prediction_schedule_name, expression="0 * * * *")
+    model.schedule_training(training_schedule_name, expression="*/3 * * * *")
+    model.schedule_prediction(prediction_schedule_name, expression="*/3 * * * *")
 
     app_version: str = model.remote_deploy(allow_uncommitted=True)
     kwargs = {"hyperparameters": hyperparameters, "trainer_kwargs": trainer_kwargs}

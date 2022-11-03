@@ -1,0 +1,12 @@
+-r requirements.txt
+
+black
+boto3
+flake8
+flytekitplugins-sqlalchemy
+pre_commit
+pytest
+pytest-mock
+types-requests
+uvicorn
+jupytext
