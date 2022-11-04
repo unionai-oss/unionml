@@ -75,6 +75,16 @@ Optionally, you can run integration tests locally. First install [flytectl](http
 python tests/integration
 ```
 
+### DCO-signing Commits
+
+This project enforces the [DCO](https://developercertificate.org/) standard for
+contributions, which requires authors to sign off on their commits. This can be
+done with the `-s` or `--signoff` flag:
+
+```
+git commit -s -m 'my commit'
+```
+
 ### Installing
 
 Install using conda:
