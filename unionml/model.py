@@ -620,18 +620,13 @@ class Model(TrackedInstance):
                 "predictions."
             )
 
-        wf: Workflow
         if features is None:
-            wf = self.predict_workflow()(model_object=self.artifact.model_object, **reader_kwargs)
+            return self.predict_workflow()(model_object=self.artifact.model_object, **reader_kwargs)
         else:
-            wf = self.predict_from_features_workflow()(
+            return self.predict_from_features_workflow()(
                 model_object=self.artifact.model_object,
                 features=self._dataset.get_features(features),
             )
-
-        # TODO(review,zevisert): Should local predict run callbacks too?
-
-        return wf
 
     def save(self, file: Union[str, os.PathLike, IO], *args, **kwargs):
         """Save the model object to disk."""
