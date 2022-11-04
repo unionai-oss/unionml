@@ -149,7 +149,7 @@ def guard_evaluator(evaluator: Callable, expected_model_type: Type, expected_dat
 
 
 def guard_predictor(predictor: Callable, expected_model_type: Type, expected_data_type: Type):
-    """Ensure that the evaluater has the expected input data and model types."""
+    """Ensure that the predictor has the expected input data and model types."""
     sig = signature(predictor)
     params = [*sig.parameters.values()]
 
@@ -169,8 +169,10 @@ def guard_predictor(predictor: Callable, expected_model_type: Type, expected_dat
         raise TypeError("The 'predictor' function needs a return type annotation.")
 
 
-def guard_callback(callback: Callable, predictor: Callable, expected_model_type: Type, expected_data_type: Type):
-    """Ensure that the evaluater has the expected input data and model types."""
+def guard_prediction_callback(
+    callback: Callable, predictor: Callable, expected_model_type: Type, expected_data_type: Type
+):
+    """Ensure that a callback has the expected model type, along with input and output data types."""
     sig = signature(callback)
     params = [*sig.parameters.values()]
 

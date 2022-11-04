@@ -270,7 +270,7 @@ class Model(TrackedInstance):
                 if not callable(cb):
                     raise ValueError("Callback must be a callable function.")
 
-                type_guards.guard_callback(
+                type_guards.guard_prediction_callback(
                     predictor=fn,
                     callback=cb,
                     expected_model_type=self.model_type,

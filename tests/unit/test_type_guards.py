@@ -347,12 +347,12 @@ def callback_wrong_return_annotation(model_obj: ModelType, features: DatasetType
         [callback_wrong_return_annotation, False],
     ],
 )
-def test_guard_callback(callback_fn, is_valid):
+def test_guard_prediction_callback(callback_fn, is_valid):
     if is_valid:
-        type_guards.guard_callback(callback_fn, predictor_valid, ModelType, DatasetType)
+        type_guards.guard_prediction_callback(callback_fn, predictor_valid, ModelType, DatasetType)
     else:
         with pytest.raises(TypeError):
-            type_guards.guard_callback(callback_fn, predictor_valid, ModelType, DatasetType)
+            type_guards.guard_prediction_callback(callback_fn, predictor_valid, ModelType, DatasetType)
 
 
 # types
