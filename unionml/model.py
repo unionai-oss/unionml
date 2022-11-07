@@ -27,7 +27,7 @@ import unionml.type_guards as type_guards
 from unionml._logging import logger
 from unionml.dataset import Dataset
 from unionml.defaults import DEFAULT_RESOURCES
-from unionml.schedule import create_scheduled_launchplan
+from unionml.schedule import Schedule, ScheduleType, create_scheduled_launchplan
 from unionml.utils import inner_task, is_keras_model, is_pytorch_model
 
 
@@ -123,8 +123,9 @@ class Model(TrackedInstance):
         self._patch_destination_dir: Optional[str] = None
 
         # scheduled launchplans
-        self._training_schedules: List[LaunchPlan] = []
-        self._prediction_schedules: List[LaunchPlan] = []
+        self._training_schedules: List[Schedule] = []
+        self._prediction_schedules: List[Schedule] = []
+        self._launchplan_cache: Dict[str, LaunchPlan] = {}
 
     @property
     def predict_callbacks(self) -> Tuple[Callable, ...]:
@@ -211,7 +212,7 @@ class Model(TrackedInstance):
         return f"{self.name}.predict_from_features"
 
     @property
-    def training_schedules(self) -> List[LaunchPlan]:
+    def training_schedules(self) -> List[Schedule]:
         """Scheduled training jobs."""
         return self._training_schedules
 
@@ -221,7 +222,7 @@ class Model(TrackedInstance):
         return [lp.name for lp in self.training_schedules]
 
     @property
-    def prediction_schedules(self) -> List[LaunchPlan]:
+    def prediction_schedules(self) -> List[Schedule]:
         """Scheduled prediction jobs."""
         return self._prediction_schedules
 
@@ -265,7 +266,33 @@ class Model(TrackedInstance):
         type_guards.guard_trainer(fn, self.model_type, expected_types)
         self._trainer = fn
         self._train_task_kwargs = {"requests": DEFAULT_RESOURCES, "limits": DEFAULT_RESOURCES, **train_task_kwargs}
-        return self._trainer
+
+        if not hasattr(fn, "__unionml_model__"):
+            # inject the model into the function so that decorators on top of it can access the model object
+            fn.__unionml_model__ = self  # type: ignore
+
+        if not hasattr(fn, "__unionml_schedules__"):
+            return fn
+
+        # add trainer schedules if specified by the @schedule.schedule_trainer decorator
+        schedules: List[Schedule] = fn.__unionml_schedules__  # type: ignore
+        for schedule in schedules:
+            self._add_training_schedule(schedule)
+        return fn
+
+    def add_training_schedule(self, schedule: Schedule):
+        """Add a training schedule to the model.
+
+        :param schedule: schedule specification to add
+        """
+        if schedule.type != ScheduleType.trainer:
+            raise ValueError(f"Expected schedule type {ScheduleType.trainer}, found {schedule.type}")
+        elif schedule.name in self.training_schedule_names:
+            raise ValueError(
+                f"Scheduled job {schedule.name} just have a unique name. Existing "
+                f"schedules: {self.training_schedule_names}"
+            )
+        self._training_schedules.append(schedule)
 
     def predictor(self, fn=None, callbacks: Union[List[Callable], None] = None, **predict_task_kwargs):
         """Register a function that generates predictions from a model object.
@@ -305,7 +332,31 @@ class Model(TrackedInstance):
 
             self.predict_callbacks = tuple(callbacks)
 
+        if not hasattr(fn, "__unionml_model__"):
+            # inject the model into the function so that decorators on top of it can access the model object
+            fn.__unionml_model__ = self
+
+        if not hasattr(fn, "__unionml_schedules__"):
+            return fn
+
+        schedules: List[Schedule] = fn.__unionml_schedules__
+        for schedule in schedules:
+            self.add_prediction_schedule(schedule)
         return self._predictor
+
+    def add_prediction_schedule(self, schedule: Schedule):
+        """Add a prediction schedule to the model.
+
+        :param schedule: schedule specification to add
+        """
+        if schedule.type != ScheduleType.predictor:
+            raise ValueError(f"Expected schedule type {ScheduleType.predictor}, found {schedule.type}")
+        elif schedule.name in self.prediction_schedule_names:
+            raise ValueError(
+                f"Scheduled job {schedule.name} just have a unique name. Existing "
+                f"schedules: {self.prediction_schedule_names}"
+            )
+        self._prediction_schedules.append(schedule)
 
     def evaluator(self, fn):
         """Register a function for producing metrics for given model object."""
@@ -815,9 +866,25 @@ class Model(TrackedInstance):
 
         # deploy launchplans
         if schedule:
-            for lp in [*self.training_schedules, *self.prediction_schedules]:
+            schedules: List[Schedule] = [*self.training_schedules, *self.prediction_schedules]
+            for s in schedules:
+                launchplan = self._launchplan_cache.get(s.name)
+                if launchplan is None:
+                    schedule_dict = asdict(s)
+                    schedule_type = schedule_dict.pop("type")
+                    wf_method = {
+                        ScheduleType.trainer: self.train_workflow,
+                        ScheduleType.predictor: self.predict_workflow,
+                    }[schedule_type]
+
+                    kwargs = schedule_dict.pop("kwargs") or {}
+                    launchplan = create_scheduled_launchplan(
+                        wf_method(),
+                        **{**schedule_dict, **kwargs},
+                    )
+                    self._launchplan_cache[s.name] = launchplan
                 remote.deploy_launchplan(
-                    lp,
+                    launchplan,
                     remote=_remote,
                     project=_remote.default_project,
                     domain=_remote.default_domain,

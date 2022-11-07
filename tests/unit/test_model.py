@@ -10,11 +10,12 @@ from inspect import signature
 
 import pandas as pd
 import pytest
-from flytekit import LaunchPlan, task, workflow
+from flytekit import task, workflow
 from flytekit.core.python_function_task import PythonFunctionTask
 from sklearn.linear_model import LogisticRegression
 
 from unionml.model import BaseHyperparameters, Model, ModelArtifact
+from unionml.schedule import Schedule, ScheduleType
 
 
 def test_model_decorators(model: Model, trainer, predictor, evaluator):
@@ -207,18 +208,26 @@ def test_model_schedule(model: Model):
     expression = "0 * * * *"
     fixed_rate = timedelta(days=1)
 
-    model.schedule_training(f"{model.name}_training_schedule_expression", expression=expression)
-    model.schedule_prediction(f"{model.name}_prediction_schedule_expression", expression=expression)
+    model.add_training_schedule(
+        Schedule(ScheduleType.trainer, name=f"{model.name}_training_schedule_expression", expression=expression)
+    )
+    model.add_training_schedule(
+        Schedule(ScheduleType.trainer, name=f"{model.name}_training_schedule_fixed_rate", fixed_rate=fixed_rate)
+    )
 
-    model.schedule_training(f"{model.name}_training_schedule_fixed_rate", fixed_rate=fixed_rate)
-    model.schedule_prediction(f"{model.name}_prediction_schedule_fixed_rate", fixed_rate=fixed_rate)
+    model.add_prediction_schedule(
+        Schedule(ScheduleType.predictor, name=f"{model.name}_prediction_schedule_expression", expression=expression)
+    )
+    model.add_prediction_schedule(
+        Schedule(ScheduleType.predictor, name=f"{model.name}_prediction_schedule_fixed_rate", fixed_rate=fixed_rate)
+    )
 
     assert len(model.training_schedule_names) == 2
     assert len(model.prediction_schedule_names) == 2
     assert len(model.training_schedules) == 2
     assert len(model.prediction_schedules) == 2
-    assert all(isinstance(x, LaunchPlan) for x in model.training_schedules)
-    assert all(isinstance(x, LaunchPlan) for x in model.prediction_schedules)
+    assert all(isinstance(x, Schedule) for x in model.training_schedules)
+    assert all(isinstance(x, Schedule) for x in model.prediction_schedules)
     assert set(model.training_schedule_names) == set(
         f"{model.name}_{x}" for x in ("training_schedule_expression", "training_schedule_fixed_rate")
     )

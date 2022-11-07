@@ -15,6 +15,7 @@ from grpc._channel import _InactiveRpcError
 
 from unionml import Model
 from unionml.model import ModelArtifact
+from unionml.schedule import Schedule
 
 FLYTECTL_CMD = "sandbox" if os.getenv("UNIONML_CI", False) else "demo"
 NO_CLUSTER_MSG = "🛑 no demo cluster found" if FLYTECTL_CMD == "demo" else "🛑 no Sandbox found"
@@ -140,8 +141,8 @@ def test_unionml_deployment(
     # schedule launchplans, which should be automatically activated with the remote_deploy() call
     training_schedule_name = f"{model.name}_training_schedule"
     prediction_schedule_name = f"{model.name}_prediction_schedule"
-    model.schedule_training(training_schedule_name, expression="*/3 * * * *")
-    model.schedule_prediction(prediction_schedule_name, expression="*/3 * * * *")
+    model.add_training_schedule(Schedule("trainer", training_schedule_name, expression="*/3 * * * *"))
+    model.add_prediction_schedule(Schedule("predictor", prediction_schedule_name, expression="*/3 * * * *"))
 
     app_version: str = model.remote_deploy(allow_uncommitted=True)
     kwargs = {"hyperparameters": hyperparameters, "trainer_kwargs": trainer_kwargs}
