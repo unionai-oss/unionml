@@ -1,4 +1,4 @@
 .PHONY: docs
 
 docs:
-	$(MAKE) -C docs clean html SPHINXOPTS='-j 4 -vvvv'
+	$(MAKE) -C docs clean html SPHINXOPTS='-j 4 -v'
