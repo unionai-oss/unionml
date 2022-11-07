@@ -10,7 +10,7 @@ mangum
 numpy
 pandas
 pydantic
-sklearn
+scikit-learn
 typer
 typing-extensions >= 4.3.0
 uvicorn
