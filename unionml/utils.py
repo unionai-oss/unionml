@@ -1,6 +1,6 @@
 import typing
 from functools import partial, wraps
-from inspect import Parameter, signature
+from inspect import Parameter, _empty, signature
 
 from flytekit import task
 
@@ -12,7 +12,7 @@ def inner_task(
     *,
     unionml_obj,
     input_parameters=None,
-    return_annotation=None,
+    return_annotation=_empty,
     **task_kwargs,
 ):
     """A flytekit task defined within a Dataset or Model class.
@@ -48,7 +48,7 @@ def inner_task(
             p.replace(kind=Parameter.KEYWORD_ONLY)
             for p in (fn_sig.parameters if input_parameters is None else input_parameters).values()
         ],
-        return_annotation=fn_sig.return_annotation if return_annotation is None else return_annotation,
+        return_annotation=fn_sig.return_annotation if return_annotation is _empty else return_annotation,
     )
     wrapper.__annotations__.update({k: v.annotation for k, v in input_parameters.items()})
     wrapper.__annotations__["return"] = return_annotation

@@ -109,6 +109,7 @@ class Model(TrackedInstance):
         self._train_task = None
         self._predict_task = None
         self._predict_from_features_task = None
+        self._predict_callbacks: Tuple[Callable, ...] = ()
 
         # user-provided task kwargs
         self._train_task_kwargs: Optional[Dict[str, Any]] = None
@@ -118,6 +119,19 @@ class Model(TrackedInstance):
         self._hyperparameter_type: Optional[Type] = None
 
         self._patch_destination_dir: Optional[str] = None
+
+    @property
+    def predict_callbacks(self) -> Tuple[Callable, ...]:
+        return self._predict_callbacks
+
+    @predict_callbacks.setter
+    def predict_callbacks(self, callbacks) -> Tuple[Callable, ...]:
+        if len(self.predict_callbacks):
+            raise ValueError("Callbacks have already been set on this model. You can only set predict callbacks once.")
+
+        self._predict_callbacks = callbacks
+
+        return self.predict_callbacks
 
     @property
     def artifact(self) -> Optional[ModelArtifact]:
@@ -227,7 +241,7 @@ class Model(TrackedInstance):
         self._train_task_kwargs = {"requests": DEFAULT_RESOURCES, "limits": DEFAULT_RESOURCES, **train_task_kwargs}
         return self._trainer
 
-    def predictor(self, fn=None, **predict_task_kwargs):
+    def predictor(self, fn=None, callbacks: Union[List[Callable], None] = None, **predict_task_kwargs):
         """Register a function that generates predictions from a model object.
 
         This function is the primary entrypoint for defining your application's prediction behavior.
@@ -240,7 +254,7 @@ class Model(TrackedInstance):
             functions defined in the bound :py:class:`~unionml.dataset.Dataset`.
         """
         if fn is None:
-            return partial(self.predictor, **predict_task_kwargs)
+            return partial(self.predictor, callbacks=callbacks, **predict_task_kwargs)
 
         type_guards.guard_predictor(fn, self.model_type, self._dataset.feature_type)
         self._predictor = fn
@@ -249,6 +263,22 @@ class Model(TrackedInstance):
             "limits": DEFAULT_RESOURCES,
             **predict_task_kwargs,
         }
+
+        # Checked after predictor since we need the predictor's return type.
+        if callbacks is not None:
+            for cb in callbacks:
+                if not callable(cb):
+                    raise ValueError("Callback must be a callable function.")
+
+                type_guards.guard_prediction_callback(
+                    predictor=fn,
+                    callback=cb,
+                    expected_model_type=self.model_type,
+                    expected_data_type=self._dataset.feature_type,
+                )
+
+            self.predict_callbacks = tuple(callbacks)
+
         return self._predictor
 
     def evaluator(self, fn):
@@ -358,6 +388,7 @@ class Model(TrackedInstance):
         )
         for output_name, promise in predict_node.outputs.items():
             wf.add_workflow_output(output_name, promise)
+
         return wf
 
     def predict_from_features_workflow(self):
@@ -367,11 +398,13 @@ class Model(TrackedInstance):
         wf = Workflow(name=self.predict_from_features_workflow_name)
         for i, (arg, type) in enumerate(predict_task.python_interface.inputs.items()):
             # assume that the first argument is the model object
+            print(f"adding input in predict_from_features_workflow: {(arg, type)}")
             wf.add_workflow_input("model_object" if i == 0 else arg, type)
 
         predict_node = wf.add_entity(predict_task, **{k: wf.inputs[k] for k in wf.inputs})
         for output_name, promise in predict_node.outputs.items():
             wf.add_workflow_output(output_name, promise)
+
         return wf
 
     def train_task(self):
@@ -468,7 +501,15 @@ class Model(TrackedInstance):
         def predict_task(model_object, **kwargs):
             parsed_data = self.dataset._parser(kwargs[data_arg_name], **self._dataset.parser_kwargs)
             features = self.dataset._feature_transformer(parsed_data[self._dataset._parser_feature_key])
-            return self._predictor(model_object, features)
+            predictions = self._predictor(model_object, features)
+
+            for callback in self.predict_callbacks:
+                try:
+                    callback(model_object, features, predictions)
+                except Exception as e:
+                    logger.exception(f"Error in post-prediction callback[{callback.__name__}]: {e}")
+
+            return predictions
 
         self._predict_task = predict_task
         return predict_task
@@ -496,7 +537,15 @@ class Model(TrackedInstance):
             **self._predict_task_kwargs,
         )
         def predict_from_features_task(model_object, features):
-            return self._predictor(model_object, features)
+            predictions = self._predictor(model_object, features)
+
+            for callback in self.predict_callbacks:
+                try:
+                    callback(model_object, features, predictions)
+                except Exception as e:
+                    logger.exception(f"Error in post-prediction callback[{callback.__name__}]: {e}")
+
+            return predictions
 
         self._predict_from_features_task = predict_from_features_task
         return predict_from_features_task
@@ -570,12 +619,14 @@ class Model(TrackedInstance):
                 "ModelArtifact not found. You must train a model first with the `train` method before generating "
                 "predictions."
             )
+
         if features is None:
             return self.predict_workflow()(model_object=self.artifact.model_object, **reader_kwargs)
-        return self.predict_from_features_workflow()(
-            model_object=self.artifact.model_object,
-            features=self._dataset.get_features(features),
-        )
+        else:
+            return self.predict_from_features_workflow()(
+                model_object=self.artifact.model_object,
+                features=self._dataset.get_features(features),
+            )
 
     def save(self, file: Union[str, os.PathLike, IO], *args, **kwargs):
         """Save the model object to disk."""

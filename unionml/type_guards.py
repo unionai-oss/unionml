@@ -149,7 +149,7 @@ def guard_evaluator(evaluator: Callable, expected_model_type: Type, expected_dat
 
 
 def guard_predictor(predictor: Callable, expected_model_type: Type, expected_data_type: Type):
-    """Ensure that the evaluater has the expected input data and model types."""
+    """Ensure that the predictor has the expected input data and model types."""
     sig = signature(predictor)
     params = [*sig.parameters.values()]
 
@@ -167,6 +167,69 @@ def guard_predictor(predictor: Callable, expected_model_type: Type, expected_dat
 
     if sig.return_annotation is _empty:
         raise TypeError("The 'predictor' function needs a return type annotation.")
+
+
+def guard_prediction_callback(
+    callback: Callable, predictor: Callable, expected_model_type: Type, expected_data_type: Type
+):
+    """Ensure that a callback has the expected model type, along with input and output data types."""
+    sig = signature(callback)
+    params = [*sig.parameters.values()]
+
+    expected_prediction_type = signature(predictor).return_annotation
+    if expected_prediction_type is _empty:
+        raise TypeError("The 'predictor' function needs a return type annotation.")
+
+    if sig.return_annotation is not _empty and sig.return_annotation is not None:
+        raise TypeError(f"The 'callback[{callback.__name__}]' function must have None as it's return annotation.")
+
+    actual_model_type = params[0].annotation
+    actual_params = [
+        p.annotation for p in params[1:] if p.kind in {Parameter.POSITIONAL_OR_KEYWORD, Parameter.POSITIONAL_ONLY}
+    ]
+
+    if len(actual_params) != 2:
+        raise TypeError(
+            f"Callback functions (callback[{callback.__name__}]) must take both 'features' and 'prediction' arguments, found {actual_params}"
+        )
+
+    actual_features, actual_prediction = actual_params
+
+    if (
+        actual_model_type is not Any
+        and expected_model_type is not Any
+        and actual_model_type != expected_model_type
+        and expected_model_type not in get_args(actual_model_type)
+        and actual_model_type not in get_args(expected_model_type)
+    ):
+        raise TypeError(
+            f"The type of the first argument of the callback[{callback.__name__}] function must be compatible with the expected output "
+            f"type: {expected_model_type}. Found {actual_model_type}"
+        )
+
+    if (
+        actual_features is not Any
+        and expected_data_type is not Any
+        and actual_features != expected_data_type
+        and expected_data_type not in get_args(actual_features)
+        and actual_features not in get_args(expected_data_type)
+    ):
+        raise TypeError(
+            f"The type of the second argument of the callback[{callback.__name__}] function must be compatible with the expected output "
+            f"type: {expected_data_type}. Found {actual_features}"
+        )
+
+    if (
+        actual_prediction is not Any
+        and expected_prediction_type is not Any
+        and actual_prediction != expected_prediction_type
+        and expected_prediction_type not in get_args(actual_prediction)
+        and actual_prediction not in get_args(expected_prediction_type)
+    ):
+        raise TypeError(
+            f"The type of the third argument of the callback[{callback.__name__}] function must be compatible with the expected output "
+            f"type: {expected_prediction_type}. Found {actual_prediction}"
+        )
 
 
 def guard_feature_loader(feature_loader: Callable, expected_data_type: Type):
