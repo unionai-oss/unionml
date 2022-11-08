@@ -22,7 +22,8 @@
 hidden: true
 ---
 Basics <basics>
-Deployment Guide <deploying>
+Deployment Guides <deploying>
+Advanced Guides <advanced_guides>
 ```
 
 ```{toctree}

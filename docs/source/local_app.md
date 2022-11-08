@@ -27,7 +27,7 @@ unit testing of your UnionML app.
 
 Here's our complete UnionML app for digit classification in a `app.py` script:
 
-```{code-cell}
+```{code-cell} python
 from typing import List
 
 import pandas as pd
@@ -68,7 +68,7 @@ def evaluator(estimator: LogisticRegression, features: pd.DataFrame, target: pd.
 We can then invoke the `model.train` method to train the sklearn estimator and `model.predict`
 to generate predictions. Then invoke the app script with `python app.py`:
 
-```{code-cell}
+```{code-cell} python
 :tags: [remove-cell]
 
 import warnings
@@ -120,7 +120,7 @@ You may notice a few things about the code example above:
 UnionML integrates with [FastAPI](https://fastapi.tiangolo.com/) to make model serving super easy. Simply
 create a `FastAPI` app and pass it into `model.serve` in the `app.py` script:
 
-```{code-cell}
+```{code-cell} python
 from fastapi import FastAPI
 
 # dataset and model definition

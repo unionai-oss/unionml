@@ -1,6 +1,6 @@
 (deploying_to_production)=
 
-# Deployment Guide
+# Deployment Guides
 
 ```{toctree}
 ---

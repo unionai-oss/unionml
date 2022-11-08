@@ -277,10 +277,10 @@ class Model(TrackedInstance):
         # add trainer schedules if specified by the @schedule.schedule_trainer decorator
         schedules: List[Schedule] = fn.__unionml_schedules__  # type: ignore
         for schedule in schedules:
-            self._add_training_schedule(schedule)
+            self.add_trainer_schedule(schedule)
         return fn
 
-    def add_training_schedule(self, schedule: Schedule):
+    def add_trainer_schedule(self, schedule: Schedule):
         """Add a training schedule to the model.
 
         :param schedule: schedule specification to add
@@ -341,10 +341,10 @@ class Model(TrackedInstance):
 
         schedules: List[Schedule] = fn.__unionml_schedules__
         for schedule in schedules:
-            self.add_prediction_schedule(schedule)
+            self.add_predictor_schedule(schedule)
         return self._predictor
 
-    def add_prediction_schedule(self, schedule: Schedule):
+    def add_predictor_schedule(self, schedule: Schedule):
         """Add a prediction schedule to the model.
 
         :param schedule: schedule specification to add
@@ -475,7 +475,6 @@ class Model(TrackedInstance):
         wf = Workflow(name=self.predict_from_features_workflow_name)
         for i, (arg, type) in enumerate(predict_task.python_interface.inputs.items()):
             # assume that the first argument is the model object
-            print(f"adding input in predict_from_features_workflow: {(arg, type)}")
             wf.add_workflow_input("model_object" if i == 0 else arg, type)
 
         predict_node = wf.add_entity(predict_task, **{k: wf.inputs[k] for k in wf.inputs})

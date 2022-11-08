@@ -141,10 +141,10 @@ class MockModel:
         self.training_schedules = []
         self.prediction_schedules = []
 
-    def add_training_schedule(self, schedule: schedule.Schedule):
+    def add_trainer_schedule(self, schedule: schedule.Schedule):
         self.training_schedules.append(schedule)
 
-    def add_prediction_schedule(self, schedule: schedule.Schedule):
+    def add_predictor_schedule(self, schedule: schedule.Schedule):
         self.prediction_schedules.append(schedule)
 
 

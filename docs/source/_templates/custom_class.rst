@@ -7,18 +7,24 @@
 
    {% block methods %}
 
-   {% if methods %}
+   {% set _methods = methods | reject("in", inherited_members) | reject("eq", "__init__") | list %}
+   {% if _methods | length > 0  %}
    .. rubric:: {{ _('Methods') }}
 
    .. autosummary::
       :nosignatures:
-   {% for item in methods %}
-   {%- if item not in inherited_members and item != "__init__" %}
+   {% for item in _methods %}
       ~{{ name }}.{{ item }}
-   {%- endif %}
    {%- endfor %}
    {% endif %}
    {% endblock %}
+
+   .. special cases for certain classes
+   {% set _attributes = attributes %}
+   {% if module == "unionml.schedule" and objname == "Schedule" %}
+      {% set _attributes = ["type", "name", "expression", "offset", "fixed_rate", "time_arg", "kwargs"] %}
+   {% endif %}
+
 
    {% block attributes %}
    {% if attributes %}

@@ -208,17 +208,17 @@ def test_model_schedule(model: Model):
     expression = "0 * * * *"
     fixed_rate = timedelta(days=1)
 
-    model.add_training_schedule(
+    model.add_trainer_schedule(
         Schedule(ScheduleType.trainer, name=f"{model.name}_training_schedule_expression", expression=expression)
     )
-    model.add_training_schedule(
+    model.add_trainer_schedule(
         Schedule(ScheduleType.trainer, name=f"{model.name}_training_schedule_fixed_rate", fixed_rate=fixed_rate)
     )
 
-    model.add_prediction_schedule(
+    model.add_predictor_schedule(
         Schedule(ScheduleType.predictor, name=f"{model.name}_prediction_schedule_expression", expression=expression)
     )
-    model.add_prediction_schedule(
+    model.add_predictor_schedule(
         Schedule(ScheduleType.predictor, name=f"{model.name}_prediction_schedule_fixed_rate", fixed_rate=fixed_rate)
     )
 
