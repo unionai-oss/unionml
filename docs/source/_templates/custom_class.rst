@@ -22,7 +22,7 @@
    .. special cases for certain classes
    {% set _attributes = attributes %}
    {% if module == "unionml.schedule" and objname == "Schedule" %}
-      {% set _attributes = ["type", "name", "expression", "offset", "fixed_rate", "time_arg", "kwargs"] %}
+      {% set _attributes = ["type", "name", "expression", "offset", "fixed_rate", "time_arg", "inputs", "activate_on_deploy", "launchplan_kwargs"] %}
    {% endif %}
 
 

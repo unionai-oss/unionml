@@ -15,7 +15,7 @@ from flytekit.core.python_function_task import PythonFunctionTask
 from sklearn.linear_model import LogisticRegression
 
 from unionml.model import BaseHyperparameters, Model, ModelArtifact
-from unionml.schedule import Schedule, ScheduleType
+from unionml.schedule import Schedule
 
 
 def test_model_decorators(model: Model, trainer, predictor, evaluator):
@@ -208,19 +208,11 @@ def test_model_schedule(model: Model):
     expression = "0 * * * *"
     fixed_rate = timedelta(days=1)
 
-    model.add_trainer_schedule(
-        Schedule(ScheduleType.trainer, name=f"{model.name}_training_schedule_expression", expression=expression)
-    )
-    model.add_trainer_schedule(
-        Schedule(ScheduleType.trainer, name=f"{model.name}_training_schedule_fixed_rate", fixed_rate=fixed_rate)
-    )
+    model.schedule_training(name=f"{model.name}_training_schedule_expression", expression=expression)
+    model.schedule_training(name=f"{model.name}_training_schedule_fixed_rate", fixed_rate=fixed_rate)
 
-    model.add_predictor_schedule(
-        Schedule(ScheduleType.predictor, name=f"{model.name}_prediction_schedule_expression", expression=expression)
-    )
-    model.add_predictor_schedule(
-        Schedule(ScheduleType.predictor, name=f"{model.name}_prediction_schedule_fixed_rate", fixed_rate=fixed_rate)
-    )
+    model.schedule_prediction(name=f"{model.name}_prediction_schedule_expression", expression=expression)
+    model.schedule_prediction(name=f"{model.name}_prediction_schedule_fixed_rate", fixed_rate=fixed_rate)
 
     assert len(model.training_schedule_names) == 2
     assert len(model.prediction_schedule_names) == 2

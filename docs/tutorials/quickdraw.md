@@ -98,7 +98,7 @@ def download_quickdraw_dataset(
 def load_quickdraw_data(root: str = "./data", max_items_per_class: int = 5000):
     """Load quickdraw data in to memory, returning features, labels, and class names."""
     x = np.empty([0, 784], dtype=np.uint8)
-    y = np.empty([0], dtype=np.long)
+    y = np.empty([0], dtype=np.int64)
     class_names = []
     print(f"Loading {max_items_per_class} examples for each class from the Quickdraw Dataset...")
     for idx, file in enumerate(tqdm(sorted(Path(root).glob('*.npy')))):

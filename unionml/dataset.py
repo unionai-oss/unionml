@@ -15,12 +15,12 @@ except ImportError:
 
 import pandas as pd
 from dataclasses_json import dataclass_json
-from flytekit.core.tracker import TrackedInstance
 from flytekit.extras.sqlite3.task import SQLite3Task
 from sklearn.model_selection import train_test_split
 
 import unionml.type_guards as type_guards
 from unionml.defaults import DEFAULT_RESOURCES
+from unionml.tracker import TrackedInstance
 from unionml.utils import inner_task
 
 R = TypeVar("R")  # raw data

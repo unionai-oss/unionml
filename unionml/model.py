@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass, field, is_dataclass, make_dataclass
 from datetime import timedelta
 from functools import partial
 from inspect import Parameter, signature
+from pathlib import Path
 from typing import IO, Any, Callable, Dict, List, NamedTuple, Optional, Tuple, Type, Union
 
 import joblib
@@ -17,7 +18,6 @@ from dataclasses_json import dataclass_json
 from fastapi import FastAPI
 from flytekit import LaunchPlan, Workflow
 from flytekit.configuration import Config
-from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import LiteralsResolver
 from flytekit.remote import FlyteRemote
 from flytekit.remote.executions import FlyteWorkflowExecution
@@ -28,6 +28,7 @@ from unionml._logging import logger
 from unionml.dataset import Dataset
 from unionml.defaults import DEFAULT_RESOURCES
 from unionml.schedule import Schedule, ScheduleType, create_scheduled_launchplan
+from unionml.tracker import TrackedInstance
 from unionml.utils import inner_task, is_keras_model, is_pytorch_model
 
 
@@ -163,10 +164,16 @@ class Model(TrackedInstance):
         hyperparameter_fields: List[Any] = []
         if self._hyperparameter_config is None:
             # extract types from the init callable that instantiates a new model
-            model_obj_sig = signature(self._init_callable)  # type: ignore
+            model_obj_sig = signature(self._init_callable or self._init)  # type: ignore
 
-            # if any of the arguments are not type-annotated, default to using an untyped dictionary
-            if any(p.annotation is inspect._empty for p in model_obj_sig.parameters.values()):
+            # if the init callable takes a single dictionary argument or
+            # any of the arguments are not type-annotated, default to using an untyped dictionary
+            model_obj_params = [*model_obj_sig.parameters.values()]
+            if (
+                len(model_obj_params) == 1
+                and model_obj_params[0].annotation is dict
+                or any(p.annotation is inspect._empty for p in model_obj_params)
+            ):
                 return dict
 
             for hparam_name, hparam in model_obj_sig.parameters.items():
@@ -683,7 +690,6 @@ class Model(TrackedInstance):
 
         :param features: Raw features that are pre-processed by the :py:class:``unionml.Dataset`` methods in the
             following order:
-
             - :meth:`unionml.dataset.Dataset.feature_loader`
             - :meth:`unionml.dataset.Dataset.feature_transformer`
         :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.Dataset.reader` method signature.
@@ -748,6 +754,168 @@ class Model(TrackedInstance):
         from unionml.fastapi import serving_app
 
         serving_app(self, app, remote=remote, app_version=app_version, model_version=model_version)
+
+    def schedule_training(
+        self,
+        name: str,
+        *,
+        expression: Optional[str] = None,
+        offset: Optional[str] = None,
+        fixed_rate: Optional[timedelta] = None,
+        reader_time_arg: Optional[str] = None,
+        activate_on_deploy: bool = True,
+        launchplan_kwargs: Optional[dict] = None,
+        hyperparameters: Optional[Dict[str, Any]] = None,
+        loader_kwargs: Optional[Dict[str, Any]] = None,
+        splitter_kwargs: Optional[Dict[str, Any]] = None,
+        parser_kwargs: Optional[Dict[str, Any]] = None,
+        trainer_kwargs: Optional[Dict[str, Any]] = None,
+        **reader_kwargs,
+    ):
+        """Schedule the training service when the UnionML app is deployed.
+
+        :param name: unique name of the launch plan
+        :param expression: a cron expression (see
+            `here <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression>`__)
+            or valid croniter schedule for e.g. `@daily`, `@hourly`, `@weekly`, `@yearly`
+            (see `here <https://github.com/kiorky/croniter#keyword-expressions>`__).
+        :param offset: duration to offset the schedule, must be a valid
+            `ISO 8601 duration <https://en.wikipedia.org/wiki/ISO_8601>__. Only
+            used if ``expression`` is specified.
+        :param fixed_rate: a :class:`~datetime.timedelta` object representing fixed
+            rate with which to run the workflow.
+        :param reader_time_arg: if not ``None``, the name of the
+            :meth:`~unionml.dataset.Dataset.reader` argument that will receive
+            the kickoff ``datetime`` of the scheduled launchplan.
+        :param activate_on_deploy: Whether or not to automatically activate this schedule on app deployment.
+        :param launchplan_kwargs: additional keyword arguments to pass to
+            :class:`~flytekit.LaunchPlan`
+        :param hyperparameters: a dictionary mapping hyperparameter names to values. This is passed into the
+            ``init`` callable to initialize a model object.
+        :param loader_kwargs: key-word arguments to pass to the registered :meth:`unionml.Dataset.loader` function.
+            This will override any defaults set in the function definition.
+        :param splitter_kwargs: key-word arguments to pass to the registered :meth:`unionml.Dataset.splitter` function.
+            This will override any defaults set in the function definition.
+        :param parser_kwargs: key-word arguments to pass to the registered :meth:`unionml.Dataset.parser` function.
+            This will override any defaults set in the function definition.
+        :param trainer_kwargs: a dictionary mapping training parameter names to values. There training parameters
+            are determined by the keyword-only arguments of the ``model.trainer`` function.
+        :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.dataset.Dataset.reader` method
+            signature.
+        """
+        if name in self.training_schedule_names:
+            raise ValueError(
+                f"Scheduled job {name} just have a unique name. Existing " f"schedules: {self.training_schedule_names}"
+            )
+        schedule = Schedule(
+            type=ScheduleType.trainer,
+            name=name,
+            expression=expression,
+            offset=offset,
+            fixed_rate=fixed_rate,
+            time_arg=reader_time_arg,
+            inputs={
+                "hyperparameters": self.hyperparameter_type(**({} if hyperparameters is None else hyperparameters)),
+                "loader_kwargs": self._dataset.loader_kwargs_type(**loader_kwargs or {}),
+                "splitter_kwargs": self._dataset.splitter_kwargs_type(**splitter_kwargs or {}),
+                "parser_kwargs": self._dataset.parser_kwargs_type(**parser_kwargs or {}),
+                **{**reader_kwargs, **({} if trainer_kwargs is None else trainer_kwargs)},  # type: ignore
+            },
+            activate_on_deploy=activate_on_deploy,
+            **(launchplan_kwargs or {}),
+        )
+        self._training_schedules.append(schedule)
+
+    def schedule_prediction(
+        self,
+        name: str,
+        *,
+        expression: Optional[str] = None,
+        offset: Optional[str] = None,
+        fixed_rate: Optional[timedelta] = None,
+        reader_time_arg: Optional[str] = None,
+        activate_on_deploy: bool = True,
+        launchplan_kwargs: Optional[dict] = None,
+        model_object: Optional[Any] = None,
+        model_version: Optional[str] = None,
+        app_version: Optional[str] = None,
+        model_file: Optional[Union[str, Path]] = None,
+        loader_kwargs: Optional[dict] = None,
+        **reader_kwargs,
+    ):
+        """Schedule the prediction service when the UnionML app is deployed.
+
+        The model used for prediction must be from one of the following sources:
+        - An in-memory model object specified via the ``model_object`` argument.
+        - A model version associated with a Flyte cluster execution speciied via the ``model_version`` and
+          ``app_version`` arguments.
+        - A serialized model object specified via the ``model_file`` argument.
+
+        :param name: unique name of the launch plan
+        :param expression: a cron expression (see
+            `here <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression>`__)
+            or valid croniter schedule for e.g. `@hourly`, `@daily`, `@weekly`, `@monthly`, `@yearly`
+            (see `here <https://github.com/kiorky/croniter#keyword-expressions>`__).
+        :param offset: duration to offset the schedule, must be a valid
+            `ISO 8601 duration <https://en.wikipedia.org/wiki/ISO_8601>__. Only
+            used if ``expression`` is specified.
+        :param fixed_rate: a :class:`~datetime.timedelta` object representing fixed
+            rate with which to run the workflow.
+        :param reader_time_arg: if not ``None``, the name of the
+            :meth:`~unionml.dataset.Dataset.reader` argument that will receive
+            the kickoff ``datetime`` of the scheduled launchplan.
+        :param activate_on_deploy: Whether or not to automatically activate this schedule on app deployment.
+        :param launchplan_kwargs: additional keyword arguments to pass to
+            :class:`~flytekit.LaunchPlan`
+        :param model_object: model object to use for prediction.
+        :param model_version: model version identifier to use for prediction.
+        :param app_version: if ``model_version`` is specified, this argument indicates the app version to use for
+            fetching the model artifact.
+        :param model_file: a filepath to a serialized model object.
+        :param loader_kwargs: additional keyword arguments to be forwarded to the :meth:`unionml.model.Model.loader`
+            function.
+        :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.dataset.Dataset.reader` method
+            signature.
+        """
+        if name in self.prediction_schedule_names:
+            raise ValueError(
+                f"Scheduled job {name} just have a unique name. Existing "
+                f"schedules: {self.prediction_schedule_names}"
+            )
+
+        if sum(x is not None for x in (model_object, model_version, model_file)) > 1:
+            raise ValueError("You can specify only one of 'model_object', 'model_version', or 'model_file' arguments.")
+
+        if model_object is not None:
+            model_object_input = model_object
+        if model_version is not None:
+            from unionml import remote
+
+            model_artifact = remote.get_model_artifact(self, app_version, model_version)
+            model_object_input = model_artifact.model_object
+        elif model_file is not None:
+            model_object_input = self.load(model_file, **(loader_kwargs or {}))
+        elif self.artifact is not None:
+            model_object_input = self.artifact.model_object
+        else:
+            raise ValueError(
+                "Model object not found. Make sure to specify at least one of model_version, model_file, or "
+                "model_object. Alternatively, train a model locally with the .train(...) method so the model.artifact "
+                "property contains a model object."
+            )
+
+        schedule = Schedule(
+            type=ScheduleType.predictor,
+            name=name,
+            expression=expression,
+            offset=offset,
+            fixed_rate=fixed_rate,
+            time_arg=reader_time_arg,
+            inputs={"model_object": model_object_input, **reader_kwargs},
+            activate_on_deploy=activate_on_deploy,
+            **(launchplan_kwargs or {}),
+        )
+        self._prediction_schedules.append(schedule)
 
     def remote(
         self,
@@ -868,20 +1036,24 @@ class Model(TrackedInstance):
             schedules: List[Schedule] = [*self.training_schedules, *self.prediction_schedules]
             for s in schedules:
                 launchplan = self._launchplan_cache.get(s.name)
-                if launchplan is None:
-                    schedule_dict = asdict(s)
-                    schedule_type = schedule_dict.pop("type")
-                    wf_method = {
-                        ScheduleType.trainer: self.train_workflow,
-                        ScheduleType.predictor: self.predict_workflow,
-                    }[schedule_type]
+                if launchplan:
+                    continue
 
-                    kwargs = schedule_dict.pop("kwargs") or {}
+                schedule_dict = asdict(s)
+                schedule_type = schedule_dict.pop("type")
+                wf_method = {
+                    ScheduleType.trainer: self.train_workflow,
+                    ScheduleType.predictor: self.predict_workflow,
+                }[schedule_type]
+
+                launchplan_kwargs = schedule_dict.pop("launchplan_kwargs", None) or {}
+                with _remote.remote_context():
+                    # Ensure that any file-like type is properly uploaded to Flyte blob store
                     launchplan = create_scheduled_launchplan(
                         wf_method(),
-                        **{**schedule_dict, **kwargs},
+                        **{**schedule_dict, **launchplan_kwargs},
                     )
-                    self._launchplan_cache[s.name] = launchplan
+                self._launchplan_cache[s.name] = launchplan
                 remote.deploy_launchplan(
                     launchplan,
                     remote=_remote,
@@ -1115,93 +1287,6 @@ class Model(TrackedInstance):
         predictions, *_ = outputs.values()
         return predictions
 
-    def schedule_training(
-        self,
-        name: str,
-        *,
-        expression: Optional[str] = None,
-        offset: Optional[str] = None,
-        fixed_rate: Optional[timedelta] = None,
-        reader_time_arg: Optional[str] = None,
-        **kwargs,
-    ):
-        """Schedule the training service when the UnionML app is deployed.
-
-        :param name: unique name of the launch plan
-        :param expression: a cron expression (see
-            `here <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression>`__)
-            or valid croniter schedule for e.g. `@daily`, `@hourly`, `@weekly`, `@yearly`
-            (see `here <https://github.com/kiorky/croniter#keyword-expressions>`__).
-        :param offset: duration to offset the schedule, must be a valid
-            `ISO 8601 duration <https://en.wikipedia.org/wiki/ISO_8601>__. Only
-            used if ``expression`` is specified.
-        :param fixed_rate: a :class:`~datetime.timedelta` object representing fixed
-            rate with which to run the workflow.
-        :param reader_time_arg: if not ``None``, the name of the
-            :meth:`~unionml.dataset.Dataset.reader` argument that will receive
-            the kickoff ``datetime`` of the scheduled launchplan.
-        :param kwargs: additional keyword arguments to pass to
-            :class:`~flytekit.LaunchPlan`
-        """
-        if name in self.training_schedule_names:
-            raise ValueError(
-                f"Scheduled job {name} just have a unique name. Existing " f"schedules: {self.training_schedule_names}"
-            )
-        launchplan = create_scheduled_launchplan(
-            self.train_workflow(),
-            name,
-            expression=expression,
-            offset=offset,
-            fixed_rate=fixed_rate,
-            time_arg=reader_time_arg,
-            **kwargs,
-        )
-        self._training_schedules.append(launchplan)
-
-    def schedule_prediction(
-        self,
-        name: str,
-        *,
-        expression: Optional[str] = None,
-        offset: Optional[str] = None,
-        fixed_rate: Optional[timedelta] = None,
-        reader_time_arg: Optional[str] = None,
-        **kwargs,
-    ):
-        """Schedule the prediction service when the UnionML app is deployed.
-
-        :param name: unique name of the launch plan
-        :param expression: a cron expression (see
-            `here <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression>`__)
-            or valid croniter schedule for e.g. `@hourly`, `@daily`, `@weekly`, `@monthly`, `@yearly`
-            (see `here <https://github.com/kiorky/croniter#keyword-expressions>`__).
-        :param offset: duration to offset the schedule, must be a valid
-            `ISO 8601 duration <https://en.wikipedia.org/wiki/ISO_8601>__. Only
-            used if ``expression`` is specified.
-        :param fixed_rate: a :class:`~datetime.timedelta` object representing fixed
-            rate with which to run the workflow.
-        :param reader_time_arg: if not ``None``, the name of the
-            :meth:`~unionml.dataset.Dataset.reader` argument that will receive
-            the kickoff ``datetime`` of the scheduled launchplan.
-        :param kwargs: additional keyword arguments to pass to
-            :class:`~flytekit.LaunchPlan`
-        """
-        if name in self.prediction_schedule_names:
-            raise ValueError(
-                f"Scheduled job {name} just have a unique name. Existing "
-                f"schedules: {self.prediction_schedule_names}"
-            )
-        launchplan = create_scheduled_launchplan(
-            self.predict_workflow(),
-            name,
-            expression=expression,
-            offset=offset,
-            fixed_rate=fixed_rate,
-            time_arg=reader_time_arg,
-            **kwargs,
-        )
-        self._prediction_schedules.append(launchplan)
-
     def remote_activate_schedules(
         self,
         app_version: str = None,
@@ -1218,11 +1303,13 @@ class Model(TrackedInstance):
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
 
         _remote = self._remote
-        app_version = app_version or remote.get_app_version()
+        app_version = app_version or remote.get_app_version(allow_uncommitted=True)
 
         for lp in [*self.training_schedules, *self.prediction_schedules]:
             if schedule_names and lp.name not in schedule_names:
                 continue
+
+            logger.info(f"Activating schedule {lp.name}")
             remote.activate_launchplan(
                 lp,
                 remote=_remote,
@@ -1247,11 +1334,13 @@ class Model(TrackedInstance):
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
 
         _remote = self._remote
-        app_version = app_version or remote.get_app_version()
+        app_version = app_version or remote.get_app_version(allow_uncommitted=True)
 
         for lp in [*self.training_schedules, *self.prediction_schedules]:
             if schedule_names and lp.name not in schedule_names:
                 continue
+
+            logger.info(f"Deactivating schedule {lp.name}")
             remote.deactivate_launchplan(
                 lp,
                 remote=_remote,
