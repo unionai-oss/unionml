@@ -27,9 +27,6 @@ class InstanceTrackingMeta(tracker.InstanceTrackingMeta):
             return None
         module_components = file.replace(f"{curdir}/", "").replace(".py", "").split("/")
         module_name = ".".join(module_components)
-        import ipdb
-
-        ipdb.set_trace()
         if len(module_components) == 0:
             return None
         return import_module_from_file(module_name, file)

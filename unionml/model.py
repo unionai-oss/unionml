@@ -1271,7 +1271,7 @@ class Model(TrackedInstance):
         app_version = app_version or remote.get_app_version(allow_uncommitted=True)
         return remote.list_prediction_ids(self, app_version=app_version, limit=limit)
 
-    def remote_fetch_model(self, execution: FlyteWorkflowExecution) -> Any:
+    def remote_fetch_model(self, execution: FlyteWorkflowExecution) -> ModelArtifact:
         """Fetch predictions from a Flyte execution.
 
         :param execution: a Flyte workflow execution, which is the output of ``remote_predict(..., wait=False)`` .
@@ -1412,6 +1412,22 @@ class Model(TrackedInstance):
         *args,
         **kwargs,
     ) -> Any:
+        """Default model saver.
+
+        Supports ``sklearn`` estimators, ``pytorch`` modules, and ``keras`` models.
+
+        :param model_obj: model object to serialize.
+        :param hyperparameters: hyperparameters associated with the model object.
+        :param file: str, path-like, or file-like object to write the contents of the model object to.
+        :param args: additional args to forward to the underlying serialization function.
+        :param kwargs: additional kwargs to forward to the underlying serialization function.
+
+        The methods/functions for each associated model type are:
+
+        - ``sklearn`` estimators: `joblib.dump <https://joblib.readthedocs.io/en/latest/generated/joblib.dump.html>`__
+        - ``pytorch`` modules: `torch.save <https://pytorch.org/docs/stable/torch.html?highlight=save#torch.save>`__
+        - ``keras`` models: `Model.save <https://keras.io/api/models/model_saving_apis/#save-method>`__
+        """
         model_type = self.model_type
         hyperparameters = (
             asdict(hyperparameters)
@@ -1439,6 +1455,20 @@ class Model(TrackedInstance):
         )
 
     def _default_loader(self, file: Union[str, os.PathLike, IO], *args, **kwargs) -> Any:
+        """Default model loader.
+
+        Supports ``sklearn`` estimators, ``pytorch`` modules, and ``keras`` models.
+
+        :param file: str, path-like, or file-like object to read from.
+        :param args: additional args to forward to the underlying deserialization function.
+        :param kwargs: additional kwargs to forward to the underlying deserialization function.
+
+        The methods/functions for each associated model type are:
+
+        - ``sklearn`` estimators: `joblib.load <https://joblib.readthedocs.io/en/latest/generated/joblib.load.html>`__
+        - ``pytorch`` modules: `torch.load <https://pytorch.org/docs/stable/generated/torch.load.html#torch.load>`__
+        - ``keras`` models: `Model.load_model <https://keras.io/api/models/model_saving_apis/#loadmodel-function>`__
+        """
         model_type = self.model_type
         if issubclass(model_type, sklearn.base.BaseEstimator):
             deserialized_model = joblib.load(file, *args, **kwargs)
