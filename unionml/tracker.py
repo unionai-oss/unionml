@@ -23,8 +23,13 @@ class InstanceTrackingMeta(tracker.InstanceTrackingMeta):
     def _get_module_from_main(globals) -> Optional[str]:
         curdir = str(Path().absolute())
         file = globals["__file__"]
+        if not file.startswith(curdir):
+            return None
         module_components = file.replace(f"{curdir}/", "").replace(".py", "").split("/")
         module_name = ".".join(module_components)
+        import ipdb
+
+        ipdb.set_trace()
         if len(module_components) == 0:
             return None
         return import_module_from_file(module_name, file)
@@ -38,6 +43,8 @@ class InstanceTrackingMeta(tracker.InstanceTrackingMeta):
                     # if the remote_deploy command is invoked in the same module as where
                     # the app is defined,
                     mod = InstanceTrackingMeta._get_module_from_main(frame.f_globals)
+                    if mod is None:
+                        return None, None
                     return mod.__name__, mod.__file__
                 return frame.f_globals["__name__"], None
             frame = frame.f_back

@@ -11,11 +11,11 @@ from flytekit.configuration import Config
 from flytekit.exceptions.user import FlyteEntityNotExistException
 from flytekit.models.common import NamedEntityIdentifier
 from flytekit.remote import FlyteRemote
+from flytekit.remote.executions import FlyteWorkflowExecution
 from grpc._channel import _InactiveRpcError
 
 from unionml import Model
 from unionml.model import ModelArtifact
-from unionml.schedule import Schedule
 
 FLYTECTL_CMD = "sandbox" if os.getenv("UNIONML_CI", False) else "demo"
 NO_CLUSTER_MSG = "🛑 no demo cluster found" if FLYTECTL_CMD == "demo" else "🛑 no Sandbox found"
@@ -141,25 +141,31 @@ def test_unionml_deployment(
     # schedule launchplans, which should be automatically activated with the remote_deploy() call
     training_schedule_name = f"{model.name}_training_schedule"
     prediction_schedule_name = f"{model.name}_prediction_schedule"
-    model.add_trainer_schedule(Schedule("trainer", training_schedule_name, expression="*/1 * * * *"))
-    model.add_predictor_schedule(Schedule("predictor", prediction_schedule_name, expression="*/1 * * * *"))
 
     app_version: str = model.remote_deploy(allow_uncommitted=True)
     kwargs = {"hyperparameters": hyperparameters, "trainer_kwargs": trainer_kwargs}
 
-    assert _launch_plan_is_active(model._remote, training_schedule_name)
-    assert _launch_plan_is_active(model._remote, prediction_schedule_name)
-
-    model.remote_deactivate_schedules(app_version, [training_schedule_name, prediction_schedule_name])
-    assert not _launch_plan_is_active(model._remote, training_schedule_name)
-    assert not _launch_plan_is_active(model._remote, prediction_schedule_name)
-
     # this is a hack to account for lag between project and propeller namespace creation
-    model_artifact = _retry_execution(lambda: model.remote_train(app_version=app_version, wait=True, **kwargs))
+    execution: FlyteWorkflowExecution = _retry_execution(
+        lambda: model.remote_train(app_version=app_version, wait=False, **kwargs)
+    )
+    execution = model.remote_wait(execution)
+    model_artifact = model._remote_load_model_artifact(execution)
     _assert_model_artifact(model_artifact, model.model_type)
+
+    # schedule training for patch deployment
+    model.schedule_training(name=training_schedule_name, expression="*/1 * * * *", hyperparameters=hyperparameters)
+    model.schedule_prediction(name=prediction_schedule_name, expression="*/1 * * * *", model_version=execution.id.name)
 
     # test patch deployment
     patch_app_version = model.remote_deploy(patch=True)
+
+    assert _launch_plan_is_active(model._remote, training_schedule_name)
+    assert _launch_plan_is_active(model._remote, prediction_schedule_name)
+
+    model.remote_deactivate_schedules(patch_app_version, [training_schedule_name, prediction_schedule_name])
+    assert not _launch_plan_is_active(model._remote, training_schedule_name)
+    assert not _launch_plan_is_active(model._remote, prediction_schedule_name)
 
     # the default (latest) workflow version should be the same as explicitly passing in the patch app version
     execution_latest = _retry_execution(lambda: model.remote_train(wait=False, **kwargs))  # type: ignore

@@ -888,7 +888,7 @@ class Model(TrackedInstance):
 
         if model_object is not None:
             model_object_input = model_object
-        if model_version is not None:
+        elif model_version is not None:
             from unionml import remote
 
             model_artifact = remote.get_model_artifact(self, app_version, model_version)
@@ -1041,6 +1041,7 @@ class Model(TrackedInstance):
 
                 schedule_dict = asdict(s)
                 schedule_type = schedule_dict.pop("type")
+                activate_on_deploy = schedule_dict.pop("activate_on_deploy")
                 wf_method = {
                     ScheduleType.trainer: self.train_workflow,
                     ScheduleType.predictor: self.predict_workflow,
@@ -1060,6 +1061,7 @@ class Model(TrackedInstance):
                     project=_remote.default_project,
                     domain=_remote.default_domain,
                     version=app_version,
+                    activate_on_deploy=activate_on_deploy,
                 )
 
         return app_version
@@ -1198,7 +1200,7 @@ class Model(TrackedInstance):
         predictions, *_ = execution.outputs.values()
         return predictions
 
-    def remote_wait(self, execution: FlyteWorkflowExecution, **kwargs) -> Any:
+    def remote_wait(self, execution: FlyteWorkflowExecution, **kwargs) -> FlyteWorkflowExecution:
         """Wait for a ``FlyteWorkflowExecution`` to complete and returns the execution's output."""
         if self._remote is None:
             raise ValueError("You must call `model.remote` to attach a remote backend to this model.")

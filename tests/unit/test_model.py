@@ -208,11 +208,27 @@ def test_model_schedule(model: Model):
     expression = "0 * * * *"
     fixed_rate = timedelta(days=1)
 
-    model.schedule_training(name=f"{model.name}_training_schedule_expression", expression=expression)
-    model.schedule_training(name=f"{model.name}_training_schedule_fixed_rate", fixed_rate=fixed_rate)
+    model.schedule_training(
+        name=f"{model.name}_training_schedule_expression",
+        expression=expression,
+        hyperparameters={"C": 0.1, "max_iter": 1000},
+    )
+    model.schedule_training(
+        name=f"{model.name}_training_schedule_fixed_rate",
+        fixed_rate=fixed_rate,
+        hyperparameters={"C": 0.1, "max_iter": 1000},
+    )
 
-    model.schedule_prediction(name=f"{model.name}_prediction_schedule_expression", expression=expression)
-    model.schedule_prediction(name=f"{model.name}_prediction_schedule_fixed_rate", fixed_rate=fixed_rate)
+    model.schedule_prediction(
+        name=f"{model.name}_prediction_schedule_expression",
+        expression=expression,
+        model_object=LogisticRegression(),
+    )
+    model.schedule_prediction(
+        name=f"{model.name}_prediction_schedule_fixed_rate",
+        fixed_rate=fixed_rate,
+        model_object=LogisticRegression(),
+    )
 
     assert len(model.training_schedule_names) == 2
     assert len(model.prediction_schedule_names) == 2

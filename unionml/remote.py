@@ -155,10 +155,12 @@ def deploy_launchplan(
     project: str,
     domain: str,
     version: str,
+    activate_on_deploy: bool = True,
 ):
     logger.info(f"Deploying launchplan '{lp.name}'")
     remote.register_launch_plan(lp, version=version, project=project, domain=domain)
-    activate_launchplan(lp, remote, project, domain, version)
+    if activate_on_deploy:
+        activate_launchplan(lp, remote, project, domain, version)
 
 
 def activate_launchplan(
