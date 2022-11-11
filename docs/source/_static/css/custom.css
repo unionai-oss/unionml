@@ -84,5 +84,6 @@ li.toctree-l2 {
 
 /* autosummary table text */
 article .align-center, article .align-default {
-  text-align: left;
+  text-align: left !important;
+  margin-left: 0 !important;
 }
