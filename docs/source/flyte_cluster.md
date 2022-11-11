@@ -14,11 +14,14 @@ In this guide, we'll:
 2. Configure digit classification UnionML app to use the Flyte sandbox as the compute
    backend for our training and prediction workload.
 
-## Prerequisites
+
+````{admonition} Prerequisites
+:class: important
 
 - Install [`flytectl`](https://docs.flyte.org/projects/flytectl/en/latest/index.html#installation),
   the command-line interface for Flyte.
 - Install [Docker](https://docs.docker.com/get-docker/) and make sure you have the Docker daemon running.
+````
 
 ## Deploy App Workflows
 

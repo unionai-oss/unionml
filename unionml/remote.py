@@ -7,7 +7,9 @@ import typing
 
 import docker
 import git
+from flytekit import LaunchPlan
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.core.workflow import WorkflowBase
 from flytekit.models import filters
 from flytekit.models.admin.common import Sort
 from flytekit.models.project import Project
@@ -108,8 +110,8 @@ def docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Imag
         logger.info(line)
 
 
-def deploy_wf(
-    wf,
+def deploy_workflow(
+    wf: WorkflowBase,
     remote: FlyteRemote,
     image: str,
     project: str,
@@ -119,7 +121,7 @@ def deploy_wf(
     patch_destination_dir: str = None,
 ):
     """Register all tasks, workflows, and launchplans needed to execute the workflow."""
-    logger.info(f"Deploying workflow {wf.name}")
+    logger.info(f"Deploying workflow '{wf.name}'")
     fast_serialization_settings = None
     if patch:
         # Create a zip file containing all the entries.
@@ -145,6 +147,42 @@ def deploy_wf(
     )
 
     remote.register_workflow(wf, serialization_settings, version)
+
+
+def deploy_launchplan(
+    lp: LaunchPlan,
+    remote: FlyteRemote,
+    project: str,
+    domain: str,
+    version: str,
+    activate_on_deploy: bool = True,
+):
+    logger.info(f"Deploying launchplan '{lp.name}'")
+    remote.register_launch_plan(lp, version=version, project=project, domain=domain)
+    if activate_on_deploy:
+        activate_launchplan(lp, remote, project, domain, version)
+
+
+def activate_launchplan(
+    lp: LaunchPlan,
+    remote: FlyteRemote,
+    project: str,
+    domain: str,
+    version: str,
+):
+    lp_id = remote.fetch_launch_plan(project, domain, lp.name, version).id
+    remote.client.update_launch_plan(lp_id, "ACTIVE")
+
+
+def deactivate_launchplan(
+    lp: LaunchPlan,
+    remote: FlyteRemote,
+    project: str,
+    domain: str,
+    version: str,
+):
+    lp_id = remote.fetch_launch_plan(project, domain, lp.name, version).id
+    remote.client.update_launch_plan(lp_id, "INACTIVE")
 
 
 def get_model_execution(
@@ -173,7 +211,43 @@ def get_model_execution(
             train_wf.id.domain,
             limit=1,
             filters=[
-                filters.Equal("launch_plan.name", train_wf.id.name),
+                filters.ValueIn("launch_plan.name", [train_wf.id.name] + model.training_schedule_names),
+                filters.Equal("phase", "SUCCEEDED"),
+            ],
+            sort_by=Sort("created_at", Sort.Direction.DESCENDING),
+        )
+        execution = FlyteWorkflowExecution.promote_from_model(execution)
+    model._remote.sync(execution)
+    return execution
+
+
+def get_prediction_execution(
+    model: Model,
+    app_version: typing.Optional[str] = None,
+    prediction_id: typing.Optional[str] = "latest",
+) -> FlyteWorkflowExecution:
+    if model._remote is None:
+        raise RuntimeError("You need to configure the remote client with the `Model.remote` method")
+
+    predict_wf = model._remote.fetch_workflow(
+        model._remote._default_project,
+        model._remote._default_domain,
+        model.predict_workflow_name,
+        app_version,
+    )
+    if prediction_id is not None and prediction_id != "latest":
+        execution = model._remote.fetch_execution(
+            project=predict_wf.id.project,
+            domain=predict_wf.id.domain,
+            name=prediction_id,
+        )
+    else:
+        [execution, *_], _ = model._remote.client.list_executions_paginated(
+            predict_wf.id.project,
+            predict_wf.id.domain,
+            limit=1,
+            filters=[
+                filters.ValueIn("launch_plan.name", [predict_wf.id.name] + model.prediction_schedule_names),
                 filters.Equal("phase", "SUCCEEDED"),
             ],
             sort_by=Sort("created_at", Sort.Direction.DESCENDING),
@@ -210,9 +284,55 @@ def list_model_versions(model: Model, app_version: typing.Optional[str] = None, 
         train_wf.id.domain,
         limit=limit,
         filters=[
-            filters.Equal("launch_plan.name", train_wf.id.name),
+            filters.ValueIn("launch_plan.name", [train_wf.id.name] + model.training_schedule_names),
+            filters.Equal("launchplan.version", app_version),
             filters.Equal("phase", "SUCCEEDED"),
         ],
         sort_by=Sort("created_at", Sort.Direction.DESCENDING),
     )
     return [x.id.name for x in executions]
+
+
+def list_prediction_ids(model: Model, app_version: typing.Optional[str] = None, limit: int = 10) -> typing.List[str]:
+    if model._remote is None:
+        raise RuntimeError("You need to configure the remote client with the `Model.remote` method")
+
+    app_version = app_version or get_app_version(allow_uncommitted=True)
+    predict_wf = model._remote.fetch_workflow(
+        model._remote._default_project,
+        model._remote._default_domain,
+        model.predict_workflow_name,
+        app_version,
+    )
+    executions, _ = model._remote.client.list_executions_paginated(
+        predict_wf.id.project,
+        predict_wf.id.domain,
+        limit=limit,
+        filters=[
+            filters.ValueIn("launch_plan.name", [predict_wf.id.name] + model.prediction_schedule_names),
+            filters.Equal("launchplan.version", app_version),
+            filters.Equal("phase", "SUCCEEDED"),
+        ],
+        sort_by=Sort("created_at", Sort.Direction.DESCENDING),
+    )
+    return [x.id.name for x in executions]
+
+
+def get_scheduled_runs(
+    remote: FlyteRemote,
+    schedule_name: str,
+    app_version: typing.Optional[str] = None,
+    limit: typing.Optional[int] = 100,
+) -> typing.List[FlyteWorkflowExecution]:
+    app_version = app_version or get_app_version(allow_uncommitted=True)
+    exec_models, _ = remote.client.list_executions_paginated(
+        remote.default_project,
+        remote.default_domain,
+        limit,
+        filters=[
+            filters.Equal("launch_plan.name", schedule_name),
+            filters.Equal("launchplan.version", app_version),
+        ],
+        sort_by=Sort("created_at", Sort.Direction.DESCENDING),
+    )
+    return [FlyteWorkflowExecution.promote_from_model(e) for e in exec_models]

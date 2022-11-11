@@ -100,7 +100,7 @@ def download_quickdraw_dataset(
 def load_quickdraw_data(root: str = "./data", max_items_per_class: int = 5000):
     """Load quickdraw data in to memory, returning features, labels, and class names."""
     x = np.empty([0, 784], dtype=np.uint8)
-    y = np.empty([0], dtype=np.long)
+    y = np.empty([0], dtype=np.int64)
     class_names = []
     print(f"Loading {max_items_per_class} examples for each class from the Quickdraw Dataset...")
     for idx, file in enumerate(tqdm(sorted(Path(root).glob('*.npy')))):
@@ -256,7 +256,7 @@ def train_quickdraw(module: nn.Module, dataset: QuickDrawDataset, num_epochs: in
     return module
 ```
 
-Why did we do through all of this trouble to implementing the dataset and model classes/functions
+Why did we go through all of this trouble of implementing the dataset and model classes/functions
 instead of embedding it inside our UnionML app?
 
 Well, it often makes sense to separate the concerns of the dataset/model implementation from the
