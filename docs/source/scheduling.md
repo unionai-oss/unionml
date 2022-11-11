@@ -48,7 +48,7 @@ from sklearn.metrics import accuracy_score
 
 from unionml import Dataset, Model
 
-dataset = Dataset()
+dataset = Dataset(targets=["target"])
 model = Model(dataset=dataset, init=LogisticRegression)
 
 
@@ -229,14 +229,22 @@ to that model type's {meth}`~unionml.model.Model.loader` component. See the
  methods for more details.
 
 ```{code-cell} python
-model.schedule_prediction(
-    name="daily_predictions_with_model_file",
-    expression="0 0 * * *",
-    reader_time_arg="time",
-    model_file="<MODEL_FILE_PATH>",
-    loader_kwargs={},
-    labeled=False,
-)
+from tempfile import NamedTemporaryFile
+
+
+with NamedTemporaryFile() as f:
+    # saves model.artifact.model_object to a file, forwarding kwargs to joblib.dump
+    model.save(f.name, compress=3)
+
+    # schedule prediction using the model object in the file, forward kwargs to joblib.load
+    model.schedule_prediction(
+        name="daily_predictions_with_model_file",
+        expression="0 0 * * *",
+        reader_time_arg="time",
+        model_file=f.name,
+        loader_kwargs={"mmap_mode": None},
+        labeled=False,
+    )
 ```
 
 ```{note}
@@ -255,7 +263,7 @@ also need to pass in an `app_version` argument, which is the output of invoking
 which is essentially the version string associated with any of the workflows that UnionML registers
 for you when you deploy your app.
 
-```{code-cell} python
+```{code-block} python
 model.schedule_prediction(
     name="daily_predictions_with_remote_model",
     expression="0 0 * * *",
