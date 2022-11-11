@@ -8,28 +8,16 @@ Core API
 
 .. autosummary::
    :toctree: generated_api_reference
-   :template: custom_class.rst
+   :template: custom_module.rst
 
-   unionml.dataset.Dataset
-   unionml.model.Model
-   unionml.model.ModelArtifact
-   unionml.model.BaseHyperparameters
+   unionml.dataset
+   unionml.model
 
 Scheduling
 ----------
 
-**Functions**
-
 .. autosummary::
    :toctree: generated_api_reference
+   :template: custom_module.rst
 
-   unionml.schedule.create_scheduled_launchplan
-
-**Classes**
-
-.. autosummary::
-   :toctree: generated_api_reference
-   :template: custom_class.rst
-
-   unionml.schedule.Schedule
-   unionml.schedule.ScheduleType
+   unionml.schedule

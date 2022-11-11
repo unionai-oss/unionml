@@ -35,6 +35,11 @@ div.mermaid {
   opacity: 0;
 }
 
+div.mermaid svg {
+  display: block;
+  margin: auto;
+}
+
 div.mermaid[data-processed=true] {
   display: block;
   opacity: 1;

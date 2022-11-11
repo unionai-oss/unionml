@@ -80,8 +80,8 @@ def create_scheduled_launchplan(
     :param workflow: UnionML-derived workflow.
     :param name: unique name of the launch plan
     :param expression: A `cron expression <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression>`__)
-    or valid `croniter schedule <https://github.com/kiorky/croniter#keyword-expressions>`__ for e.g.
-    ``"@daily"``, ``"@hourly"``, ``"@weekly"``, ``"@yearly"``.
+        or valid `croniter schedule <https://github.com/kiorky/croniter#keyword-expressions>`__ for e.g.
+        ``"@daily"``, ``"@hourly"``, ``"@weekly"``, ``"@yearly"``.
     :param offset: duration to offset the schedule, must be a
         valid `ISO 8601 duration <https://en.wikipedia.org/wiki/ISO_8601>`__ . Only used if ``expression`` is specified.
     :param fixed_rate: a :class:`~datetime.timedelta` object representing fixed
@@ -91,6 +91,7 @@ def create_scheduled_launchplan(
     :param kwargs: additional keyword arguments to pass to
         :class:`flytekit.LaunchPlan`
     :returns: a scheduled launch plan object.
+
     """
     if expression is not None and fixed_rate is not None:
         raise ValueError("You must specify exactly one of 'expression' or 'fixed_rate', not both.")
