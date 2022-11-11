@@ -7,12 +7,13 @@
 # -- Path setup --------------------------------------------------------------
 
 import logging as pylogging
+import os
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import os
+import re
 import sys
 
 from sphinx.util import logging
@@ -101,7 +102,7 @@ html_css_files = [
     "css/custom.css",
 ]
 
-nb_execution_mode = "cache"
+nb_execution_mode = os.environ.get("NB_EXECUTION_MODE", "cache")
 nb_execution_timeout = 600
 nb_execution_raise_on_error = True
 
@@ -174,7 +175,7 @@ class SphinxDocUtilsWarningsFilter(pylogging.Filter):
             # ignore specific error that occurs due to the `serve_command` function, which uses
             # the uvicorn serve command docstring.
             record.getMessage().startswith("Inline emphasis start-string without end-string")
-            and record.location.endswith("cli_reference.rst:42")
+            and re.match(r".+cli_reference.rst:\d+", record.location)
         )
 
 
