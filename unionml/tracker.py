@@ -22,7 +22,9 @@ class InstanceTrackingMeta(tracker.InstanceTrackingMeta):
     @staticmethod
     def _get_module_from_main(globals) -> Optional[str]:
         curdir = str(Path().absolute())
-        file = globals["__file__"]
+        file = globals.get("__file__")
+        if file is None:
+            return None
         if not file.startswith(curdir):
             return None
         module_components = file.replace(f"{curdir}/", "").replace(".py", "").split("/")

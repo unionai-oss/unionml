@@ -288,8 +288,8 @@ def serve_command():
     fn.name = "serve"
     fn.short_help = "Serve an unionml model."
     fn.help = (
-        "Serve an unionml model using uvicorn. This command uses the main uvicorn entrypoint with an additional "
-        "``--model-path`` argument.\n\nFor more information see: https://www.uvicorn.org/#command-line-options"
+        "Serve an unionml model using uvicorn. This command uses the main uvicorn entrypoint with an additional"
+        " ``--model-path`` argument.\n\nFor more information see: https://www.uvicorn.org/#command-line-options"
     )
 
     option = click.Option(param_decls=["--model-path"], default=None, help="model path to use for serving", type=Path)

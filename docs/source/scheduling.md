@@ -40,6 +40,7 @@ app (assuming you're working with ``pandas.DataFrame`` objects), namely the
 
 ```{code-cell} python
 from datetime import datetime
+from typing import List
 
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
@@ -47,7 +48,7 @@ from sklearn.metrics import accuracy_score
 
 from unionml import Dataset, Model
 
-dataset = Dataset()
+dataset = Dataset(targets=["target"])
 model = Model(dataset=dataset, init=LogisticRegression)
 
 
@@ -130,7 +131,7 @@ model.schedule_training(
 # a particular time of day.
 model.schedule_training(
     name="fixed_rate_training_schedule",
-    fixed_rate=timedelta(days=1)
+    fixed_rate=timedelta(days=1),
     reader_time_arg="time",
     hyperparameters={"C": 0.1},
 )
@@ -150,13 +151,19 @@ component is correctly factored to account for labeled data (for training and ba
 (for prediction). For example, you can specify a flag that allows you to differentiate between training and prediction settings:
 
 ```{code-cell} python
-dataset = Dataset()
-model = Model(dataset=dataset, init=LogisticRegression)
+:tags: [remove-cell]
 
+# monkey-patch read_csv so it returns data
+from sklearn.datasets import load_digits
+
+pd.read_csv = lambda *args, **kwargs: load_digits(as_frame=True).frame
+```
+
+```{code-cell} python
 @dataset.reader
 def reader(time: datetime, labeled: bool = True) -> pd.DataFrame:
     uri_prefix = "labeled_datasets" if labeled else "unlabeled_datasets"
-    return pd.read_csv(f"s3://bucket/path/to/{uri_prefix}/{datetime.strftime('YYYYMMDD')}/dataset.csv")
+    return pd.read_csv(f"s3://bucket/path/to/{uri_prefix}/{time.strftime('YYYYMMDD')}/dataset.csv")
 ```
 
 We've added a `labeled` argument to the `reader` function, which determines the s3 prefix that we use to fetch
@@ -222,14 +229,22 @@ to that model type's {meth}`~unionml.model.Model.loader` component. See the
  methods for more details.
 
 ```{code-cell} python
-model.schedule_prediction(
-    name="daily_predictions_with_model_file",
-    expression="0 0 * * *",
-    reader_time_arg="time",
-    model_file="<MODEL_FILE_PATH>",
-    loader_kwargs={},
-    labeled=False,
-)
+from tempfile import NamedTemporaryFile
+
+
+with NamedTemporaryFile() as f:
+    # saves model.artifact.model_object to a file, forwarding kwargs to joblib.dump
+    model.save(f.name, compress=3)
+
+    # schedule prediction using the model object in the file, forward kwargs to joblib.load
+    model.schedule_prediction(
+        name="daily_predictions_with_model_file",
+        expression="0 0 * * *",
+        reader_time_arg="time",
+        model_file=f.name,
+        loader_kwargs={"mmap_mode": None},
+        labeled=False,
+    )
 ```
 
 ```{note}
@@ -248,7 +263,7 @@ also need to pass in an `app_version` argument, which is the output of invoking
 which is essentially the version string associated with any of the workflows that UnionML registers
 for you when you deploy your app.
 
-```{code-cell} python
+```{code-block} python
 model.schedule_prediction(
     name="daily_predictions_with_remote_model",
     expression="0 0 * * *",

@@ -5,6 +5,7 @@
 .. autoclass:: {{ objname }}
    :members:
    :private-members: _default_saver, _default_loader
+
    .. ^^ is for documenting these private methods of the Model class
 
    {% block methods %}

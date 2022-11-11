@@ -28,8 +28,12 @@ D = TypeVar("D")  # model-ready data
 
 
 class ReaderReturnTypeSource(Enum):
+    """Indicates which :class:`~unionml.dataset.Dataset` component the materialized dataset type is derived from."""
+
     READER = "reader"
+    """The materialized dataset type comes from the return annotation of :meth:`~unionml.dataset.Dataset.reader`"""
     LOADER = "loader"
+    """The materialized dataset type comes from the return annotation of :meth:`~unionml.dataset.Dataset.loader`"""
 
 
 class Dataset(TrackedInstance):

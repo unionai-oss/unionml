@@ -6,12 +6,17 @@
 
 # -- Path setup --------------------------------------------------------------
 
+import logging as pylogging
+import os
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import os
+import re
 import sys
+
+from sphinx.util import logging
 
 sys.path.insert(0, os.path.abspath("../.."))
 
@@ -97,8 +102,9 @@ html_css_files = [
     "css/custom.css",
 ]
 
-nb_execution_mode = "cache"
+nb_execution_mode = os.environ.get("NB_EXECUTION_MODE", "cache")
 nb_execution_timeout = 600
+nb_execution_raise_on_error = True
 
 if "READTHEDOCS" in os.environ:
     # don't run the docs
@@ -141,3 +147,38 @@ intersphinx_mapping = {
     ),
     "torch": ("https://pytorch.org/docs/master/", None),
 }
+
+
+# this is a workaround to filter out forward reference issue in sphinx_autodoc_typehints
+class FilterFlytekitPluginsTypeAnnotationWarning(pylogging.Filter):
+    def filter(self, record: pylogging.LogRecord) -> bool:
+        return not record.getMessage().startswith(
+            "Cannot resolve forward reference in type annotations of " '"unionml.dataset.Dataset.from_sqlalchemy_task"'
+        )
+
+
+IGNORE_APPLICATION_WARNINGS = (
+    "the sphinxcontrib.youtube extension does not declare",
+    "doing serial read",
+    "Inline emphasis start-string without end-string.",
+)
+
+
+class SphinxApplicationWarningsFilter(pylogging.Filter):
+    def filter(self, record: pylogging.LogRecord) -> bool:
+        return not record.getMessage().startswith(IGNORE_APPLICATION_WARNINGS)
+
+
+class SphinxDocUtilsWarningsFilter(pylogging.Filter):
+    def filter(self, record: pylogging.LogRecord) -> bool:
+        return not (
+            # ignore specific error that occurs due to the `serve_command` function, which uses
+            # the uvicorn serve command docstring.
+            record.getMessage().startswith("Inline emphasis start-string without end-string")
+            and re.match(r".+cli_reference.rst:\d+", record.location)
+        )
+
+
+logging.getLogger("sphinx_autodoc_typehints").logger.addFilter(FilterFlytekitPluginsTypeAnnotationWarning())
+logging.getLogger("sphinx.application").logger.addFilter(SphinxApplicationWarningsFilter())
+logging.getLogger("sphinx.util.docutils").logger.addFilter(SphinxDocUtilsWarningsFilter())

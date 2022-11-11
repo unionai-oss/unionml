@@ -846,6 +846,7 @@ class Model(TrackedInstance):
         """Schedule the prediction service when the UnionML app is deployed.
 
         The model used for prediction must be from one of the following sources:
+
         - An in-memory model object specified via the ``model_object`` argument.
         - A model version associated with a Flyte cluster execution speciied via the ``model_version`` and
           ``app_version`` arguments.
