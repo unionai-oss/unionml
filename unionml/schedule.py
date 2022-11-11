@@ -1,4 +1,4 @@
-"""Module to handle scheduling launchplans."""
+"""Module to handle scheduling training and batch prediction jobs."""
 
 from dataclasses import dataclass
 from datetime import timedelta
