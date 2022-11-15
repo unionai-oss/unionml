@@ -11,6 +11,11 @@ with open("requirements.txt") as f:
 LICENSE: str = "Apache"
 README: str = pathlib.Path("README.md").read_text()
 
+extras_require = {}
+for extra in ["bentoml"]:
+    with open(f"extras_require/{extra}.txt") as f:
+        extras_require[extra] = [x.strip() for x in f.readlines()]
+
 setup(
     name="unionml",
     version=__version__,
@@ -31,6 +36,7 @@ setup(
     python_requires=">=3.7",
     platforms="any",
     install_requires=install_requires,
+    extras_require=extras_require,
     entry_points={"console_scripts": ["unionml = unionml.cli:app"]},
     classifiers=[
         "Development Status :: 4 - Beta",

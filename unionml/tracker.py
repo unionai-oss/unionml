@@ -45,7 +45,7 @@ class InstanceTrackingMeta(tracker.InstanceTrackingMeta):
                     if mod is None:
                         return None, None
                     return mod.__name__, mod.__file__
-                return frame.f_globals["__name__"], None
+                return frame.f_globals["__name__"], frame.f_globals["__file__"]
             frame = frame.f_back
         return None, None
 

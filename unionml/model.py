@@ -351,6 +351,10 @@ class Model(TrackedInstance):
             self.add_predictor_schedule(schedule)
         return self._predictor
 
+    @property
+    def prediction_type(self) -> Type:
+        return signature(self._predictor).return_annotation
+
     def add_predictor_schedule(self, schedule: Schedule):
         """Add a prediction schedule to the model.
 
@@ -884,26 +888,14 @@ class Model(TrackedInstance):
                 f"schedules: {self.prediction_schedule_names}"
             )
 
-        if sum(x is not None for x in (model_object, model_version, model_file)) > 1:
-            raise ValueError("You can specify only one of 'model_object', 'model_version', or 'model_file' arguments.")
-
-        if model_object is not None:
-            model_object_input = model_object
-        elif model_version is not None:
-            from unionml import remote
-
-            model_artifact = remote.get_model_artifact(self, app_version, model_version)
-            model_object_input = model_artifact.model_object
-        elif model_file is not None:
-            model_object_input = self.load(model_file, **(loader_kwargs or {}))
-        elif self.artifact is not None:
-            model_object_input = self.artifact.model_object
-        else:
-            raise ValueError(
-                "Model object not found. Make sure to specify at least one of model_version, model_file, or "
-                "model_object. Alternatively, train a model locally with the .train(...) method so the model.artifact "
-                "property contains a model object."
-            )
+        model_object_input = resolve_model_artifact(
+            model=self,
+            model_object=model_object,
+            model_version=model_version,
+            app_version=app_version,
+            model_file=model_file,
+            loader_kwargs=loader_kwargs,
+        ).model_object
 
         schedule = Schedule(
             type=ScheduleType.predictor,
@@ -1493,3 +1485,43 @@ class Model(TrackedInstance):
         raise NotImplementedError(
             f"Default loader not defined for type {model_type}. Use the Model.loader decorator to define one."
         )
+
+
+def resolve_model_artifact(
+    model: Model,
+    model_object: Optional[Any] = None,
+    model_version: Optional[str] = None,
+    app_version: Optional[str] = None,
+    model_file: Optional[Union[str, Path]] = None,
+    loader_kwargs: Optional[dict] = None,
+) -> ModelArtifact:
+    """Get a model object
+
+    :param model_object: model object to use for prediction.
+    :param model_version: model version identifier to use for prediction.
+    :param app_version: if ``model_version`` is specified, this argument indicates the app version to use for
+        fetching the model artifact.
+    :param model_file: a filepath to a serialized model object.
+    :param loader_kwargs: additional keyword arguments to be forwarded to the :meth:`unionml.model.Model.loader`
+        function.
+    """
+    if sum(x is not None for x in (model_object, model_version, model_file)) > 1:
+        raise ValueError("You can specify only one of 'model_object', 'model_version', or 'model_file' arguments.")
+
+    if model_object is not None:
+        model_artifact = ModelArtifact(model_object)
+    elif model_version is not None:
+        from unionml import remote
+
+        model_artifact = remote.get_model_artifact(model, app_version, model_version)
+    elif model_file is not None:
+        model_artifact = ModelArtifact(model.load(model_file, **(loader_kwargs or {})))
+    elif model.artifact is not None:
+        model_artifact = model.artifact
+    else:
+        raise ValueError(
+            "Model object not found. Make sure to specify at least one of model_version, model_file, or "
+            "model_object. Alternatively, train a model locally with the .train(...) method so the model.artifact "
+            "property contains a model object."
+        )
+    return model_artifact
