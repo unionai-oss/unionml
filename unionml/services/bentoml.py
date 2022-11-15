@@ -24,7 +24,7 @@ if typing.TYPE_CHECKING:
         predict: RunnerMethod
 
 
-class BentoMLService(Service):
+class BentoMLService(Service[bentoml.Service]):
     def __init__(
         self,
         model: Model,
@@ -63,7 +63,7 @@ class BentoMLService(Service):
         self,
         features: typing.Optional[bentoml.io.IODescriptor] = None,
         output: typing.Optional[bentoml.io.IODescriptor] = None,
-    ) -> bentoml.Service:
+    ) -> typing.Any:
         runner = typing.cast(
             "RunnerImpl",
             bentoml.Runner(
@@ -105,7 +105,7 @@ class BentoMLService(Service):
         model_file: typing.Optional[typing.Union[str, Path]] = None,
         loader_kwargs: typing.Optional[dict] = None,
         enable_async: bool = False,
-    ):
+    ) -> typing.Any:
         self._enable_async = enable_async
         self.model.artifact = resolve_model_artifact(
             model=self.model,
