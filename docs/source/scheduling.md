@@ -26,8 +26,8 @@ or on a particular cadence.
 
 ## Trainer Scheduling
 
-Scheduling a training job is as easy as adding a {func}`~unionml.schedule.schedule_trainer`
-decorator to the function that you want to specify as the {meth}`~unionml.model.Model.trainer`. For example, say that
+Scheduling a training job is as easy as invoking the {func}`~unionml.model.Model.schedule_training`
+method after you've defined all of your UnionML app components. For example, say that
 you're training a `LogisticRegression` model and have the following requirements for your schedule:
 
 - The model must be re-trained at 12am every day
@@ -179,7 +179,7 @@ from datetime import datetime
 from typing import List
 
 # train a model locally
-model.train(hyperparameters={"C": 0.1}, time=datetime.now(), labeled=True)
+model.train(hyperparameters={"C": 0.1, "max_iter": 5000}, time=datetime.now(), labeled=True)
 
 # this will use the model object in the model.artifact property
 model.schedule_prediction(
