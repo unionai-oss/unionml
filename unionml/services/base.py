@@ -13,4 +13,4 @@ class Service:
         model_file: typing.Optional[typing.Union[str, Path]] = None,
         loader_kwargs: typing.Optional[dict] = None,
     ):
-        ...
+        raise NotImplementedError

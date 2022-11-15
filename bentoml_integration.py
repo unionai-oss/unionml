@@ -34,4 +34,4 @@ def evaluator(estimator: LogisticRegression, features: pd.DataFrame, target: pd.
 
 
 model_object, metrics = model.train(hyperparameters={"C": 1.0, "max_iter": 10000})
-bentoml_service.serve(model_object=model_object)
+bentoml_service.serve(model_object=model_object, enable_async=True)
