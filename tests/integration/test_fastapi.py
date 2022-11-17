@@ -18,7 +18,7 @@ def _app(ml_framework: str, *args, port: str = DEFAULT_PORT):
         stderr=subprocess.PIPE,
     )
     if len(process.stderr.peek().decode()) == 0:  # type: ignore
-        _wait_to_exist(port)
+        wait_to_exist("http://127.0.0.1", port)
 
     try:
         yield process
@@ -26,10 +26,10 @@ def _app(ml_framework: str, *args, port: str = DEFAULT_PORT):
         process.terminate()
 
 
-def _wait_to_exist(port):
+def wait_to_exist(url, port):
     for _ in range(30):
         try:
-            requests.get(f"http://127.0.0.1:{port}/")
+            requests.get(f"{url}:{port}/")
             break
         except Exception:  # pylint: disable=broad-except
             time.sleep(1.0)

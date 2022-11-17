@@ -10,7 +10,7 @@ from unionml.services.bentoml import BentoMLService
 
 dataset = Dataset(name="digits_dataset", test_size=0.2, shuffle=True, targets=["target"])
 model = Model(name="digits_classifier", init=LogisticRegression, dataset=dataset)
-bentoml_service = BentoMLService(model)
+bentoml_service = BentoMLService(model, enable_async=True)
 
 
 @dataset.reader
@@ -34,4 +34,4 @@ def evaluator(estimator: LogisticRegression, features: pd.DataFrame, target: pd.
 
 
 model_object, metrics = model.train(hyperparameters={"C": 1.0, "max_iter": 10000})
-bentoml_service.serve(model_object=model_object, enable_async=True)
+bentoml_service.serve(model_object=model_object)

@@ -2,19 +2,17 @@
 
 import asyncio
 import typing
-from pathlib import Path
 
 try:
-    from typing import get_args, get_origin  # type: ignore
+    from typing import get_origin  # type: ignore
 except ImportError:
-    from typing_extensions import get_args, get_origin
+    from typing_extensions import get_origin
 
 import bentoml
 import numpy as np
 import pandas as pd
 
-from unionml.dataset import R
-from unionml.model import Model, resolve_model_artifact
+from unionml.model import Model
 from unionml.services.base import Service
 
 if typing.TYPE_CHECKING:
@@ -25,110 +23,135 @@ if typing.TYPE_CHECKING:
 
 
 class BentoMLService(Service[bentoml.Service]):
+
+    IO_DESCRIPTOR_MAPPING = {
+        np.ndarray: bentoml.io.NumpyNdarray,
+        pd.DataFrame: bentoml.io.PandasDataFrame,
+        list: bentoml.io.JSON,
+        dict: bentoml.io.JSON,
+    }
+    """Maps python types to `BentoML IO descriptors <https://docs.bentoml.org/en/v1.0.10/reference/api_io_descriptors.html>`__"""
+
     def __init__(
         self,
         model: Model,
         features: typing.Optional[bentoml.io.IODescriptor] = None,
         output: typing.Optional[bentoml.io.IODescriptor] = None,
+        enable_async: bool = False,
         supported_resources: typing.Optional[typing.Tuple] = None,
         supports_cpu_multi_threading: bool = False,
-        method_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        runnable_method_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ):
-        super().__init__()
-        self._model: Model = model
+        """Initialize a BentoML Service for generating predictions from a :class:`unionml.model.Model`.
+
+        :param model: the :class:`~unionml.model.Model` bound to this service.
+        :param features: `BentoML IO descriptor <https://docs.bentoml.org/en/latest/reference/api_io_descriptors.html>`__
+            for the feature data. The descriptor is inferred using the
+            :attr:`~unionml.services.bentoml.BentoMLService.IO_DESCRIPTOR_MAPPING` attribute. This must be provided for
+            unsupported types.
+        :param output: `BentoML IO descriptor <https://docs.bentoml.org/en/latest/reference/api_io_descriptors.html>`__
+            for the prediction output. The descriptor is inferred using the
+            :attr:`~unionml.services.bentoml.BentoMLService.IO_DESCRIPTOR_MAPPING` attribute. This must be provided for
+            unsupported types.
+        :param supported_resources: Indicates which resources the ``bentoml.Runnable`` class supports, see
+            `here <https://docs.bentoml.org/en/latest/concepts/runner.html#custom-runner>`__ for more details.
+        :param supports_cpu_multi_threading: Indicates whether the ``bentoml.Runnable`` class supports multi-threading,
+            see `here <https://docs.bentoml.org/en/latest/concepts/runner.html#custom-runner>`__ for more details.
+        :param runnable_method_kwargs: Keyword arguments forwarded to
+            `bentoml.Runnable.method <https://docs.bentoml.org/en/latest/reference/core.html#bentoml.Runnable.method>`__.
+        """
+        super().__init__(model)
         self._features = features
         self._output = output
         self._supported_resources = supported_resources
         self._supports_cpu_multi_threading = supports_cpu_multi_threading
-        self._method_kwargs = method_kwargs
-        self._enable_async = False
+        self._runnable_method_kwargs = runnable_method_kwargs
+        self._enable_async = enable_async
         self._svc = None
 
     @property
     def svc(self) -> bentoml.Service:
+        """Access the bentoml.Service as a property."""
         if self.model.artifact is None:
             raise ValueError(
                 "Model artifact not defined. Invoke the `.serve()` method to specify the model you want to serve."
             )
         if self._svc is not None:
             return self._svc
-        self._svc = self.define_api(self._features, self._output)
+        self._svc = self.create()
         return self._svc
 
-    @property
-    def model(self) -> Model:
-        return self._model
+    def create(self, **kwargs) -> bentoml.Service:
+        """Create the bentoml.Service API.
 
-    def define_api(
-        self,
-        features: typing.Optional[bentoml.io.IODescriptor] = None,
-        output: typing.Optional[bentoml.io.IODescriptor] = None,
-    ) -> typing.Any:
+        :raises: :class:`~unionml.exceptions.ModelArtifactNotFound` if the bound
+            :class:`unionml.model.Model` instance does not have a defined :attr:`~unionml.model.Model.artifact`
+            property.
+        """
+        super().create()
+
         runner = typing.cast(
             "RunnerImpl",
             bentoml.Runner(
-                create_unionml_runner(
+                create_runner(
                     self._enable_async,
                     self._supported_resources,
                     self._supports_cpu_multi_threading,
-                    self._method_kwargs,
+                    self._runnable_method_kwargs,
                 ),
                 name=f"unionml-runner-{self.model.name}",
                 runnable_init_params={"model": self.model},
             ),
         )
-        svc = bentoml.Service(self.model.name, runners=[runner])
-
-        features_io_desc = features or infer_feature_io_descriptor(self.model.dataset.feature_type)()
-        output_io_desc = output or infer_output_io_descriptor(self.model.prediction_type)()
-
-        if self._enable_async:
-
-            @svc.api(input=features_io_desc, output=output_io_desc)
-            async def predict(features: typing.Any):
-                result = await runner.predict.async_run(features)
-                return await asyncio.gather(result)
-
-        else:
-
-            @svc.api(input=features_io_desc, output=output_io_desc)
-            def predict(features: typing.Any):
-                return runner.predict.run(features)
-
-        return svc
-
-    def serve(
-        self,
-        model_object: typing.Optional[typing.Any] = None,
-        model_version: typing.Optional[str] = None,
-        app_version: typing.Optional[str] = None,
-        model_file: typing.Optional[typing.Union[str, Path]] = None,
-        loader_kwargs: typing.Optional[dict] = None,
-        enable_async: bool = False,
-    ) -> typing.Any:
-        self._enable_async = enable_async
-        self.model.artifact = resolve_model_artifact(
-            model=self.model,
-            model_object=model_object,
-            model_version=model_version,
-            app_version=app_version,
-            model_file=model_file,
-            loader_kwargs=loader_kwargs,
+        service = create_service(
+            name=f"unionml_{self.model.name}",
+            runner=runner,
+            features=self._features or infer_feature_io_descriptor(self.model.dataset.feature_type)(),
+            output=self._output or infer_output_io_descriptor(self.model.prediction_type)(),
+            enable_async=self._enable_async,
         )
-        return self.svc
+        if self._svc is None:
+            self._svc = service
+        return service
 
 
-def create_unionml_runner(
+def create_service(
+    name: str,
+    runner: bentoml.Runnable,
+    features: typing.Optional[bentoml.io.IODescriptor] = None,
+    output: typing.Optional[bentoml.io.IODescriptor] = None,
+    enable_async: bool = False,
+) -> bentoml.Service:
+    """Create :class:`bentoml.Service`."""
+    svc = bentoml.Service(name, runners=[runner])
+
+    if enable_async:
+
+        @svc.api(input=features, output=output)
+        async def predict(features: typing.Any):
+            result = await runner.predict.async_run(features)
+            return await asyncio.gather(result)
+
+    else:
+
+        @svc.api(input=features, output=output)
+        def predict(features: typing.Any):
+            return runner.predict.run(features)
+
+    return svc
+
+
+def create_runner(
     enable_async: bool = False,
     supported_resources: typing.Optional[typing.Tuple] = None,
     supports_cpu_multi_threading: bool = False,
-    method_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
-):
+    runnable_method_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
+) -> bentoml.Runnable:
 
-    default_method_kwargs = {
+    _runnable_method_kwargs = {
         "batchable": False,
     }
-    default_method_kwargs.update(method_kwargs or {})
+    _runnable_method_kwargs.update(runnable_method_kwargs or {})
 
     class UnionMLRunner(bentoml.Runnable):
         SUPPORTED_RESOURCES = supported_resources or ("cpu", "nvidia.com/gpu")
@@ -139,14 +162,14 @@ def create_unionml_runner(
 
         if enable_async:
 
-            @bentoml.Runnable.method(**default_method_kwargs)
+            @bentoml.Runnable.method(**_runnable_method_kwargs)
             async def predict(self, features: typing.Any) -> typing.Any:
                 features = self.model.dataset.get_features(features)
                 return self.model.predict(features=features)
 
         else:
 
-            @bentoml.Runnable.method(**default_method_kwargs)
+            @bentoml.Runnable.method(**_runnable_method_kwargs)
             def predict(self, features: typing.Any) -> typing.Any:
                 features = self.model.dataset.get_features(features)
                 return self.model.predict(features=features)
@@ -175,19 +198,7 @@ def infer_output_io_descriptor(type_: typing.Type) -> typing.Type[bentoml.io.IOD
 
 
 def infer_io_descriptor(type_: typing.Type) -> typing.Optional[typing.Type[bentoml.io.IODescriptor]]:
-    types_ = get_args(type_)
-    if R in types_:
-        type_ = types_[-1]
-
     origin_type_ = get_origin(type_)
     if origin_type_ is not None:
         type_ = origin_type_
-
-    io_desc = {
-        np.ndarray: bentoml.io.NumpyNdarray,
-        pd.DataFrame: bentoml.io.PandasDataFrame,
-        list: bentoml.io.JSON,
-        dict: bentoml.io.JSON,
-    }.get(type_)
-
-    return io_desc
+    return BentoMLService.IO_DESCRIPTOR_MAPPING.get(type_)

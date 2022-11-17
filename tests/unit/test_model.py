@@ -242,3 +242,30 @@ def test_model_schedule(model: Model):
     assert set(model.prediction_schedule_names) == set(
         f"{model.name}_{x}" for x in ("prediction_schedule_expression", "prediction_schedule_fixed_rate")
     )
+
+
+def test_resolve_model_artifact(model: Model, tmp_path):
+
+    # calling the method without a defined artifact property should raise a value error
+    with pytest.raises(ValueError, match="Model object not found"):
+        model.resolve_model_artifact()
+
+    model_file = tmp_path / "model.joblib"
+    model_obj, _ = model.train(hyperparameters={"C": 1.0, "max_iter": 1000}, sample_frac=1.0, random_state=42)
+    model.save(model_file)
+
+    for artifact in (
+        model.resolve_model_artifact(),
+        model.resolve_model_artifact(model_object=model_obj),
+        model.resolve_model_artifact(model_file=model_file),
+    ):
+        assert isinstance(artifact, ModelArtifact)
+
+    for kwargs in [
+        {"model_object": model_obj, "model_file": model_file},
+        {"model_object": model_obj, "model_version": "<MOCK_MODEL_VERSION>"},
+        {"model_file": model_file, "model_version": "<MOCK_MODEL_VERSION>"},
+        {"model_object": model_obj, "model_file": model_file, "model_version": "<MOCK_MODEL_VERSION>"},
+    ]:
+        with pytest.raises(ValueError):
+            model.resolve_model_artifact(**kwargs)

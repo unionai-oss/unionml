@@ -146,6 +146,7 @@ intersphinx_mapping = {
         "https://github.com/GPflow/tensorflow-intersphinx/raw/master/tf2_py_objects.inv",
     ),
     "torch": ("https://pytorch.org/docs/master/", None),
+    "bentoml": ("https://docs.bentoml.org/en/latest/", None),
 }
 
 

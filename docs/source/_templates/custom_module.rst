@@ -2,13 +2,14 @@
 
 .. automodule:: {{ fullname }}
 
-   {% block attributes %}
-   {% if attributes %}
-   .. rubric:: Module Attributes
+   {% block classes %}
+   {% if classes %}
+   .. rubric:: {{ _('Classes') }}
 
    .. autosummary::
       :toctree:
-   {% for item in attributes %}
+      :template: custom_class.rst
+   {% for item in classes %}
       {{ item }}
    {%- endfor %}
    {% endif %}
@@ -26,14 +27,13 @@
    {% endif %}
    {% endblock %}
 
-   {% block classes %}
-   {% if classes %}
-   .. rubric:: {{ _('Classes') }}
+   {% block attributes %}
+   {% if attributes %}
+   .. rubric:: Module Attributes
 
    .. autosummary::
       :toctree:
-      :template: custom_class.rst
-   {% for item in classes %}
+   {% for item in attributes %}
       {{ item }}
    {%- endfor %}
    {% endif %}

@@ -6,7 +6,7 @@ from enum import Enum
 from functools import partial
 from inspect import Parameter, _empty, signature
 from pathlib import Path
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, TypeVar, Union, cast
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type
 
 try:
     from typing import get_args  # type: ignore
@@ -22,9 +22,6 @@ import unionml.type_guards as type_guards
 from unionml.defaults import DEFAULT_RESOURCES
 from unionml.tracker import TrackedInstance
 from unionml.utils import inner_task
-
-R = TypeVar("R")  # raw data
-D = TypeVar("D")  # model-ready data
 
 
 class ReaderReturnTypeSource(Enum):
@@ -411,8 +408,11 @@ class Dataset(TrackedInstance):
             else signature(self._feature_transformer).return_annotation
         )
 
-        if parser_type != ft_type:
-            return cast(Type, Union[ft_type, parser_type])
+        if self._feature_loader == self._default_feature_loader:
+            return parser_type
+
+        elif parser_type != ft_type:
+            raise TypeError("dataset type must be consistent with the feature type")
 
         return parser_type
 
@@ -462,7 +462,7 @@ class Dataset(TrackedInstance):
         """
         return cls._from_flytekit_task(task, *args, **kwargs)
 
-    def _default_loader(self, data: R) -> R:
+    def _default_loader(self, data: Any) -> Any:
         [(_, data_type)] = self.dataset_datatype.items()
         if data_type is pd.DataFrame:
             return pd.DataFrame(data)
@@ -470,21 +470,21 @@ class Dataset(TrackedInstance):
 
     def _default_splitter(
         self,
-        data: D,
+        data: Any,
         test_size: float,
         shuffle: bool,
         random_state: int,
-    ) -> Tuple[D, ...]:
+    ) -> Tuple[Any, ...]:
         if not isinstance(data, pd.DataFrame):
             return (data,)
         return train_test_split(data, test_size=test_size, random_state=random_state, shuffle=shuffle)
 
     def _default_parser(
         self,
-        data: D,
+        data: Any,
         features: Optional[List[str]],
         targets: Optional[List[str]],
-    ) -> Tuple[D, D]:
+    ) -> Tuple[Any, Any]:
         if not isinstance(data, pd.DataFrame):
             return (data,)  # type: ignore
 
@@ -496,7 +496,7 @@ class Dataset(TrackedInstance):
             target_data = pd.DataFrame()
         return data[features], target_data
 
-    def _default_feature_loader(self, features: Any) -> R:
+    def _default_feature_loader(self, features: Any) -> Any:
         if isinstance(features, Path):
             with features.open() as f:
                 features = json.load(f)
@@ -512,9 +512,9 @@ class Dataset(TrackedInstance):
 
         return features
 
-    def _default_feature_transformer(self, features: R) -> D:
+    def _default_feature_transformer(self, features: Any) -> Any:
         """
         By default this is just a pass-through function. The user can choose to override it with
         the `@dataset.feature_transformer` decorator.
         """
-        return cast(D, features)
+        return features

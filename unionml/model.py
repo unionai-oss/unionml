@@ -143,11 +143,21 @@ class Model(TrackedInstance):
 
     @property
     def artifact(self) -> Optional[ModelArtifact]:
-        """Model artifact associated with the ``unionml.Model`` ."""
+        """Model artifact associated with the ``unionml.Model`` .
+
+        This attribute is set when calling the following methods:
+        - :class:`~unionml.model.Model.train`
+        - :class:`~unionml.model.Model.load`
+        - :class:`~unionml.model.Model.load_from_env`
+        - :class:`~unionml.model.Model.load_from_env`
+        - :class:`~unionml.model.Model.remote_load`
+        - :class:`~unionml.model.Model.remote_train` with the ``wait=True`` kwarg.
+        """
         return self._artifact
 
     @artifact.setter
     def artifact(self, new_value: ModelArtifact):
+
         self._artifact = new_value
 
     @property
@@ -650,17 +660,18 @@ class Model(TrackedInstance):
 
         :param hyperparameters: a dictionary mapping hyperparameter names to values. This is passed into the
             ``init`` callable to initialize a model object.
-        :param loader_kwargs: key-word arguments to pass to the registered :meth:`unionml.Dataset.loader` function.
-            This will override any defaults set in the function definition.
-        :param splitter_kwargs: key-word arguments to pass to the registered :meth:`unionml.Dataset.splitter` function.
-            This will override any defaults set in the function definition.
-        :param parser_kwargs: key-word arguments to pass to the registered :meth:`unionml.Dataset.parser` function.
-            This will override any defaults set in the function definition.
+        :param loader_kwargs: key-word arguments to pass to the registered :meth:`unionml.dataset.Dataset.loader`
+            function. This will override any defaults set in the function definition.
+        :param splitter_kwargs: key-word arguments to pass to the registered :meth:`unionml.dataset.Dataset.splitter`
+            function. This will override any defaults set in the function definition.
+        :param parser_kwargs: key-word arguments to pass to the registered :meth:`unionml.dataset.Dataset.parser`
+            function. This will override any defaults set in the function definition.
         :param trainer_kwargs: a dictionary mapping training parameter names to values. There training parameters
             are determined by the keyword-only arguments of the ``model.trainer`` function.
         :param reader_kwargs: keyword arguments that correspond to the :meth:`unionml.Dataset.reader` method signature.
 
-        The train method invokes an execution graph that composes together the following functions to train and evaluate a model:
+        The train method invokes an execution graph that composes together the following functions to train and evaluate
+        a model:
 
             - :meth:`unionml.Dataset.reader`
             - :meth:`unionml.Dataset.loader`
@@ -741,8 +752,6 @@ class Model(TrackedInstance):
         if model_path is None:
             raise ValueError("env_var for model path {env_var} doesn't exist.")
         return self.load(model_path)
-        self.artifact = ModelArtifact(self.load(model_path))
-        return self.artifact.model_object
 
     def serve(
         self,
@@ -784,7 +793,7 @@ class Model(TrackedInstance):
             or valid croniter schedule for e.g. `@daily`, `@hourly`, `@weekly`, `@yearly`
             (see `here <https://github.com/kiorky/croniter#keyword-expressions>`__).
         :param offset: duration to offset the schedule, must be a valid
-            `ISO 8601 duration <https://en.wikipedia.org/wiki/ISO_8601>__. Only
+            `ISO 8601 duration <https://en.wikipedia.org/wiki/ISO_8601>__ . Only
             used if ``expression`` is specified.
         :param fixed_rate: a :class:`~datetime.timedelta` object representing fixed
             rate with which to run the workflow.
@@ -862,7 +871,7 @@ class Model(TrackedInstance):
             or valid croniter schedule for e.g. `@hourly`, `@daily`, `@weekly`, `@monthly`, `@yearly`
             (see `here <https://github.com/kiorky/croniter#keyword-expressions>`__).
         :param offset: duration to offset the schedule, must be a valid
-            `ISO 8601 duration <https://en.wikipedia.org/wiki/ISO_8601>__. Only
+            `ISO 8601 duration <https://en.wikipedia.org/wiki/ISO_8601>__ . Only
             used if ``expression`` is specified.
         :param fixed_rate: a :class:`~datetime.timedelta` object representing fixed
             rate with which to run the workflow.
@@ -888,8 +897,7 @@ class Model(TrackedInstance):
                 f"schedules: {self.prediction_schedule_names}"
             )
 
-        model_object_input = resolve_model_artifact(
-            model=self,
+        model_object_input = self.resolve_model_artifact(
             model_object=model_object,
             model_version=model_version,
             app_version=app_version,
@@ -1486,42 +1494,49 @@ class Model(TrackedInstance):
             f"Default loader not defined for type {model_type}. Use the Model.loader decorator to define one."
         )
 
+    def resolve_model_artifact(
+        self,
+        model_object: Optional[Any] = None,
+        model_version: Optional[str] = None,
+        app_version: Optional[str] = None,
+        model_file: Optional[Union[str, Path]] = None,
+        loader_kwargs: Optional[dict] = None,
+    ) -> ModelArtifact:
+        """Get a :class:`~unionml.model.ModelArtifact` from multiple sources.
 
-def resolve_model_artifact(
-    model: Model,
-    model_object: Optional[Any] = None,
-    model_version: Optional[str] = None,
-    app_version: Optional[str] = None,
-    model_file: Optional[Union[str, Path]] = None,
-    loader_kwargs: Optional[dict] = None,
-) -> ModelArtifact:
-    """Get a model object
+        This method produces a model artifact from the following sources:
+        - an in-memory ``model_object``
+        - a Flyte cluster execution via ``model_version`` and ``app_version``
+        - a serialized model object via ``model_file`` and ``loader_kwargs``
 
-    :param model_object: model object to use for prediction.
-    :param model_version: model version identifier to use for prediction.
-    :param app_version: if ``model_version`` is specified, this argument indicates the app version to use for
-        fetching the model artifact.
-    :param model_file: a filepath to a serialized model object.
-    :param loader_kwargs: additional keyword arguments to be forwarded to the :meth:`unionml.model.Model.loader`
-        function.
-    """
-    if sum(x is not None for x in (model_object, model_version, model_file)) > 1:
-        raise ValueError("You can specify only one of 'model_object', 'model_version', or 'model_file' arguments.")
+        If no arguments are provided, this method simply returns the :attr:`~unionml.model.Model.artifact`.
 
-    if model_object is not None:
-        model_artifact = ModelArtifact(model_object)
-    elif model_version is not None:
-        from unionml import remote
+        :param model: :class:`~unionml.model.Model` to use for resolving a model object.
+        :param model_object: model object to use for prediction.
+        :param model_version: model version identifier to use for prediction.
+        :param app_version: if ``model_version`` is specified, this argument indicates the app version to use for
+            fetching the model artifact.
+        :param model_file: a filepath to a serialized model object.
+        :param loader_kwargs: additional keyword arguments to be forwarded to the :meth:`unionml.model.Model.loader`
+            function.
+        """
+        if sum(x is not None for x in (model_object, model_version, model_file)) > 1:
+            raise ValueError("You can specify only one of 'model_object', 'model_version', or 'model_file' arguments.")
 
-        model_artifact = remote.get_model_artifact(model, app_version, model_version)
-    elif model_file is not None:
-        model_artifact = ModelArtifact(model.load(model_file, **(loader_kwargs or {})))
-    elif model.artifact is not None:
-        model_artifact = model.artifact
-    else:
-        raise ValueError(
-            "Model object not found. Make sure to specify at least one of model_version, model_file, or "
-            "model_object. Alternatively, train a model locally with the .train(...) method so the model.artifact "
-            "property contains a model object."
-        )
-    return model_artifact
+        if model_object is not None:
+            model_artifact = ModelArtifact(model_object)
+        elif model_version is not None:
+            from unionml import remote
+
+            model_artifact = remote.get_model_artifact(self, app_version, model_version)
+        elif model_file is not None:
+            model_artifact = ModelArtifact(self.load(model_file, **(loader_kwargs or {})))
+        elif self.artifact is not None:
+            model_artifact = self.artifact
+        else:
+            raise ValueError(
+                "Model object not found. Make sure to specify at least one of model_version, model_file, or "
+                "model_object. Alternatively, train a model locally with the .train(...) method so the model.artifact "
+                "property contains a model object."
+            )
+        return model_artifact
