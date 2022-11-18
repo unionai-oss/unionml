@@ -9,17 +9,15 @@ But what if you want to generate predictions based on events, like when we uploa
 file containing features to an S3 bucket? In this guide, you'll learn how to
 build an s3-event-based prediction service.
 
-## Prerequisites
-
+```{admonition} Prerequisites
 To follow this guide, we'll need the following tools:
 
 - An [AWS account](https://aws.amazon.com/) for Docker registry authentication.
 - SAM CLI: [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html).
 - Docker: [Install Docker community edition](https://hub.docker.com/search/?type=edition&offering=community).
 
-````{important}
-   We need to use Amazon ECR-based images so be sure to [authenticate to the AWS ECR registry](https://docs.aws.amazon.com/AmazonECR/latest/userguide/getting-started-cli.html#cli-authenticate-registry).
-````
+We need to use Amazon ECR-based images so be sure to [authenticate to the AWS ECR registry](https://docs.aws.amazon.com/AmazonECR/latest/userguide/getting-started-cli.html#cli-authenticate-registry).
+```
 
 ## Initialize a UnionML App for AWS Lambda
 
