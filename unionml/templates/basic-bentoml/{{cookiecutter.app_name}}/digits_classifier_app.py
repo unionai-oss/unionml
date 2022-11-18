@@ -10,7 +10,7 @@ from unionml.services.bentoml import BentoMLService
 
 dataset = Dataset(name="digits_dataset", test_size=0.2, shuffle=True, targets=["target"])
 model = Model(name="digits_classifier", init=LogisticRegression, dataset=dataset)
-bentoml_service = BentoMLService(model, enable_async=True)
+service = BentoMLService(model)
 
 
 @dataset.reader
@@ -33,5 +33,18 @@ def evaluator(estimator: LogisticRegression, features: pd.DataFrame, target: pd.
     return float(accuracy_score(target.squeeze(), predictor(estimator, features)))
 
 
-model_object, metrics = model.train(hyperparameters={"C": 1.0, "max_iter": 10000})
-bentoml_service.serve(model_object=model_object)
+# attach Flyte demo cluster metadata
+model.remote(
+    dockerfile="Dockerfile",
+    project="digits_classifier",
+    domain="development",
+)
+
+
+if __name__ == "__main__":
+    model_object, metrics = model.train(hyperparameters={"C": 1.0, "max_iter": 10000})
+    predictions = model.predict(features=load_digits(as_frame=True).frame.sample(5, random_state=42))
+    print(model_object, metrics, predictions, sep="\n")
+
+    saved_model = service.save_model(model.artifact.model_object, framework="sklearn")
+    print(f"BentoML saved model: {saved_model}")

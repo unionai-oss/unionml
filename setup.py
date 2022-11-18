@@ -29,7 +29,7 @@ setup(
     data_files=[("", ["LICENSE"])],
     include_package_data=True,
     packages=find_packages(
-        include=["unionml"],
+        include=["unionml*"],
         exclude=["tests*"],
     ),
     package_data={"unionml": ["py.typed"]},

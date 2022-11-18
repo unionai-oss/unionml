@@ -12,8 +12,8 @@ import bentoml
 import numpy as np
 import pandas as pd
 
+from unionml.exceptions import ModelArtifactNotFound
 from unionml.model import Model
-from unionml.services.base import Service
 
 if typing.TYPE_CHECKING:
     from bentoml._internal.runner.runner import RunnerMethod
@@ -22,7 +22,7 @@ if typing.TYPE_CHECKING:
         predict: RunnerMethod
 
 
-class BentoMLService(Service[bentoml.Service]):
+class BentoMLService:
 
     IO_DESCRIPTOR_MAPPING = {
         np.ndarray: bentoml.io.NumpyNdarray,
@@ -32,19 +32,35 @@ class BentoMLService(Service[bentoml.Service]):
     }
     """Maps python types to `BentoML IO descriptors <https://docs.bentoml.org/en/v1.0.10/reference/api_io_descriptors.html>`__"""
 
-    def __init__(
+    def __init__(self, model: Model, name: typing.Optional[str] = None):
+        """Initialize a BentoML Service for generating predictions from a :class:`unionml.model.Model`.
+
+        :param model: the :class:`~unionml.model.Model` bound to this service.
+        :param name: custom name to give this service. If ``None``, uses :attr:`~unionml.model.Model.nam`.
+        """
+        self._model = model
+        self._name = name
+        self._bento_model = None
+
+    @property
+    def model(self) -> Model:
+        return self._model
+
+    @property
+    def name(self) -> str:
+        return self._name or self.model.name
+
+    def create(
         self,
-        model: Model,
         features: typing.Optional[bentoml.io.IODescriptor] = None,
         output: typing.Optional[bentoml.io.IODescriptor] = None,
         enable_async: bool = False,
         supported_resources: typing.Optional[typing.Tuple] = None,
         supports_cpu_multi_threading: bool = False,
         runnable_method_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
-    ):
-        """Initialize a BentoML Service for generating predictions from a :class:`unionml.model.Model`.
+    ) -> bentoml.Service:
+        """Create the bentoml.Service API.
 
-        :param model: the :class:`~unionml.model.Model` bound to this service.
         :param features: `BentoML IO descriptor <https://docs.bentoml.org/en/latest/reference/api_io_descriptors.html>`__
             for the feature data. The descriptor is inferred using the
             :attr:`~unionml.services.bentoml.BentoMLService.IO_DESCRIPTOR_MAPPING` attribute. This must be provided for
@@ -59,60 +75,63 @@ class BentoMLService(Service[bentoml.Service]):
             see `here <https://docs.bentoml.org/en/latest/concepts/runner.html#custom-runner>`__ for more details.
         :param runnable_method_kwargs: Keyword arguments forwarded to
             `bentoml.Runnable.method <https://docs.bentoml.org/en/latest/reference/core.html#bentoml.Runnable.method>`__.
-        """
-        super().__init__(model)
-        self._features = features
-        self._output = output
-        self._supported_resources = supported_resources
-        self._supports_cpu_multi_threading = supports_cpu_multi_threading
-        self._runnable_method_kwargs = runnable_method_kwargs
-        self._enable_async = enable_async
-        self._svc = None
-
-    @property
-    def svc(self) -> bentoml.Service:
-        """Access the bentoml.Service as a property."""
-        if self.model.artifact is None:
-            raise ValueError(
-                "Model artifact not defined. Invoke the `.serve()` method to specify the model you want to serve."
-            )
-        if self._svc is not None:
-            return self._svc
-        self._svc = self.create()
-        return self._svc
-
-    def create(self, **kwargs) -> bentoml.Service:
-        """Create the bentoml.Service API.
 
         :raises: :class:`~unionml.exceptions.ModelArtifactNotFound` if the bound
             :class:`unionml.model.Model` instance does not have a defined :attr:`~unionml.model.Model.artifact`
             property.
         """
-        super().create()
+        if self.model.artifact is None:
+            raise ModelArtifactNotFound(
+                f"unionml.Model object '{self.model}' bound to the service '{self}' not found. "
+                "Use the BentoMLService.serve() method to specify a model artifact to use for this service."
+            )
+        if self._bento_model is None:
+            raise ValueError("The _bento_model attribute needs to be set by call the `load_model` method.")
 
         runner = typing.cast(
             "RunnerImpl",
             bentoml.Runner(
-                create_runner(
-                    self._enable_async,
-                    self._supported_resources,
-                    self._supports_cpu_multi_threading,
-                    self._runnable_method_kwargs,
+                create_runnable(
+                    enable_async,
+                    supported_resources,
+                    supports_cpu_multi_threading,
+                    runnable_method_kwargs,
                 ),
-                name=f"unionml-runner-{self.model.name}",
+                name=f"unionml-runner-{self.name}",
+                # this is necessary for `bentoml build` to copy the saved model over to the build directory.
+                models=[self._bento_model],
                 runnable_init_params={"model": self.model},
             ),
         )
         service = create_service(
-            name=f"unionml_{self.model.name}",
+            name=self.name,
             runner=runner,
-            features=self._features or infer_feature_io_descriptor(self.model.dataset.feature_type)(),
-            output=self._output or infer_output_io_descriptor(self.model.prediction_type)(),
-            enable_async=self._enable_async,
+            features=features or infer_feature_io_descriptor(self.model.dataset.feature_type)(),
+            output=output or infer_output_io_descriptor(self.model.prediction_type)(),
+            enable_async=enable_async,
         )
-        if self._svc is None:
-            self._svc = service
         return service
+
+    def save_model(self, model_object: typing.Any, framework: str):
+        """Save the model as a :class:`bentoml.Model`.
+
+        :param model_object: model object to save
+        :param framework: machine learning framework supported by :doc:`bentoml <bentoml:reference/frameworks/index>`.
+            This is used to access the appropriate module ``bentoml.<framework>``, e.g. ``bentoml.sklearn``
+        """
+        return getattr(bentoml, framework).save_model(self.name, model_object)
+
+    def load_model(self, version: str, framework: str):
+        """Load model from a version.
+
+        :param version: the version associated with the tag e.g., the version in the tag ``my_model:version1`` would be
+            ``version1``.
+        :param framework: machine learning framework supported by :doc:`bentoml <bentoml:reference/frameworks/index>`.
+            This is used to access the appropriate module ``bentoml.<framework>``, e.g. ``bentoml.sklearn``
+        """
+        self._bento_model = getattr(bentoml, framework).get(f"{self.name}:{version}")
+        model_object = getattr(bentoml, framework).load_model(f"{self.name}:{version}")
+        self.model.artifact = self.model.resolve_model_artifact(model_object=model_object)
 
 
 def create_service(
@@ -141,7 +160,7 @@ def create_service(
     return svc
 
 
-def create_runner(
+def create_runnable(
     enable_async: bool = False,
     supported_resources: typing.Optional[typing.Tuple] = None,
     supports_cpu_multi_threading: bool = False,
@@ -153,7 +172,7 @@ def create_runner(
     }
     _runnable_method_kwargs.update(runnable_method_kwargs or {})
 
-    class UnionMLRunner(bentoml.Runnable):
+    class UnionMLRunnable(bentoml.Runnable):
         SUPPORTED_RESOURCES = supported_resources or ("cpu", "nvidia.com/gpu")
         SUPPORTS_CPU_MULTI_THREADING = supports_cpu_multi_threading
 
@@ -174,7 +193,7 @@ def create_runner(
                 features = self.model.dataset.get_features(features)
                 return self.model.predict(features=features)
 
-    return UnionMLRunner
+    return UnionMLRunnable
 
 
 def infer_feature_io_descriptor(type_: typing.Type) -> typing.Type[bentoml.io.IODescriptor]:
