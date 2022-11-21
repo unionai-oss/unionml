@@ -6,7 +6,7 @@ from enum import Enum
 from functools import partial
 from inspect import Parameter, _empty, signature
 from pathlib import Path
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type
+from typing import Any, Dict, Generic, List, NamedTuple, Optional, Tuple, Type, TypeVar, cast
 
 try:
     from typing import get_args  # type: ignore
@@ -22,6 +22,13 @@ import unionml.type_guards as type_guards
 from unionml.defaults import DEFAULT_RESOURCES
 from unionml.tracker import TrackedInstance
 from unionml.utils import inner_task
+
+DT = TypeVar("DT")  # dataset type
+FT = TypeVar("FT")  # feature type
+
+
+class FeatureTypeUnion(Generic[DT, FT]):
+    ...
 
 
 class ReaderReturnTypeSource(Enum):
@@ -395,26 +402,28 @@ class Dataset(TrackedInstance):
         The fallback behavior occurs if the user didn't define a ``feature_transformer`` function.
         """
 
-        parser_type = (
+        dataset_type = (
             # use the reader/loader datatype if parser is the default parser, otherwise use parser return type
             self.dataset_datatype["data"]
             if self._parser == self._default_parser
             else self.parser_return_types[self._parser_feature_key]
         )
 
-        ft_type = (
+        feature_type_ = (
             signature(self._feature_loader).return_annotation
             if self._feature_transformer == self._default_feature_transformer
             else signature(self._feature_transformer).return_annotation
         )
 
         if self._feature_loader == self._default_feature_loader:
-            return parser_type
+            return dataset_type
 
-        elif parser_type != ft_type:
-            raise TypeError("dataset type must be consistent with the feature type")
+        elif dataset_type != feature_type_:
+            dt = cast(Type, dataset_type)
+            ft = cast(Type, feature_type_)
+            return cast(Type, FeatureTypeUnion[dt, ft])  # type: ignore
 
-        return parser_type
+        return dataset_type
 
     @classmethod
     def _from_flytekit_task(

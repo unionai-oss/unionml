@@ -4,14 +4,15 @@ import asyncio
 import typing
 
 try:
-    from typing import get_origin  # type: ignore
+    from typing import get_args, get_origin  # type: ignore
 except ImportError:
-    from typing_extensions import get_origin
+    from typing_extensions import get_args, get_origin
 
 import bentoml
 import numpy as np
 import pandas as pd
 
+from unionml.dataset import FeatureTypeUnion
 from unionml.exceptions import ModelArtifactNotFound
 from unionml.model import Model
 
@@ -129,13 +130,19 @@ class BentoMLService:
         )
         return self._svc
 
-    def save_model(self, model_object: typing.Any, **kwargs):
+    def save_model(self, model_object: typing.Optional[typing.Any] = None, **kwargs):
         """Save the model as a :class:`bentoml.Model`.
 
-        :param model_object: model object to save
+        :param model_object: model object to save. If None, this method assumes that
+            :class:`unionml.model.Model.artifact` is defined.
         :param framework: machine learning framework supported by :doc:`bentoml <bentoml:reference/frameworks/index>`.
             This is used to access the appropriate module ``bentoml.<framework>``, e.g. ``bentoml.sklearn``
         """
+        if model_object is None and self.model.artifact is None:
+            raise ModelArtifactNotFound(
+                f"unionml.Model object '{self.model}' bound to the service '{self}' not found. "
+                "Use the BentoMLService.serve() method to specify a model artifact to use for this service."
+            )
         return getattr(bentoml, self._framework).save_model(self.name, model_object, **kwargs)
 
     def load_model(self, tag_or_version: str):
@@ -239,6 +246,10 @@ def infer_output_io_descriptor(type_: typing.Type) -> typing.Type[bentoml.io.IOD
 
 def infer_io_descriptor(type_: typing.Type) -> typing.Optional[typing.Type[bentoml.io.IODescriptor]]:
     origin_type_ = get_origin(type_)
-    if origin_type_ is not None:
+
+    if origin_type_ is FeatureTypeUnion:
+        _, type_ = get_args(type_)
+    elif origin_type_ is not None:
         type_ = origin_type_
+
     return BentoMLService.IO_DESCRIPTOR_MAPPING.get(type_)

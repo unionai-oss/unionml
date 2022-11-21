@@ -46,5 +46,5 @@ if __name__ == "__main__":
     predictions = model.predict(features=load_digits(as_frame=True).frame.sample(5, random_state=42))
     print(model_object, metrics, predictions, sep="\n")
 
-    saved_model = service.save_model(model.artifact.model_object, framework="sklearn")
+    saved_model = service.save_model(model.artifact.model_object)
     print(f"BentoML saved model: {saved_model}")

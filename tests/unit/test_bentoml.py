@@ -11,6 +11,7 @@ from sklearn.linear_model import LogisticRegression
 
 import unionml.services.bentoml
 from unionml import Model
+from unionml.dataset import FeatureTypeUnion
 
 
 def test_bentoml_service(model: Model, mock_data: pd.DataFrame):
@@ -114,6 +115,7 @@ UNSUPPORTED_TYPES = [int, float, str, bool, set]
 @pytest.mark.parametrize(
     "type, expected",
     [
+        [FeatureTypeUnion[int, pd.DataFrame], bentoml.io.PandasDataFrame],
         [pd.DataFrame, bentoml.io.PandasDataFrame],
         [np.ndarray, bentoml.io.NumpyNdarray],
         [typing.List, bentoml.io.JSON],
