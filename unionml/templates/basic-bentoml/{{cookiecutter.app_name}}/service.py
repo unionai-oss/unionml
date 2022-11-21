@@ -1,5 +1,3 @@
-"""Create a BentoML API Service."""
-
 from digits_classifier_app import service
 
 service.load_model("latest")

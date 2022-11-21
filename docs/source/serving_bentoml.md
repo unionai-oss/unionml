@@ -8,11 +8,6 @@ model training to production serving seamless.
 ````{admonition} Prerequisites
 :class: important
 
-First go through the following guides:
-
-- {ref}`Local Training and Prediction <local_app>` guide for local model training.
-- {ref}`Deploying to Flyte <flyte_cluster>` guide for model training at scale with [Flyte](https://flyte.org/).
-
 Install the bentoml extra:
 
 ```{prompt} bash
@@ -20,6 +15,15 @@ Install the bentoml extra:
 
 pip install unionml[bentoml]
 ```
+
+Additional Requirements:
+- Install [bentoctl](https://github.com/bentoml/bentoctl#installation)
+- Install [terraform](https://developer.hashicorp.com/terraform/downloads)
+
+Understand the concepts in these UnionML guides:
+
+- {ref}`Local Training and Prediction <local_app>` guide for local model training.
+- {ref}`Deploying to Flyte <flyte_cluster>` guide for model training at scale with [Flyte](https://flyte.org/).
 ````
 
 ## Setup
@@ -133,7 +137,7 @@ Running it should hit the endpoint with a json payload that adheres to the Bento
 python request.py
 ```
 
-**Expected output:**
+*Expected output:*
 
 ```{code-block}
 [6.0,9.0,3.0,7.0,2.0]
@@ -196,8 +200,137 @@ bentoml serve digits_classifier:tdtkiddj22lszlg6
 BentoML offers three ways to deploy a Bento to production:
 
 - 🐳 Containerize your Bento for custom docker deployment.
-- 🦄 Yatai: A Kubernetes-native model deployment platform.
-- 🚀 `bentoctl`: a command-line tool for deploying Bentos on any cloud platform.
+- 🦄 [Yatai](https://github.com/bentoml/Yatai): A Kubernetes-native model deployment platform.
+- 🚀 [`bentoctl`](https://github.com/bentoml/bentoctl): a command-line tool for deploying Bentos on any cloud platform.
 
 To learn more about these deployment options, refer to the BentoML
 [deployment guide](https://docs.bentoml.org/en/latest/concepts/deploy.html).
+
+In the next section, we'll quickly go through an example of deploying the Bento we built earlier to AWS Lambda
+using `bentoctl`.
+
+First, install `bentoctl`:
+
+```{prompt} bash
+:prompts: $
+
+pip install bentoctl
+```
+
+Then initialize a bentoctl project:
+
+```{prompt} bash
+:prompts: $
+
+bentoctl init
+```
+
+*Expected output:*
+```{code-block}
+...
+deployment config generated to: deployment_config.yaml
+✨ generated template files.
+  - bentoctl.tfvars
+  - main.tf
+```
+
+This will start an interactive prompt where you fill in some metadata about the project, resulting in a
+`./deployment_config.yaml` file.
+
+Next, we build the deployable artifacts with:
+
+```{prompt} bash
+:prompts: $
+
+bentoctl build -b digits_classifier:tdtkiddj22lszlg6 -f ./deployment_config.yaml
+```
+
+Where the `-b` option must be a Bento tag, for example the `digits_classifier:tdtkiddj22lszlg6` tag that we say
+earlier in this guide.
+
+Then, we use the `terraform` CLI to apply the generated deployment configs to AWS.
+
+```{prompt} bash
+:prompts: $
+
+terraform init
+terraform apply -var-file=bentoctl.tfvars --auto-approve
+```
+
+*Expected output:*
+```{code-block}
+...
+endpoint = "<ENDPOINT_URL>"
+function_name = "<FUNCTION_NAME>"
+image_tag = "<IMAGE_TAG>"
+```
+
+The CLI command should output `endpoint`, `function_name`, and `image_tage` metadata.
+
+Finally, test your AWS lambda endpoint with:
+
+```{prompt} bash
+:prompts: $
+
+URL=$(terraform output -json | jq -r .endpoint.value)predict
+curl -i --header "Content-Type: application/json" --request POST --data "$(cat data/sample_features.json)" $URL
+```
+
+This should produce a json-encoded string of our model's prediction based on the features in
+`data/sample_features.json`.
+
+
+## Serving a Model Trained on Flyte
+
+Instead of serving a model trained locally, you can serve a model trained on a {ref}`Flyte cluster <flyte_cluster>` by
+using the programmatic API. The recommendation here is to separate the UnionML app definition and invocations of the
+{meth}`~unionml.model.Model.remote_train` to train it on a Flyte cluster.
+
+**`remote_training.py`**
+
+```{code-block} python
+from unionml.model import ModelArtifact
+
+from digits_classifier_app import model, service
+
+
+# train the model on a Flyte cluster
+model_artifact: ModelArtifact = model.remote_train(
+    hyperparameters={"C": 1.0, "max_iter": 5000}
+)
+
+# save the model object to the local bentoml store
+service.save_model(model_artifact.model_object)
+```
+
+Run the script:
+
+```{prompt} bash
+:prompts: $
+
+python remote_training.py
+```
+
+*Expected output:*
+
+```{code-block}
+...
+BentoML saved model: Model(tag="digits_classifier:xyz")
+```
+
+Finally, update the `service.py` script with the corresponding model version:
+
+```{code-block} python
+# service.py
+...
+service.load_model("xyz")
+...
+```
+
+## Next
+
+BentoML is a feature-rich model deployment framework, and you can learn more in the official documentation:
+
+- {doc}`Main Concepts <concepts/index>`
+- {doc}`Framework Guides <frameworks/index>`
+- {doc}`Advanced Guides <guides/index>`

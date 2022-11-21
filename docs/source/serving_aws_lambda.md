@@ -264,6 +264,8 @@ We can find more information and examples about filtering Lambda function logs i
 See the [AWS SAM developer guide](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html) for an introduction to SAM specification, the SAM CLI, and serverless application concepts.
 
 
+(serving_aws_lambda_flyte_model)=
+
 ## Using a Model Trained on Flyte
 
 So far in this guide we've used a model that we trained locally. But what if we want to us a model

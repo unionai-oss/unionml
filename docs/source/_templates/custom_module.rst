@@ -9,6 +9,8 @@
    .. autosummary::
       :toctree:
       :template: custom_class.rst
+      :nosignatures:
+
    {% for item in classes %}
       {{ item }}
    {%- endfor %}
@@ -21,6 +23,8 @@
 
    .. autosummary::
       :toctree:
+      :nosignatures:
+
    {% for item in functions %}
       {{ item }}
    {%- endfor %}
@@ -33,6 +37,8 @@
 
    .. autosummary::
       :toctree:
+      :nosignatures:
+
    {% for item in attributes %}
       {{ item }}
    {%- endfor %}
@@ -45,6 +51,8 @@
 
    .. autosummary::
       :toctree:
+      :nosignatures:
+
    {% for item in exceptions %}
       {{ item }}
    {%- endfor %}

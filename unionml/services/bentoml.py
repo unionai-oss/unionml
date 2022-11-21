@@ -24,6 +24,8 @@ if typing.TYPE_CHECKING:
 
 
 class ServiceNotConfigured(Exception):
+    """Raised when a service is not configured."""
+
     ...
 
 
@@ -225,6 +227,7 @@ def create_runnable(
 
 
 def infer_feature_io_descriptor(type_: typing.Type) -> typing.Type[bentoml.io.IODescriptor]:
+    """Converts a feature input type to a :class:`bentoml.io.IODescriptor`."""
     io_desc = infer_io_descriptor(type_)
     if io_desc is None:
         raise TypeError(
@@ -235,6 +238,7 @@ def infer_feature_io_descriptor(type_: typing.Type) -> typing.Type[bentoml.io.IO
 
 
 def infer_output_io_descriptor(type_: typing.Type) -> typing.Type[bentoml.io.IODescriptor]:
+    """Converts a prediction output type to a :class:`bentoml.io.IODescriptor`."""
     io_desc = infer_io_descriptor(type_)
     if io_desc is None:
         raise TypeError(
@@ -245,6 +249,7 @@ def infer_output_io_descriptor(type_: typing.Type) -> typing.Type[bentoml.io.IOD
 
 
 def infer_io_descriptor(type_: typing.Type) -> typing.Optional[typing.Type[bentoml.io.IODescriptor]]:
+    """Converts a type to a :class:`bentoml.io.IODescriptor`."""
     origin_type_ = get_origin(type_)
 
     if origin_type_ is FeatureTypeUnion:

@@ -419,9 +419,7 @@ class Dataset(TrackedInstance):
             return dataset_type
 
         elif dataset_type != feature_type_:
-            dt = cast(Type, dataset_type)
-            ft = cast(Type, feature_type_)
-            return cast(Type, FeatureTypeUnion[dt, ft])  # type: ignore
+            return cast(Type, FeatureTypeUnion[dataset_type, feature_type_])  # type: ignore
 
         return dataset_type
 
