@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 import docker
+import pytest
 import requests
 
 BENTO_FILE = Path(__file__).parent / "bentoml_integration" / "bentofile.yaml"
@@ -21,7 +22,7 @@ def test_bentoml_build_containerize():
     split_out = out.strip().split("\n")
 
     success_match = re.match(
-        r"Successfully built Bento\(tag=\"(unionml_digits_classifier:[A-Za-z0-9]+)\"\)\.",
+        r"Successfully built Bento\(tag=\"(digits_classifier:[A-Za-z0-9]+)\"\)\.",
         split_out[-1],
     )
     assert success_match
@@ -52,13 +53,20 @@ def assert_health_check():
             time.sleep(1.0)
 
 
-def test_bentoml_serve():
+@pytest.mark.parametrize(
+    "module,is_async",
+    [
+        ["service", False],
+        ["service_async", True],
+    ],
+)
+def test_bentoml_serve(module, is_async):
     """Transient app server for testing."""
     process = subprocess.Popen(
         [
             "bentoml",
             "serve",
-            "tests.integration.bentoml_integration.service:bentoml_service.svc",
+            f"tests.integration.bentoml_integration.{module}:service.svc",
             "--port",
             DEFAULT_PORT,
         ],
@@ -70,7 +78,6 @@ def test_bentoml_serve():
     api_request_vars = None
     try:
         for _ in range(10):
-            # for some reason the keras test has trouble connecting to the fastapi app
             try:
                 api_request_vars = runpy.run_module(
                     "tests.integration.bentoml_integration.api_requests", run_name="__main__"
@@ -82,6 +89,8 @@ def test_bentoml_serve():
             raise RuntimeError("Running the api request script failed.")
         prediction_response = api_request_vars["prediction_response"]
         output = prediction_response.json()
+        if is_async:
+            output = output[0]
         assert len(output) == api_request_vars["n_samples"]
         assert all(isinstance(x, float) for x in output)
     finally:

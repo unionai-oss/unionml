@@ -33,18 +33,8 @@ def evaluator(estimator: LogisticRegression, features: pd.DataFrame, target: pd.
     return float(accuracy_score(target.squeeze(), predictor(estimator, features)))
 
 
-# attach Flyte demo cluster metadata
-model.remote(
-    dockerfile="Dockerfile",
-    project="digits_classifier",
-    domain="development",
-)
-
-
 if __name__ == "__main__":
-    model_object, metrics = model.train(hyperparameters={"C": 1.0, "max_iter": 10000})
-    predictions = model.predict(features=load_digits(as_frame=True).frame.sample(5, random_state=42))
-    print(model_object, metrics, predictions, sep="\n")
+    model_object, _ = model.train(hyperparameters={"C": 1.0, "max_iter": 10000})
 
-    saved_model = service.save_model(model.artifact.model_object, framework="sklearn")
-    print(f"BentoML saved model: {saved_model}")
+    # save model to local bentoml model store
+    service.save_model(model_object)

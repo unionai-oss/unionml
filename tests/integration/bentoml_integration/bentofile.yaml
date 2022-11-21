@@ -1,4 +1,4 @@
-service: "tests.integration.bentoml_integration.service:bentoml_service.svc"
+service: "tests.integration.bentoml_integration.service:service.svc"
 labels:
    owner: unionml-bentoml-integration
    stage: dev

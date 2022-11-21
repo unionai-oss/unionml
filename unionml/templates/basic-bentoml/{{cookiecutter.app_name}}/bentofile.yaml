@@ -1,4 +1,4 @@
-service: "service:svc"
+service: "service:service.svc"
 labels:
    owner: bentoml-integration
    stage: dev

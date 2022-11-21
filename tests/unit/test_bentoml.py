@@ -15,21 +15,27 @@ from unionml import Model
 
 def test_bentoml_service(model: Model, mock_data: pd.DataFrame):
     """Test that BentoMLService can load a model from multiple sources."""
-    bentoml_service = unionml.services.bentoml.BentoMLService(model)
+    bentoml_service = unionml.services.bentoml.BentoMLService(model, framework="sklearn")
     model_object = LogisticRegression()
     model_object.fit(mock_data[["x", "x2", "x3"]], mock_data["y"])
 
     assert model.artifact is None
     assert bentoml_service.model.artifact is None
 
-    bentoml_service.serve(model_object=model_object)
+    bentoml_model = bentoml_service.save_model(model_object)
+    bentoml_service.load_model(bentoml_model.tag.version)
+    bentoml_service.configure(
+        enable_async=True,
+        supported_resources=("cpu",),
+        supports_cpu_multi_threading=False,
+        runnable_method_kwargs={"batchable": False},
+    )
 
     assert model.artifact is not None
     assert bentoml_service.model.artifact is not None
     assert model.artifact == bentoml_service.model.artifact
 
     assert isinstance(bentoml_service.svc, bentoml.Service)
-    assert isinstance(bentoml_service.create(), bentoml.Service)
 
 
 class CustomRunnable(bentoml.Runnable):
@@ -77,22 +83,22 @@ def test_create_service(enable_async):
         {"output_spec": bentoml.io.JSON()},
     ],
 )
-def test_create_runner(enable_async, supported_resources, supports_cpu_multi_threading, runnable_method_kwargs):
+def test_create_runnable(enable_async, supported_resources, supports_cpu_multi_threading, runnable_method_kwargs):
     """Test that runner can be created with different settings."""
-    runner = unionml.services.bentoml.create_runner(
+    runnable = unionml.services.bentoml.create_runnable(
         enable_async=enable_async,
         supported_resources=supported_resources,
         supports_cpu_multi_threading=supports_cpu_multi_threading,
         runnable_method_kwargs=runnable_method_kwargs,
     )
-    predict_method = runner.bentoml_runnable_methods__["predict"]
+    predict_method = runnable.bentoml_runnable_methods__["predict"]
     if enable_async:
         assert inspect.iscoroutinefunction(predict_method.func)
     else:
         assert not inspect.iscoroutinefunction(predict_method.func)
 
-    assert runner.SUPPORTED_RESOURCES == supported_resources
-    assert runner.SUPPORTS_CPU_MULTI_THREADING == supports_cpu_multi_threading
+    assert runnable.SUPPORTED_RESOURCES == supported_resources
+    assert runnable.SUPPORTS_CPU_MULTI_THREADING == supports_cpu_multi_threading
 
     for key in runnable_method_kwargs:
         val = getattr(predict_method.config, key)

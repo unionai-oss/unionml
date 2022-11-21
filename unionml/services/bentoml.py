@@ -22,6 +22,10 @@ if typing.TYPE_CHECKING:
         predict: RunnerMethod
 
 
+class ServiceNotConfigured(Exception):
+    ...
+
+
 class BentoMLService:
 
     IO_DESCRIPTOR_MAPPING = {
@@ -32,25 +36,38 @@ class BentoMLService:
     }
     """Maps python types to `BentoML IO descriptors <https://docs.bentoml.org/en/v1.0.10/reference/api_io_descriptors.html>`__"""
 
-    def __init__(self, model: Model, name: typing.Optional[str] = None):
+    def __init__(self, model: Model, framework: str, name: typing.Optional[str] = None):
         """Initialize a BentoML Service for generating predictions from a :class:`unionml.model.Model`.
 
         :param model: the :class:`~unionml.model.Model` bound to this service.
+        :param framework: machine learning framework supported by :doc:`bentoml <bentoml:reference/frameworks/index>`.
+            This is used to access the appropriate module ``bentoml.<framework>``, e.g. ``bentoml.sklearn``.
         :param name: custom name to give this service. If ``None``, uses :attr:`~unionml.model.Model.nam`.
         """
         self._model = model
+        self._framework = framework
         self._name = name
         self._bento_model = None
+        self._svc = None
 
     @property
     def model(self) -> Model:
+        """Get the :class:`~unionml.model.Model` bound to this service."""
         return self._model
 
     @property
     def name(self) -> str:
+        """Get the name of the service."""
         return self._name or self.model.name
 
-    def create(
+    @property
+    def svc(self) -> bentoml.Service:
+        """Get the underlying :class:`bentoml.Service` instance."""
+        if self._svc is None:
+            raise ServiceNotConfigured("Service not configured. Call the `.configure()` method first.")
+        return self._svc
+
+    def configure(
         self,
         features: typing.Optional[bentoml.io.IODescriptor] = None,
         output: typing.Optional[bentoml.io.IODescriptor] = None,
@@ -103,34 +120,38 @@ class BentoMLService:
                 runnable_init_params={"model": self.model},
             ),
         )
-        service = create_service(
+        self._svc = create_service(
             name=self.name,
             runner=runner,
             features=features or infer_feature_io_descriptor(self.model.dataset.feature_type)(),
             output=output or infer_output_io_descriptor(self.model.prediction_type)(),
             enable_async=enable_async,
         )
-        return service
+        return self._svc
 
-    def save_model(self, model_object: typing.Any, framework: str):
+    def save_model(self, model_object: typing.Any, **kwargs):
         """Save the model as a :class:`bentoml.Model`.
 
         :param model_object: model object to save
         :param framework: machine learning framework supported by :doc:`bentoml <bentoml:reference/frameworks/index>`.
             This is used to access the appropriate module ``bentoml.<framework>``, e.g. ``bentoml.sklearn``
         """
-        return getattr(bentoml, framework).save_model(self.name, model_object)
+        return getattr(bentoml, self._framework).save_model(self.name, model_object, **kwargs)
 
-    def load_model(self, version: str, framework: str):
-        """Load model from a version.
+    def load_model(self, tag_or_version: str):
+        """Load a :class:`bentoml.Model` from a version.
 
-        :param version: the version associated with the tag e.g., the version in the tag ``my_model:version1`` would be
-            ``version1``.
+        :param tag_or_version: the tag or version associated with the model name. E.g., the version in the tag
+            ``my_model:version1`` would be ``version1``.
         :param framework: machine learning framework supported by :doc:`bentoml <bentoml:reference/frameworks/index>`.
             This is used to access the appropriate module ``bentoml.<framework>``, e.g. ``bentoml.sklearn``
         """
-        self._bento_model = getattr(bentoml, framework).get(f"{self.name}:{version}")
-        model_object = getattr(bentoml, framework).load_model(f"{self.name}:{version}")
+        if ":" not in tag_or_version:
+            tag = f"{self.name}:{tag_or_version}"
+        else:
+            tag = tag_or_version
+        self._bento_model = getattr(bentoml, self._framework).get(tag)
+        model_object = getattr(bentoml, self._framework).load_model(tag)
         self.model.artifact = self.model.resolve_model_artifact(model_object=model_object)
 
 

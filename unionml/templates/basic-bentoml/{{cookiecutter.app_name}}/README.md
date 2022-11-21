@@ -17,6 +17,14 @@ To learn more about how a UnionML App is structured, check out the
 📖 [Documentation](https://unionml.readthedocs.io/en/latest/basics.html).
 
 ```
+bentoml build
+bentoctl init
+bentoctl build -b digits_classifier:pcp76wtjwkq6jlg6 -f deployment_config.yaml
+terraform init
+terraform apply -var-file=bentoctl.tfvars -auto-approve
+```
+
+```
 curl -X POST \
     -H "Content-Type: application/json" \
     --data "$(cat sample_features.json)" \
