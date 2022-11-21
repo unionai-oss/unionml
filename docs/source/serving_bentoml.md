@@ -331,6 +331,6 @@ service.load_model("xyz")
 
 BentoML is a feature-rich model deployment framework, and you can learn more in the official documentation:
 
-- {doc}`Main Concepts <concepts/index>`
-- {doc}`Framework Guides <frameworks/index>`
-- {doc}`Advanced Guides <guides/index>`
+- {doc}`Main Concepts <bentoml:concepts/index>`
+- {doc}`Framework Guides <bentoml:frameworks/index>`
+- {doc}`Advanced Guides <bentoml:guides/index>`
