@@ -100,7 +100,7 @@ def test_fastapi_app(ml_framework, filename, tmp_path):
 
     with contextmanager(_app)(ml_framework, "--model-path", str(model_path)):
         assert_health_check()
-        for _ in range(10):
+        for _ in range(30):
             # for some reason the keras test has trouble connecting to the fastapi app
             try:
                 api_request_vars = runpy.run_module("tests.integration.api_requests", run_name="__main__")

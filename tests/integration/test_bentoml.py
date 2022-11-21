@@ -77,13 +77,14 @@ def test_bentoml_serve(module, is_async):
 
     api_request_vars = None
     try:
-        for _ in range(10):
+        for _ in range(30):
             try:
                 api_request_vars = runpy.run_module(
                     "tests.integration.bentoml_integration.api_requests", run_name="__main__"
                 )
                 break
-            except Exception:
+            except Exception as exc:
+                print(f"Exception {exc}")
                 time.sleep(1.0)
         if api_request_vars is None:
             raise RuntimeError("Running the api request script failed.")
