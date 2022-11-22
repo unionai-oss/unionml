@@ -1,0 +1,8 @@
+service: "service:service.svc"
+labels:
+   owner: bentoml-integration
+   stage: dev
+include:
+- "*.py"  # A pattern for matching which files to include in the bento
+python:
+  requirements_txt: requirements.txt

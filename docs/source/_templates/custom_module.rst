@@ -2,13 +2,16 @@
 
 .. automodule:: {{ fullname }}
 
-   {% block attributes %}
-   {% if attributes %}
-   .. rubric:: Module Attributes
+   {% block classes %}
+   {% if classes %}
+   .. rubric:: {{ _('Classes') }}
 
    .. autosummary::
       :toctree:
-   {% for item in attributes %}
+      :template: custom_class.rst
+      :nosignatures:
+
+   {% for item in classes %}
       {{ item }}
    {%- endfor %}
    {% endif %}
@@ -20,20 +23,23 @@
 
    .. autosummary::
       :toctree:
+      :nosignatures:
+
    {% for item in functions %}
       {{ item }}
    {%- endfor %}
    {% endif %}
    {% endblock %}
 
-   {% block classes %}
-   {% if classes %}
-   .. rubric:: {{ _('Classes') }}
+   {% block attributes %}
+   {% if attributes %}
+   .. rubric:: Module Attributes
 
    .. autosummary::
       :toctree:
-      :template: custom_class.rst
-   {% for item in classes %}
+      :nosignatures:
+
+   {% for item in attributes %}
       {{ item }}
    {%- endfor %}
    {% endif %}
@@ -45,6 +51,8 @@
 
    .. autosummary::
       :toctree:
+      :nosignatures:
+
    {% for item in exceptions %}
       {{ item }}
    {%- endfor %}

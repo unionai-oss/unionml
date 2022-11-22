@@ -1,0 +1,11 @@
+service: "tests.integration.bentoml_integration.service:service.svc"
+labels:
+   owner: unionml-bentoml-integration
+   stage: dev
+include:
+- "*.py"  # A pattern for matching which files to include in the bento
+python:
+  packages:
+  - unionml
+  - scikit-learn
+  - pandas

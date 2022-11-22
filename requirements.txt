@@ -10,6 +10,7 @@ mangum
 numpy
 pandas
 pydantic
+rich>=11.2.0
 scikit-learn
 typer
 typing-extensions >= 4.3.0

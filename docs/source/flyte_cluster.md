@@ -293,5 +293,9 @@ function. In this case, that would be a `pandas.DataFrame`.
 ## Next
 
 Now that you've deployed your UnionML app to a Flyte cluster to scale your training jobs
-and do batch prediction, let's see how we can serve these predictions in production
-in an online setting with {ref}`FastAPI <serving_fastapi>`.
+and do batch prediction, you have a few options for serving predictions:
+
+- {ref}`Scheduling Predictions with Flyte <scheduling>`
+- {ref}`Serving with FastAPI <serving_fastapi>`
+- {ref}`Serving with AWS Lambda <serving_aws_lambda>`
+- {ref}`Reacting to S3 Events <reacting_to_s3_events>`
