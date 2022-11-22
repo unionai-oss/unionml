@@ -5,7 +5,6 @@ labels:
 include:
 - "*.py"  # A pattern for matching which files to include in the bento
 python:
-  lock_packages: false  # can remove this in next flytekit release, due to grpcio-status dependency
   packages:
   - unionml
   - scikit-learn

@@ -5,37 +5,15 @@ that you can run locally and serve via FastAPI.
 
 It includes the following files and folders:
 
-- `app.py`: The UnionML app code for digits classification.
+- `digits_classifier_app.py`: The UnionML app code for digits classification.
+- `service.py`: the BentoML service definition
+- `request.py`: test requests on a local BentoML server
 - `Dockerfile`: Dockerfile to package up the UnionML app for AWS Lambda serving.
 - `requirements.txt`: Python dependencies of the app.
 - `data`: Sample data used for invoking prediction endpoints.
 
-The code in `app.py` implements a hand-written digits model, but you can adapt the code to
+The code in `digits_classifier_app.py` implements a hand-written digits model, but you can adapt the code to
 fit your use case.
 
 To learn more about how a UnionML App is structured, check out the
-📖 [Documentation](https://unionml.readthedocs.io/en/latest/basics.html).
-
-```
-bentoml build
-bentoctl init
-bentoctl build -b digits_classifier:pcp76wtjwkq6jlg6 -f deployment_config.yaml
-terraform init
-terraform apply -var-file=bentoctl.tfvars -auto-approve
-```
-
-```
-curl -X POST \
-    -H "Content-Type: application/json" \
-    --data "$(cat sample_features.json)" \
-    http://0.0.0.0:3000/predict
-```
-
-```
-URL=$(terraform output -json | jq -r .endpoint.value)predict
-curl -i \
-  --header "Content-Type: application/json" \
-  --request POST \
-  --data "$(cat data/sample_features.json)" \
-  $URL
-```
+📖 [Documentation](https://unionml.readthedocs.io/en/stable/serving_bentoml.html).
