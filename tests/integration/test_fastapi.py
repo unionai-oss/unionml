@@ -36,12 +36,16 @@ def wait_to_exist(url, port):
 
 
 def assert_health_check():
+    exception = None
     for _ in range(30):
         try:
             health_check = requests.get(f"http://127.0.0.1:{DEFAULT_PORT}/health")
-            assert health_check.json()["status"] == 200
-        except Exception:  # pylint: disable=broad-except
+            assert health_check.status_code == 200
+            return
+        except Exception as exc:  # pylint: disable=broad-except
+            exception = exc
             time.sleep(1.0)
+    raise RuntimeError(f"Health checks failed with exception: {exception}")
 
 
 @pytest.mark.parametrize(
@@ -105,7 +109,8 @@ def test_fastapi_app(ml_framework, filename, tmp_path):
             try:
                 api_request_vars = runpy.run_module("tests.integration.api_requests", run_name="__main__")
                 break
-            except Exception:
+            except Exception as exc:
+                print(f"Exception {exc}")
                 time.sleep(1.0)
         prediction_response = api_request_vars["prediction_response"]
         output = prediction_response.json()

@@ -37,4 +37,4 @@ if __name__ == "__main__":
     model_object, _ = model.train(hyperparameters={"C": 1.0, "max_iter": 10000})
 
     # save model to local bentoml model store
-    service.save_model(model_object)
+    saved_model = service.save_model(model_object)
