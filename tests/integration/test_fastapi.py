@@ -70,11 +70,11 @@ def test_module(ml_framework, model_cls_name, model_checker):
 @pytest.mark.parametrize(
     "ml_framework, filename",
     [
-        # ("sklearn", "model.joblib"),
-        # ("pytorch", "model.pt"),
+        ("sklearn", "model.joblib"),
+        ("pytorch", "model.pt"),
         ("keras", "model.h5"),
     ],
-    # ids=["sklearn", "pytorch", "keras"],
+    ids=["sklearn", "pytorch", "keras"],
 )
 def test_fastapi_app(ml_framework, filename, tmp_path):
     # run the quickstart module to train a model
@@ -93,19 +93,15 @@ def test_fastapi_app(ml_framework, filename, tmp_path):
     n_samples = 5
 
     with contextmanager(_app)(ml_framework, "--model-path", str(model_path)):
-        for _ in range(30):
+        for _ in range(60):
             try:
                 api_request_vars = runpy.run_module("tests.integration.api_requests", run_name="__main__")
                 break
             except Exception as exc:
                 print(f"Exception {exc}")
-                time.sleep(1.0)
+                time.sleep(3.0)
 
         prediction_response = api_request_vars["prediction_response"]
-        print(prediction_response)
-        print(prediction_response.status_code)
-        print(prediction_response.content)
-        print(prediction_response.reason)
         output = prediction_response.json()
         assert len(output) == n_samples
         assert all(isinstance(x, float) for x in output)
