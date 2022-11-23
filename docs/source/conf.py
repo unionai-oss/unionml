@@ -68,8 +68,7 @@ html_logo = "_static/images/union-logo.svg"
 html_favicon = "_static/images/union-logo.svg"
 
 announcement = """
-UnionML is in Beta 🏗 &nbsp;! Join us on
-<a href='https://flyte-org.slack.com/archives/C03JL38L65V' target='_blank'>Slack</a>
+Join us on <a href='https://flyte-org.slack.com/archives/C03JL38L65V' target='_blank'>Slack</a>
 and <a href='https://github.com/unionai-oss/unionml/discussions' target='_blank'>Github Discussions</a>,
 and if you like this project, <a href='https://github.com/unionai-oss/unionml' target='_blank'>give us a star ⭐️! </a>
 """
