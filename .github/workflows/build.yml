@@ -44,6 +44,8 @@ jobs:
         pip install awscli
         pip install -r requirements.txt -r requirements-dev.txt -r requirements-docs.txt
         pip install --no-deps -e .
+    - name: Pip info
+      run: python -m pip list
     - name: Lint
       run: |
         pre-commit run --all-files --show-diff-on-failure
@@ -62,5 +64,5 @@ jobs:
       # build error AttributeError: 'document' object has no attribute 'findall'
       # in the furo theme, see: https://github.com/unionai-oss/unionml/runs/6786848582?check_suite_focus=true#step:8:2531
       # excluding docs build step from 3.7 for now.
-      if: ${{ matrix.python-version != '3.7' }}
+      if: ${{ matrix.python-version != '3.7' && matrix.test-dir == 'unit' }}
       run: make docs

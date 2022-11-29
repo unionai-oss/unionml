@@ -250,12 +250,30 @@ earlier in this guide.
 
 Then, we use the `terraform` CLI to apply the generated deployment configs to AWS.
 
-```{prompt} bash
-:prompts: $
+````{tabs}
 
-terraform init
-terraform apply -var-file=bentoctl.tfvars --auto-approve
-```
+   ```{tab} terraform
+
+      ```{prompt} bash
+      :prompts: $
+
+      terraform init
+      terraform apply -var-file=bentoctl.tfvars --auto-approve
+      ```
+
+   ```
+
+   ```{tab} bentoctl [experimental]
+
+      ```{prompt} bash
+      :prompts: $
+
+      bentoctl apply
+      ```
+
+   ```
+
+````
 
 *Expected output:*
 ```{code-block}
@@ -267,7 +285,7 @@ image_tag = "<IMAGE_TAG>"
 
 The CLI command should output `endpoint`, `function_name`, and `image_tage` metadata.
 
-Finally, test your AWS lambda endpoint with:
+Test your AWS lambda endpoint with:
 
 ```{prompt} bash
 :prompts: $
@@ -278,6 +296,14 @@ curl -i --header "Content-Type: application/json" --request POST --data "$(cat d
 
 This should produce a json-encoded string of our model's prediction based on the features in
 `data/sample_features.json`.
+
+Finally, you can delete all the cloud resources with
+
+```{prompt} bash
+:prompts: $
+
+bentoctl destroy
+```
 
 
 ## Serving a Model Trained on Flyte
