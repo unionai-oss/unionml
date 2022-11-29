@@ -27,7 +27,7 @@ unit testing of your UnionML app.
 
 Here's our complete UnionML app for digit classification in a `app.py` script:
 
-```{code-cell} python
+```{code-cell}
 from typing import List
 
 import pandas as pd
@@ -68,7 +68,7 @@ def evaluator(estimator: LogisticRegression, features: pd.DataFrame, target: pd.
 We can then invoke the `model.train` method to train the sklearn estimator and `model.predict`
 to generate predictions. Then invoke the app script with `python app.py`:
 
-```{code-cell} python
+```{code-cell}
 :tags: [remove-cell]
 
 import warnings

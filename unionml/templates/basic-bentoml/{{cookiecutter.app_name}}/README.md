@@ -16,4 +16,5 @@ The code in `digits_classifier_app.py` implements a hand-written digits model, b
 fit your use case.
 
 To learn more about how a UnionML App is structured, check out the
-📖 [Documentation](https://unionml.readthedocs.io/en/stable/serving_bentoml.html).
+📖 [Documentation](https://unionml.readthedocs.io/en/latest/index.html), and to learn
+more about the BentoML integration, go [here](https://unionml.readthedocs.io/en/latest/serving_bentoml.html).
