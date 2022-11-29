@@ -3,7 +3,7 @@
 
 furo
 gradio<=3.0.10
-ipython<=8.6.0  # 8.7.0 leads to docs build issue "Pygments lexer name 'ipython3' is not known"
+ipython!=8.7.0  # 8.7.0 leads to docs build issue "Pygments lexer name 'ipython3' is not known"
 joblib
 jupytext
 myst-nb
