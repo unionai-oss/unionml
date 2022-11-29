@@ -28,6 +28,7 @@ class AppTemplate(str, Enum):
     basic = "basic"
     basic_aws_lambda = "basic-aws-lambda"
     basic_aws_lambda_s3 = "basic-aws-lambda-s3"
+    basic_bentoml = "basic-bentoml"
     quickdraw = "quickdraw"
 
 
