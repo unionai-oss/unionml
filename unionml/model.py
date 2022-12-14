@@ -172,26 +172,31 @@ class Model(TrackedInstance):
             return self._hyperparameter_type
 
         hyperparameter_fields: List[Any] = []
-        if self._hyperparameter_config is None:
-            # extract types from the init callable that instantiates a new model
-            model_obj_sig = signature(self._init_callable or self._init)  # type: ignore
+        model_obj_sig = signature(self._init_callable or self._init)  # type: ignore
+        # if the init callable takes a single dictionary argument or
+        # any of the arguments are not type-annotated, default to using an untyped dictionary
+        model_obj_params = [*model_obj_sig.parameters.values()]
 
-            # if the init callable takes a single dictionary argument or
-            # any of the arguments are not type-annotated, default to using an untyped dictionary
-            model_obj_params = [*model_obj_sig.parameters.values()]
-            if (
-                len(model_obj_params) == 1
-                and model_obj_params[0].annotation is dict
-                or any(p.annotation is inspect._empty for p in model_obj_params)
-            ):
-                return dict
-
-            for hparam_name, hparam in model_obj_sig.parameters.items():
-                hyperparameter_fields.append((hparam_name, hparam.annotation, field(default=hparam.default)))
-        else:
+        if self._hyperparameter_config is not None:
             # extract types from hyperparameters Model init argument
             for hparam_name, hparam_type in self._hyperparameter_config.items():
                 hyperparameter_fields.append((hparam_name, hparam_type))
+        elif len(model_obj_params) == 1 and model_obj_params[0].annotation is dict:
+            # if the init callable takes a single dictionary argument default to using an untyped dictionary
+            return dict
+        elif any(p.annotation is inspect._empty for p in model_obj_params):
+            # if the init callable has empty annotations, try creating a dataclass
+            for hparam_name, hparam in model_obj_sig.parameters.items():
+                if hparam.annotation is not inspect._empty:
+                    hparam_type = hparam.annotation
+                elif hparam.default is not None:
+                    hparam_type = type(hparam.default)
+                else:
+                    hparam_type = Optional[Any]  # type: ignore
+                hyperparameter_fields.append((hparam_name, hparam_type, field(default=hparam.default)))
+        else:
+            for hparam_name, hparam in model_obj_sig.parameters.items():
+                hyperparameter_fields.append((hparam_name, hparam.annotation, field(default=hparam.default)))
 
         self._hyperparameter_type = dataclass_json(
             make_dataclass("Hyperparameters", hyperparameter_fields, bases=(BaseHyperparameters,))
