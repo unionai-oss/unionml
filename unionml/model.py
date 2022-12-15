@@ -172,26 +172,31 @@ class Model(TrackedInstance):
             return self._hyperparameter_type
 
         hyperparameter_fields: List[Any] = []
-        if self._hyperparameter_config is None:
-            # extract types from the init callable that instantiates a new model
-            model_obj_sig = signature(self._init_callable or self._init)  # type: ignore
+        model_obj_sig = signature(self._init_callable or self._init)  # type: ignore
+        # if the init callable takes a single dictionary argument or
+        # any of the arguments are not type-annotated, default to using an untyped dictionary
+        model_obj_params = [*model_obj_sig.parameters.values()]
 
-            # if the init callable takes a single dictionary argument or
-            # any of the arguments are not type-annotated, default to using an untyped dictionary
-            model_obj_params = [*model_obj_sig.parameters.values()]
-            if (
-                len(model_obj_params) == 1
-                and model_obj_params[0].annotation is dict
-                or any(p.annotation is inspect._empty for p in model_obj_params)
-            ):
-                return dict
-
-            for hparam_name, hparam in model_obj_sig.parameters.items():
-                hyperparameter_fields.append((hparam_name, hparam.annotation, field(default=hparam.default)))
-        else:
+        if self._hyperparameter_config is not None:
             # extract types from hyperparameters Model init argument
             for hparam_name, hparam_type in self._hyperparameter_config.items():
                 hyperparameter_fields.append((hparam_name, hparam_type))
+        elif len(model_obj_params) == 1 and model_obj_params[0].annotation is dict:
+            # if the init callable takes a single dictionary argument default to using an untyped dictionary
+            return dict
+        elif any(p.annotation is inspect._empty for p in model_obj_params):
+            # if the init callable has empty annotations, try creating a dataclass from the signature
+            for hparam_name, hparam in model_obj_sig.parameters.items():
+                if hparam.annotation is not inspect._empty:
+                    hparam_type = hparam.annotation
+                elif hparam.default is not None:
+                    hparam_type = type(hparam.default)
+                else:
+                    hparam_type = Optional[Any]  # type: ignore
+                hyperparameter_fields.append((hparam_name, hparam_type, field(default=hparam.default)))
+        else:
+            for hparam_name, hparam in model_obj_sig.parameters.items():
+                hyperparameter_fields.append((hparam_name, hparam.annotation, field(default=hparam.default)))
 
         self._hyperparameter_type = dataclass_json(
             make_dataclass("Hyperparameters", hyperparameter_fields, bases=(BaseHyperparameters,))
@@ -683,6 +688,12 @@ class Model(TrackedInstance):
 
         """
         trainer_kwargs = {} if trainer_kwargs is None else trainer_kwargs
+
+        # this is a workaround for https://github.com/flyteorg/flyte/issues/3158
+        override_config = issubclass(type(hyperparameters), dict) and self._hyperparameter_config is None
+        if override_config and hyperparameters is not None:
+            self._hyperparameter_config = {k: type(v) for k, v in hyperparameters.items()}
+
         model_obj, hyperparameters, metrics = self.train_workflow()(
             hyperparameters=self.hyperparameter_type(**({} if hyperparameters is None else hyperparameters)),
             loader_kwargs=self._dataset.loader_kwargs_type(**({} if loader_kwargs is None else loader_kwargs)),
@@ -690,6 +701,10 @@ class Model(TrackedInstance):
             parser_kwargs=self._dataset.parser_kwargs_type(**({} if parser_kwargs is None else parser_kwargs)),
             **{**reader_kwargs, **trainer_kwargs},
         )
+
+        if override_config:
+            self._hyperparameter_config = None
+
         self.artifact = ModelArtifact(model_obj, hyperparameters, metrics)
         return model_obj, metrics
 
@@ -1101,6 +1116,11 @@ class Model(TrackedInstance):
         if self._remote is None:
             raise RuntimeError("First configure the remote client with the `Model.remote` method")
 
+        # this is a workaround for https://github.com/flyteorg/flyte/issues/3158
+        override_config = issubclass(type(hyperparameters), dict) and self._hyperparameter_config is None
+        if override_config and hyperparameters is not None:
+            self._hyperparameter_config = {k: type(v) for k, v in hyperparameters.items()}
+
         train_wf = self._remote.fetch_workflow(name=self.train_workflow_name, version=app_version)
         execution = self._remote.execute(
             train_wf,
@@ -1120,6 +1140,10 @@ class Model(TrackedInstance):
                 "parser_kwargs": self._dataset.parser_kwargs_type,
             },
         )
+
+        if override_config:
+            self._hyperparameter_config = None
+
         console_url = self._remote.generate_console_url(execution)
         logger.info(
             f"Executing {train_wf.id.name}, execution name: {execution.id.name}."

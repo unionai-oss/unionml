@@ -118,7 +118,7 @@ def test_aws_api_gateway_lambda_handler(monkeypatch, apigw_event, tmpdir):
     model_path = tmpdir / "model_object.joblib"
     model.save(str(model_path))
 
-    monkeypatch.setenv("UNIONML_MODEL_PATH", model_path)
+    monkeypatch.setenv("UNIONML_MODEL_PATH", str(model_path))
 
     ret = lambda_handler(apigw_event, "")
     predictions = json.loads(ret["body"])
@@ -135,7 +135,7 @@ def test_s3_event_lambda_handler(monkeypatch, features, s3_event, tmpdir, caplog
     model_path = tmpdir / "model_object.joblib"
     model.save(str(model_path))
 
-    monkeypatch.setenv("UNIONML_MODEL_PATH", model_path)
+    monkeypatch.setenv("UNIONML_MODEL_PATH", str(model_path))
     results = {}
 
     def mock_download_file(bucket, key, filename):
