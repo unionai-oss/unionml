@@ -17,7 +17,7 @@
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/unionml?style=for-the-badge)](https://pypi.org/project/unionml/)
 [![PyPI version shields.io](https://img.shields.io/pypi/v/unionml?style=for-the-badge)](https://pypi.org/project/unionml/)
 [![Documentation Status](https://img.shields.io/readthedocs/unionml/latest?style=for-the-badge)](https://unionml.readthedocs.io/en/latest/?badge=latest)
-![Build](https://img.shields.io/github/actions/workflow/status/unionai-oss/unionml/build.yml?branch=main&style=for-the-badge)
+[![Build](https://img.shields.io/github/actions/workflow/status/unionai-oss/unionml/build.yml?branch=main&style=for-the-badge)](https://github.com/unionai-oss/unionml/actions/workflows/build.yml)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/unionml?style=for-the-badge)](https://pypistats.org/packages/unionml)
 [![Roadmap](https://img.shields.io/badge/Project-Roadmap-blueviolet?style=for-the-badge)](https://github.com/orgs/unionai-oss/projects/1/views/4)
 [![OSS Planning](https://img.shields.io/badge/Event-OSS_Planning-yellow?style=for-the-badge)](https://app.addevent.com/event/tj14110550/)
