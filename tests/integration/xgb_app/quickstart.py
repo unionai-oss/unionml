@@ -9,6 +9,12 @@ from unionml import Dataset, Model
 
 dataset = Dataset(name="digits_dataset", test_size=0.2, shuffle=True, targets=["target"])
 model = Model(name="digits_classifier", init=XGBClassifier, dataset=dataset)
+params = {
+    'max_depth': 4, 
+    'eta': 0.1, 
+    'sampling_method': 'gradient_based', 
+    'num_class': 3}
+
 
 @dataset.reader
 def reader() -> pd.DataFrame:
@@ -31,7 +37,7 @@ def evaluator(estimator: XGBClassifier, features: pd.DataFrame, target: pd.DataF
 
 
 if __name__ == "__main__":
-    model_object, metrics = model.train(hyperparameters={'max_depth': 4, 'eta': 0.1, 'sampling_method': 'gradient_based', 'num_class': 3})
+    model_object, metrics = model.train(hyperparameters=params)
     predictions = model.predict(features=load_digits(as_frame=True).frame.sample(5, random_state=42))
     print(model_object, metrics, predictions, sep="\n")
 
