@@ -1,5 +1,4 @@
 from typing import List
-
 import pandas as pd
 from sklearn.datasets import load_digits
 from xgboost import XGBClassifier
@@ -44,14 +43,10 @@ def predictor(estimator: XGBClassifier, features: pd.DataFrame) -> List[float]:
 def evaluator(estimator: XGBClassifier, features: pd.DataFrame, target: pd.DataFrame) -> float:
     return float(accuracy_score(target.squeeze(), predictor(estimator, features)))
 
-# Main function
-def main():
+if __name__ == "__main__":
     model_object, metrics = model.train(hyperparameters=PARAMS)
     predictions = model.predict(features=load_digits(as_frame=True).frame.sample(5, random_state=42))
     print(model_object, metrics, predictions, sep="\n")
 
-    # save model to a file, using joblib as the default serialization format
+    # save model to a file
     model.save('/tmp/model_object.pickle')
-
-if __name__ == "__main__":
-    main()
