@@ -131,7 +131,7 @@ A UnionML app is composed of two core classes: a {class}`~unionml.dataset.Datase
 {class}`~unionml.model.Model`.
 
 In this example, we'll build a minimal UnionML app that classifies images of handwritten digits
-into their corresponding digit labels using [sklearn](https://scikit-learn.org/stable/),
+into their corresponding digit labels using [sklearn](https://scikit-learn.org/stable/), [xgboost](https://xgboost.ai/)
 [pytorch](https://pytorch.org/), or [keras](https://keras.io/).
 
 Create a python file called `app.py`, import app dependencies, and define `dataset` and `model` objects.
@@ -147,7 +147,24 @@ Create a python file called `app.py`, import app dependencies, and define `datas
       ```
 
    ```
+   ```{group-tab} xgboost
 
+      Install [xgboost](https://xgboost.ai/):
+
+      ```{prompt} bash
+      :prompts: $
+
+      pip install xgboost
+      ```
+
+      ```{literalinclude} ../../tests/integration/xgboost_app/quickstart.py
+      ---
+      lines: 1-24
+      ---
+      ```
+
+   ```  
+   
    ```{group-tab} pytorch
 
       Install [pytorch](https://pytorch.org/):
@@ -209,6 +226,16 @@ exposed by the `dataset` and `model` objects:
 
    ```
 
+   ```{group-tab} xgboost
+
+      ```{literalinclude} ../../tests/integration/xgboost_app/quickstart.py
+      ---
+      lines: 27-44
+      ---
+      ```
+
+   ```
+
    ```{group-tab} pytorch
 
       First we'll define some helper functions to convert dataframes to tensors
@@ -258,6 +285,16 @@ to generate predictions.
 
    ```
 
+   ```{group-tab} xgboost
+
+      ```{literalinclude} ../../tests/integration/xgboost_app/quickstart.py
+      ---
+      lines: 46-52
+      ---
+      ```
+
+   ```
+
    ```{group-tab} pytorch
 
       ```{literalinclude} ../../tests/integration/pytorch_app/quickstart.py
@@ -302,6 +339,24 @@ endpoints with the `requests` library.
 
       ```{code-block} bash
       unionml serve app:app --reload --model-path /tmp/model_object.joblib
+      ```
+
+   ```
+
+   ```{group-tab} xgboost
+
+      Bind a FastAPI `app` to the `model` object with `model.serve`
+
+      ```{literalinclude} ../../tests/integration/xgboost_app/fastapi_app.py
+      ---
+      lines: 1,4-6
+      ---
+      ```
+
+      Start the server, assuming the UnionML app is in a `app.py` script
+
+      ```{code-block} bash
+      unionml serve app:app --reload --model-path /tmp/model_object.pickle
       ```
 
    ```

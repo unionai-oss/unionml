@@ -53,10 +53,11 @@ def assert_health_check():
     "ml_framework, model_cls_name, model_checker",
     [
         ("sklearn", "LogisticRegression", check_is_fitted),
+        ("xgboost", "XGBClassifier", None),
         ("pytorch", "PytorchModel", None),
         ("keras", "Sequential", None),
     ],
-    ids=["sklearn", "pytorch", "keras"],
+    ids=["sklearn", "xgboost", "pytorch", "keras"],
 )
 def test_module(ml_framework, model_cls_name, model_checker):
 
@@ -82,10 +83,11 @@ def test_module(ml_framework, model_cls_name, model_checker):
     "ml_framework, filename",
     [
         ("sklearn", "model.joblib"),
+        ("xgboost", "model.pickle ")
         ("pytorch", "model.pt"),
         ("keras", "model.h5"),
     ],
-    ids=["sklearn", "pytorch", "keras"],
+    ids=["sklearn", "xgboost", "pytorch", "keras"],
 )
 def test_fastapi_app(ml_framework, filename, tmp_path):
 
