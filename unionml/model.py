@@ -343,7 +343,7 @@ class Model(TrackedInstance):
         if callbacks is not None:
             for cb in callbacks:
                 if not callable(cb):
-                    raise ValueError("Callback must be a callable function.")
+                    raise ValueError("Callback must be a callable function or object.")
 
                 type_guards.guard_prediction_callback(
                     predictor=fn,
