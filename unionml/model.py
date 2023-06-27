@@ -1036,6 +1036,7 @@ class Model(TrackedInstance):
             self.predict_workflow(),
             self.predict_from_features_workflow(),
         ]:
+
             remote.deploy_workflow(
                 wf,
                 _remote,

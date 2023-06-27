@@ -5,6 +5,7 @@ import importlib
 import pathlib
 import typing
 
+import click
 import docker
 import git
 from flytekit import LaunchPlan
@@ -15,6 +16,7 @@ from flytekit.models.admin.common import Sort
 from flytekit.models.project import Project
 from flytekit.remote import FlyteRemote, FlyteWorkflowExecution
 from flytekit.tools import fast_registration, repo
+from flytekit.tools.translator import Options
 
 from unionml._logging import logger
 from unionml.model import Model, ModelArtifact
@@ -121,32 +123,40 @@ def deploy_workflow(
     patch_destination_dir: str = None,
 ):
     """Register all tasks, workflows, and launchplans needed to execute the workflow."""
-    logger.info(f"Deploying workflow '{wf.name}'")
+    detected_root = repo.find_common_root(["."])
+    click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
     fast_serialization_settings = None
     if patch:
-        # Create a zip file containing all the entries.
-        detected_root = repo.find_common_root(["."])
-        zip_file = fast_registration.fast_package(detected_root, output_dir=None, deref_symlinks=False)
-
-        # Upload zip file to Admin using FlyteRemote.
-        _, native_url = remote._upload_file(pathlib.Path(zip_file))
-
-        # Create serialization settings
-        # TODO: Rely on default Python interpreter for now, this will break custom Spark containers
+        md5_bytes, native_url = remote.fast_package(detected_root, deref_symlinks, output)
         fast_serialization_settings = FastSerializationSettings(
             enabled=True,
             destination_dir=patch_destination_dir,
             distribution_location=native_url,
         )
 
+    # Create serialization settings
+    # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
     serialization_settings = SerializationSettings(
         project=project,
         domain=domain,
+        version=version,
         image_config=ImageConfig.auto(img_name=image),
         fast_serialization_settings=fast_serialization_settings,
     )
 
-    remote.register_workflow(wf, serialization_settings, version)
+    if not version and patch:
+        version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
+        click.secho(f"Computed version is {version}", fg="yellow")
+    elif not version:
+        click.secho("Version is required.", fg="red")
+        return
+
+    b = serialization_settings.new_builder()
+    b.version = version
+    serialization_settings = b.build()
+
+    # TODO add support for service account etc
+    remote.register_workflow(wf, serialization_settings, version, options=None)
 
 
 def deploy_launchplan(
