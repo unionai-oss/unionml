@@ -18,7 +18,6 @@ There are many ways to contribute to this project:
 ## Roadmap
 
 [![Roadmap](https://img.shields.io/badge/Project-Roadmap-blueviolet?style=for-the-badge)](https://github.com/orgs/unionai-oss/projects/1/views/4)
-[![OSS Planning](https://img.shields.io/badge/Event-OSS_Planning-yellow?style=for-the-badge)](https://app.addevent.com/event/tj14110550/)
 
 The release roadmap is a living being 🌳, so you can also participate in roadmapping and prioritization!
 
