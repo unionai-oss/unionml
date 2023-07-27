@@ -1,0 +1,14 @@
+-r requirements.txt
+
+black
+# pinned due to version conflict with flytekit>=1.17.0
+botocore==1.29.161
+boto3
+flake8
+flytekitplugins-sqlalchemy
+pre_commit
+pytest
+pytest-mock
+types-requests
+uvicorn
+jupytext

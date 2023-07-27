@@ -12,7 +12,7 @@ LICENSE: str = "Apache"
 README: str = pathlib.Path("README.md").read_text()
 
 extras_require = {}
-for extra in ["bentoml"]:
+for extra in ["bentoml", "fastapi"]:
     with open(f"extras_require/{extra}.txt") as f:
         extras_require[extra] = [x.strip() for x in f.readlines()]
 
