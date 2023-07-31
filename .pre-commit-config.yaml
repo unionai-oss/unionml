@@ -8,12 +8,12 @@ repos:
   hooks:
     - id: black
 - repo: https://github.com/PyCQA/isort
-  rev:  5.10.1
+  rev:  5.12.0
   hooks:
     - id: isort
       args: ["--profile", "black"]
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.1.0
+  rev: v4.2.0
   hooks:
     - id: check-yaml
       args: [ "--unsafe" ]
@@ -33,6 +33,10 @@ repos:
       pass_filenames: false
       additional_dependencies:
       - types-requests
+- repo: https://github.com/conorfalvey/check_pdb_hook
+  rev: 0.0.9
+  hooks:
+    - id: check_pdb_hook
 - repo: local
   hooks:
   - id: convert-myst-to-ipynb
