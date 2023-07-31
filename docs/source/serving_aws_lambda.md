@@ -11,9 +11,16 @@ It can also emulate our application's build environment and API locally.
 ```{admonition} Prerequisites
 To follow this guide, we'll need the following tools:
 
-- An [AWS account](https://aws.amazon.com/) for Docker registry authentication.
-- SAM CLI: [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html).
-- Docker: [Install Docker community edition](https://hub.docker.com/search/?type=edition&offering=community).
+1. An [AWS account](https://aws.amazon.com/) for Docker registry authentication.
+2. SAM CLI: [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html).
+3. Docker: [Install Docker community edition](https://hub.docker.com/search/?type=edition&offering=community).
+4. Install unionml with mangum:
+
+```{prompt} bash
+:prompts: $
+
+pip install unionml[mangum]
+```
 
 We need to use Amazon ECR-based images so be sure to [authenticate to the AWS ECR registry](https://docs.aws.amazon.com/AmazonECR/latest/userguide/getting-started-cli.html#cli-authenticate-registry).
 ```

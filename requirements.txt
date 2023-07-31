@@ -5,7 +5,6 @@ docker
 flytekit>=1.8.1
 gitpython
 joblib
-mangum
 numpy
 pandas
 pydantic

@@ -117,8 +117,19 @@ You may notice a few things about the code example above:
 
 ## Serve with FastAPI
 
-UnionML integrates with [FastAPI](https://fastapi.tiangolo.com/) to make model serving super easy. Simply
-create a `FastAPI` app and pass it into `model.serve` in the `app.py` script:
+UnionML integrates with [FastAPI](https://fastapi.tiangolo.com/) to make model serving super easy.
+
+````{important}
+Install unionml with fastapi:
+
+```{prompt} bash
+:prompts: $
+
+pip install unionml[fastapi]
+```
+````
+
+Simply create a `FastAPI` app and pass it into `model.serve` in the `app.py` script:
 
 ```{code-cell} python
 from fastapi import FastAPI
