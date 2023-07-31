@@ -1,6 +1,7 @@
 -r requirements.txt
 -r extras_require/bentoml.txt
 -r extras_require/fastapi.txt
+-r extras_require/mangum.txt
 
 black
 boto3
