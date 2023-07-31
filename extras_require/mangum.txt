@@ -1,1 +1,1 @@
-mangum
+mangum>=0.11.0
