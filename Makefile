@@ -25,3 +25,6 @@ docs:
 
 quick-docs:
 	NB_EXECUTION_MODE=off $(MAKE) docs
+
+setup:
+	pip install -r requirements-dev.txt

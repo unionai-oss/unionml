@@ -18,7 +18,7 @@ from unionml import Model
 from unionml.model import ModelArtifact
 
 FLYTECTL_CMD = "sandbox" if os.getenv("UNIONML_CI", False) else "demo"
-NO_CLUSTER_MSG = "🛑 no demo cluster found" if FLYTECTL_CMD == "demo" else "🛑 no Sandbox found"
+NO_CLUSTER_MSG = "🛑 no Sandbox found"
 RETRY_ERROR = "failed to create workflow in propeller namespaces"
 
 
@@ -46,7 +46,7 @@ def flyte_remote():
             subprocess.run(["flytectl", FLYTECTL_CMD, "start", "--source", "."])
 
         remote = FlyteRemote(
-            config=Config.auto(),
+            config=Config.for_sandbox(),
             default_project="flytesnacks",
             default_domain="development",
         )
@@ -57,7 +57,7 @@ def flyte_remote():
     finally:
         if not cluster_preexists:
             # only teardown the demo cluster if it didn't preexist
-            subprocess.run(["flytectl", FLYTECTL_CMD, "teardown"])
+            subprocess.run(["flytectl", FLYTECTL_CMD, "teardown", "--volume"])
 
 
 def _import_model_from_file(module_name: str, file_path: Path) -> Model:
@@ -134,6 +134,7 @@ def test_unionml_deployment(
     # configure remote
     model.remote(
         dockerfile=f"ci/py{''.join(str(x) for x in sys.version_info[:2])}/Dockerfile",
+        registry="localhost:30000",
         project=project,
         domain="development",
     )

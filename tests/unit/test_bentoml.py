@@ -72,7 +72,6 @@ def test_create_service(enable_async):
         assert not inspect.iscoroutinefunction(service.apis["predict"].func)
 
 
-@pytest.mark.parametrize("enable_async", [True, False])
 @pytest.mark.parametrize("supported_resources", [("cpu",), ("cpu", "nvidia.com/gpu"), ("nvidia.com/gpu",)])
 @pytest.mark.parametrize("supports_cpu_multi_threading", [True, False])
 @pytest.mark.parametrize(
@@ -84,20 +83,15 @@ def test_create_service(enable_async):
         {"output_spec": bentoml.io.JSON()},
     ],
 )
-def test_create_runnable(enable_async, supported_resources, supports_cpu_multi_threading, runnable_method_kwargs):
+def test_create_runnable(supported_resources, supports_cpu_multi_threading, runnable_method_kwargs):
     """Test that runner can be created with different settings."""
     runnable = unionml.services.bentoml.create_runnable(
-        enable_async=enable_async,
         supported_resources=supported_resources,
         supports_cpu_multi_threading=supports_cpu_multi_threading,
         runnable_method_kwargs=runnable_method_kwargs,
     )
     predict_method = runnable.bentoml_runnable_methods__["predict"]
-    if enable_async:
-        assert inspect.iscoroutinefunction(predict_method.func)
-    else:
-        assert not inspect.iscoroutinefunction(predict_method.func)
-
+    assert not inspect.iscoroutinefunction(predict_method.func)
     assert runnable.SUPPORTED_RESOURCES == supported_resources
     assert runnable.SUPPORTS_CPU_MULTI_THREADING == supports_cpu_multi_threading
 

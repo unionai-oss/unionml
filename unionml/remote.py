@@ -82,12 +82,30 @@ def sandbox_docker_build(model: Model, image_fqn: str):
             "`flytectl demo start --source .`"
         )
 
-    _, build_logs = sandbox_container.exec_run(
-        ["docker", "build", "/root", "--tag", image_fqn, "--file", f"/root/{model.dockerfile}"],
-        stream=True,
+    client = docker.from_env()
+    logger.info(f"Building image: {image_fqn}")
+    build_logs = client.api.build(
+        path=".",
+        dockerfile=model.dockerfile,
+        tag=image_fqn,
+        rm=True,
     )
     for line in build_logs:
         logger.info(line.decode().strip())
+
+    for line in client.api.push(image_fqn, stream=True, decode=True):
+        logger.info(line)
+
+    # subprocess.run(
+    #     [
+    #         "docker",
+    #         "build",
+    #         ".",
+    #         "--tag", f"localhost:30000/{image_fqn}",
+    #         "--file", model.dockerfile,
+    #         "--push",
+    #     ],
+    # )
 
 
 def docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Image:
@@ -129,7 +147,7 @@ def deploy_workflow(
         zip_file = fast_registration.fast_package(detected_root, output_dir=None, deref_symlinks=False)
 
         # Upload zip file to Admin using FlyteRemote.
-        _, native_url = remote._upload_file(pathlib.Path(zip_file))
+        _, native_url = remote.upload_file(pathlib.Path(zip_file))
 
         # Create serialization settings
         # TODO: Rely on default Python interpreter for now, this will break custom Spark containers
