@@ -40,7 +40,7 @@ def test_bentoml_build_containerize():
 
     # containerize the bento with docker
     build_tag = success_match.group(1)
-    subprocess.run(["bentoml", "containerize", "--load", build_tag])
+    subprocess.run(["bentoml", "containerize", "--opt", "load", build_tag])
     client = docker.from_env()
 
     bento_image = None

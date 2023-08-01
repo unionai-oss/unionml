@@ -56,7 +56,7 @@ jobs:
     - name: Setup Flyte Sandbox
       if: ${{ matrix.test-dir == 'integration' }}
       run: |
-        flytectl sandbox start --source .
+        flytectl demo start
         flytectl config init
     - name: Pytest
       run: |
