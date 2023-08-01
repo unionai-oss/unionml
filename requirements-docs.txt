@@ -17,4 +17,4 @@ sphinx-tabs
 sphinxcontrib-youtube
 sphinxcontrib-mermaid
 tqdm
-transformers
+transformers[torch]
