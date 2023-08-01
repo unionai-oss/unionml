@@ -121,8 +121,8 @@ def test_unionml_deployment(
     hyperparameters: Dict[str, Any],
     trainer_kwargs: Dict[str, Any],
 ):
-    if ml_framework != "sklearn":
-        pytest.skip("Don't run Flyte cluster tests on other frameworks due to memory load on " "docker image in CI.")
+    if os.getenv("UNIONML_CI", False):
+        pytest.skip("Don't run Flyte cluster tests due to memory load on docker image in CI.")
     model = _import_model_from_file(
         f"tests.integration.{ml_framework}_app.quickstart",
         Path(__file__).parent / f"{ml_framework}_app" / "quickstart.py",
@@ -145,10 +145,6 @@ def test_unionml_deployment(
 
     app_version: str = model.remote_deploy(allow_uncommitted=True)
     kwargs = {"hyperparameters": hyperparameters, "trainer_kwargs": trainer_kwargs}
-
-    if os.getenv("UNIONML_CI", False):
-        # Don't run actual executions on Flyte cluster in CI due to memory load on docker image
-        return
 
     # this is a hack to account for lag between project and propeller namespace creation
     execution: FlyteWorkflowExecution = _retry_execution(
