@@ -58,8 +58,8 @@ def test_create_service(enable_async):
     service = unionml.services.bentoml.create_service(
         "test_service",
         runner=runner,
-        features=bentoml.io.PandasDataFrame(),
-        output=bentoml.io.JSON(),
+        feature_type=bentoml.io.PandasDataFrame(),
+        output_type=bentoml.io.JSON(),
         enable_async=enable_async,
     )
     assert "predict" in service.apis
