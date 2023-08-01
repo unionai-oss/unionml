@@ -12,7 +12,7 @@ LICENSE: str = "Apache"
 README: str = pathlib.Path("README.md").read_text()
 
 extras_require = {}
-for extra in ["bentoml"]:
+for extra in ["bentoml", "fastapi"]:
     with open(f"extras_require/{extra}.txt") as f:
         extras_require[extra] = [x.strip() for x in f.readlines()]
 
@@ -33,7 +33,7 @@ setup(
         exclude=["tests*"],
     ),
     package_data={"unionml": ["py.typed"]},
-    python_requires=">=3.7",
+    python_requires=">3.7",
     platforms="any",
     install_requires=install_requires,
     extras_require=extras_require,
@@ -46,10 +46,10 @@ setup(
         "Intended Audience :: Developers",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development :: Libraries :: Application Frameworks",
     ],

@@ -1055,7 +1055,7 @@ class Model(TrackedInstance):
                 if launchplan:
                     continue
 
-                schedule_dict = asdict(s)
+                schedule_dict = {k: getattr(s, k) for k in s.__dataclass_fields__}
                 schedule_type = schedule_dict.pop("type")
                 activate_on_deploy = schedule_dict.pop("activate_on_deploy")
                 wf_method = {

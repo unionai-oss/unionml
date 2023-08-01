@@ -10,7 +10,6 @@ from pathlib import Path
 
 import click
 import typer
-import uvicorn
 from cookiecutter.main import cookiecutter
 
 from unionml.remote import VersionFetchError, get_app_version, get_model, get_model_execution, get_prediction_execution
@@ -285,6 +284,8 @@ def callback():
 
 def serve_command():
     r"""Modify the uvicorn.main entrypoint for unionml app serving."""
+    import uvicorn
+
     fn = copy.deepcopy(uvicorn.main)
     fn.name = "serve"
     fn.short_help = "Serve an unionml model."

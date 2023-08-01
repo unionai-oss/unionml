@@ -9,7 +9,7 @@ for certain use cases, but it won't scale to bigger data or models.
 In this guide, we'll learn how to create an online prediction server using a model
 trained on a Flyte cluster.
 
-```{admonition} Prerequisites
+````{admonition} Prerequisites
 :class: important
 
 Follow the {ref}`Deploying to Flyte <flyte_cluster>` guide to:
@@ -17,7 +17,14 @@ Follow the {ref}`Deploying to Flyte <flyte_cluster>` guide to:
 1. Set up a local Flyte demo cluster.
 2. Deploy a UnionML app on it.
 3. Train a model on it.
+4. Install unionml with fastapi:
+
+```{prompt} bash
+:prompts: $
+
+pip install unionml[fastapi]
 ```
+````
 
 ## Serving a Model from a Flyte Backend
 

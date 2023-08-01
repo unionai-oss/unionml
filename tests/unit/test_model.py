@@ -36,11 +36,11 @@ def test_model_train_task(model: Model, mock_data: pd.DataFrame):
     assert isinstance(train_task, PythonFunctionTask)
     assert issubclass(train_task.python_interface.inputs["hyperparameters"], BaseHyperparameters)
     assert train_task.python_interface.inputs["data"] == reader_ret_type
-    assert train_task.python_interface.outputs["model_object"].__module__ == "flytekit.types.pickle.pickle"
+    assert train_task.python_interface.outputs["model_object"] is LogisticRegression
     assert train_task.python_interface.outputs["metrics"] == typing.Dict[str, eval_ret_type]  # type: ignore
 
     outputs = train_task(
-        hyperparameters={"C": 1.0, "max_iter": 1000},
+        hyperparameters=model.hyperparameter_type(**{"C": 1.0, "max_iter": 1000}),
         data=mock_data,
     )
 
@@ -96,7 +96,7 @@ def test_model_predict_task(model: Model, mock_data: pd.DataFrame):
     predict_task = model.predict_task()
 
     assert isinstance(predict_task, PythonFunctionTask)
-    assert predict_task.python_interface.inputs["model_object"].__module__ == "flytekit.types.pickle.pickle"
+    assert predict_task.python_interface.inputs["model_object"] is LogisticRegression
     assert predict_task.python_interface.outputs["o0"] == signature(model._predictor).return_annotation
 
     model_object = LogisticRegression().fit(mock_data[["x"]], mock_data["y"])
@@ -114,9 +114,7 @@ def test_model_predict_from_features_task(model: Model, mock_data: pd.DataFrame)
 
     assert model._dataset._reader is not None
     assert isinstance(predict_from_features_task, PythonFunctionTask)
-    assert (
-        predict_from_features_task.python_interface.inputs["model_object"].__module__ == "flytekit.types.pickle.pickle"
-    )
+    assert predict_from_features_task.python_interface.inputs["model_object"] is LogisticRegression
     assert (
         predict_from_features_task.python_interface.inputs["features"]
         == signature(model._dataset._reader).return_annotation
@@ -164,7 +162,7 @@ def test_model_train_task_in_flyte_workflow(model: Model, mock_data: pd.DataFram
     @workflow
     def wf(data: pd.DataFrame) -> ModelInternals:
         model_artifact = train_task(
-            hyperparameters={"C": 1.0, "max_iter": 1000},
+            hyperparameters=model.hyperparameter_type(**{"C": 1.0, "max_iter": 1000}),
             data=data,
             loader_kwargs={},
             splitter_kwargs={},

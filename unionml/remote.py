@@ -79,15 +79,26 @@ def sandbox_docker_build(model: Model, image_fqn: str):
     if sandbox_container is None:
         raise RuntimeError(
             "Cannot find Flyte Demo Cluster. Make sure to install flytectl and create a sandbox with "
-            "`flytectl demo start --source .`"
+            "`flytectl demo start`"
         )
 
-    _, build_logs = sandbox_container.exec_run(
-        ["docker", "build", "/root", "--tag", image_fqn, "--file", f"/root/{model.dockerfile}"],
-        stream=True,
+    client = docker.from_env()
+    logger.info(f"Building image: {image_fqn}")
+    build_logs = client.api.build(
+        path=".",
+        dockerfile=model.dockerfile,
+        tag=image_fqn,
+        encoding="gzip",
+        rm=True,
     )
     for line in build_logs:
         logger.info(line.decode().strip())
+
+    for line in client.api.push(image_fqn, stream=True, decode=True):
+        logger.info(line)
+
+    # delete local image
+    client.api.remove_image(image_fqn)
 
 
 def docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Image:
@@ -101,6 +112,7 @@ def docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Imag
         path=".",
         dockerfile=model.dockerfile,
         tag=image_fqn,
+        encoding="gzip",
         rm=True,
     )
     for line in build_logs:
@@ -129,7 +141,7 @@ def deploy_workflow(
         zip_file = fast_registration.fast_package(detected_root, output_dir=None, deref_symlinks=False)
 
         # Upload zip file to Admin using FlyteRemote.
-        _, native_url = remote._upload_file(pathlib.Path(zip_file))
+        _, native_url = remote.upload_file(pathlib.Path(zip_file))
 
         # Create serialization settings
         # TODO: Rely on default Python interpreter for now, this will break custom Spark containers

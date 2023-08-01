@@ -9,7 +9,7 @@ jupytext
 myst-nb
 sphinx
 sphinx-autodoc-typehints
-sphinx-click
+sphinx-click==4.3.0  # pinning due to docs build error on 4.4.0: Unexpected section title
 sphinx-copybutton
 sphinx-panels
 sphinx-prompt
@@ -17,4 +17,4 @@ sphinx-tabs
 sphinxcontrib-youtube
 sphinxcontrib-mermaid
 tqdm
-transformers
+transformers[torch]

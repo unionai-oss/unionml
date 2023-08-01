@@ -283,7 +283,18 @@ to generate predictions.
 ## Serve Seamlessly with FastAPI
 
 UnionML integrates with [FastAPI](https://fastapi.tiangolo.com/) to automatically
-create `/train/` and `/predict/` endpoints. Start a server with `unionml serve` and call the app
+create `/train/` and `/predict/` endpoints.
+
+Install unionml with fastapi:
+
+```{prompt} bash
+:prompts: $
+
+pip install unionml[fastapi]
+```
+
+
+Start a server with `unionml serve` and call the app
 endpoints with the `requests` library.
 
 ````{tabs}

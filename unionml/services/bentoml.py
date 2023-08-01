@@ -1,6 +1,5 @@
 """Service definition for BentoML."""
 
-import asyncio
 import typing
 
 try:
@@ -72,8 +71,8 @@ class BentoMLService:
 
     def configure(
         self,
-        features: typing.Optional[bentoml.io.IODescriptor] = None,
-        output: typing.Optional[bentoml.io.IODescriptor] = None,
+        feature_type: typing.Optional[bentoml.io.IODescriptor] = None,
+        output_type: typing.Optional[bentoml.io.IODescriptor] = None,
         enable_async: bool = False,
         supported_resources: typing.Optional[typing.Tuple] = None,
         supports_cpu_multi_threading: bool = False,
@@ -112,7 +111,6 @@ class BentoMLService:
             "RunnerImpl",
             bentoml.Runner(
                 create_runnable(
-                    enable_async,
                     supported_resources,
                     supports_cpu_multi_threading,
                     runnable_method_kwargs,
@@ -126,8 +124,8 @@ class BentoMLService:
         self._svc = create_service(
             name=self.name,
             runner=runner,
-            features=features or infer_feature_io_descriptor(self.model.dataset.feature_type)(),
-            output=output or infer_output_io_descriptor(self.model.prediction_type)(),
+            feature_type=feature_type or infer_feature_io_descriptor(self.model.dataset.feature_type)(),
+            output_type=output_type or infer_output_io_descriptor(self.model.prediction_type)(),
             enable_async=enable_async,
         )
         return self._svc
@@ -167,8 +165,8 @@ class BentoMLService:
 def create_service(
     name: str,
     runner: bentoml.Runnable,
-    features: typing.Optional[bentoml.io.IODescriptor] = None,
-    output: typing.Optional[bentoml.io.IODescriptor] = None,
+    feature_type: typing.Optional[bentoml.io.IODescriptor] = None,
+    output_type: typing.Optional[bentoml.io.IODescriptor] = None,
     enable_async: bool = False,
 ) -> bentoml.Service:
     """Create :class:`bentoml.Service`."""
@@ -176,22 +174,20 @@ def create_service(
 
     if enable_async:
 
-        @svc.api(input=features, output=output)
-        async def predict(features: typing.Any):
-            result = await runner.predict.async_run(features)
-            return await asyncio.gather(result)
+        @svc.api(input=feature_type, output=output_type)
+        async def predict(features):
+            return await runner.predict.async_run(features)
 
     else:
 
-        @svc.api(input=features, output=output)
-        def predict(features: typing.Any):
+        @svc.api(input=feature_type, output=output_type)
+        def predict(features):
             return runner.predict.run(features)
 
     return svc
 
 
 def create_runnable(
-    enable_async: bool = False,
     supported_resources: typing.Optional[typing.Tuple] = None,
     supports_cpu_multi_threading: bool = False,
     runnable_method_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
@@ -209,19 +205,10 @@ def create_runnable(
         def __init__(self, model: Model):
             self.model: Model = model
 
-        if enable_async:
-
-            @bentoml.Runnable.method(**_runnable_method_kwargs)
-            async def predict(self, features: typing.Any) -> typing.Any:
-                features = self.model.dataset.get_features(features)
-                return self.model.predict(features=features)
-
-        else:
-
-            @bentoml.Runnable.method(**_runnable_method_kwargs)
-            def predict(self, features: typing.Any) -> typing.Any:
-                features = self.model.dataset.get_features(features)
-                return self.model.predict(features=features)
+        @bentoml.Runnable.method(**_runnable_method_kwargs)
+        def predict(self, features: typing.Any) -> typing.Any:
+            features = self.model.dataset.get_features(features)
+            return self.model.predict(features=features)
 
     return UnionMLRunnable
 
