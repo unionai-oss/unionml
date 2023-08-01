@@ -97,6 +97,9 @@ def sandbox_docker_build(model: Model, image_fqn: str):
     for line in client.api.push(image_fqn, stream=True, decode=True):
         logger.info(line)
 
+    # delete local image
+    client.api.remove_image(image_fqn)
+
 
 def docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Image:
     if model.registry is None:
