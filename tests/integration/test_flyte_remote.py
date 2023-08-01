@@ -146,6 +146,10 @@ def test_unionml_deployment(
     app_version: str = model.remote_deploy(allow_uncommitted=True)
     kwargs = {"hyperparameters": hyperparameters, "trainer_kwargs": trainer_kwargs}
 
+    if os.getenv("UNIONML_CI", False):
+        # Don't run actual executions on Flyte cluster in CI due to memory load on docker image
+        return
+
     # this is a hack to account for lag between project and propeller namespace creation
     execution: FlyteWorkflowExecution = _retry_execution(
         lambda: model.remote_train(app_version=app_version, wait=False, **kwargs)

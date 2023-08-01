@@ -17,8 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # test-dir: ["unit", "integration"]
-        test-dir: ["integration"]
+        test-dir: ["unit", "integration"]
         python-version: ["3.8", "3.9", "3.10", "3.11"]
 
     env:
@@ -63,7 +62,7 @@ jobs:
         flytectl config init
     - name: Pytest
       run: |
-        pytest tests/${{ matrix.test-dir }}/test_flyte_remote.py
+        pytest tests/${{ matrix.test-dir }}
     - name: Build Docs
       if: ${{ matrix.test-dir == 'unit' }}
       run: make docs
