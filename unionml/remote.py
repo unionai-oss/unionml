@@ -97,17 +97,6 @@ def sandbox_docker_build(model: Model, image_fqn: str):
     for line in client.api.push(image_fqn, stream=True, decode=True):
         logger.info(line)
 
-    # subprocess.run(
-    #     [
-    #         "docker",
-    #         "build",
-    #         ".",
-    #         "--tag", f"localhost:30000/{image_fqn}",
-    #         "--file", model.dockerfile,
-    #         "--push",
-    #     ],
-    # )
-
 
 def docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Image:
     if model.registry is None:
