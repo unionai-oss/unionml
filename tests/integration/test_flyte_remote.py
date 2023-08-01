@@ -121,11 +121,8 @@ def test_unionml_deployment(
     hyperparameters: Dict[str, Any],
     trainer_kwargs: Dict[str, Any],
 ):
-    if ml_framework:
-        # skipping this test due to Docker image disks pressure on CI
-        # e.g. https://github.com/unionai-oss/unionml/actions/runs/5728572056/job/15523433862?pr=234
+    if ml_framework != "sklearn":
         pytest.skip("Don't run Flyte cluster tests on other frameworks due to memory load on " "docker image in CI.")
-
     model = _import_model_from_file(
         f"tests.integration.{ml_framework}_app.quickstart",
         Path(__file__).parent / f"{ml_framework}_app" / "quickstart.py",

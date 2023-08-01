@@ -79,7 +79,7 @@ def sandbox_docker_build(model: Model, image_fqn: str):
     if sandbox_container is None:
         raise RuntimeError(
             "Cannot find Flyte Demo Cluster. Make sure to install flytectl and create a sandbox with "
-            "`flytectl demo start --source .`"
+            "`flytectl demo start`"
         )
 
     client = docker.from_env()
@@ -88,6 +88,7 @@ def sandbox_docker_build(model: Model, image_fqn: str):
         path=".",
         dockerfile=model.dockerfile,
         tag=image_fqn,
+        encoding="gzip",
         rm=True,
     )
     for line in build_logs:
@@ -119,6 +120,7 @@ def docker_build_push(model: Model, image_fqn: str) -> docker.models.images.Imag
         path=".",
         dockerfile=model.dockerfile,
         tag=image_fqn,
+        encoding="gzip",
         rm=True,
     )
     for line in build_logs:
