@@ -1,0 +1,20 @@
+# syntax=v1
+
+
+def basic():
+    install.cuda(version="11.6.2")
+    install.python(version)
+    install.python_packages(requirements="requirements.txt")
+
+
+def build():
+    base(dev=True)
+    basic()
+    runtime.expose(envd_port=8000, host_port=8000, service="sd")
+
+
+def serving():
+    basic()
+    io.copy("main.py", "/")
+    run(["python /main.py --dry-run"])
+    config.entrypoint(["python", "/main.py", "--timeout", "30000"])
