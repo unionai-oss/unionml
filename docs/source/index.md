@@ -115,16 +115,6 @@ your ML models so that you can focus on curating a better dataset and improving 
 pip install unionml
 ```
 
-````{admonition} For M1 Mac users
-:class: important
-
-Before installing `unionml`, follow these StackOverflow posts to install
-[numpy](https://numpy.org/) and [pandas](https://pandas.pydata.org/pandas-docs/stable/):
-
-- [numpy installation](https://stackoverflow.com/a/65581354)
-- [pandas installation](https://stackoverflow.com/a/66048187)
-````
-
 # Quickstart
 
 A UnionML app is composed of two core classes: a {class}`~unionml.dataset.Dataset` and a
@@ -175,12 +165,6 @@ Create a python file called `app.py`, import app dependencies, and define `datas
 
       pip install tensorflow
       ```
-
-      ````{admonition} For M1 Mac users
-      :class: important
-
-      Follow [this StackOverflow post](https://stackoverflow.com/questions/66741778/how-to-install-h5py-needed-for-keras-on-macos-with-m1) to install tensorflow on an M1 Mac
-      ````
 
       ```{literalinclude} ../../tests/integration/keras_app/quickstart.py
       ---
