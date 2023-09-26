@@ -5,7 +5,7 @@ furo
 gradio<=3.0.10
 ipython
 joblib
-jupytext<=0.15.2
+jupytext==1.15.2
 myst-nb
 sphinx
 sphinx-autodoc-typehints
