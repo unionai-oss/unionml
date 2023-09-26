@@ -1,3 +1,7 @@
+"""
+envd build -f :serving --output type=image,name=ghcr.io/cosmicbboy/modelz-stable-diffusion:v1,push=true
+"""
+
 from io import BytesIO
 from typing import List
 

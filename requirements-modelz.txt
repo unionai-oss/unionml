@@ -1,6 +1,6 @@
+diffusers[torch]
 msgpack
 mosec
 torch --extra-index-url https://download.pytorch.org/whl/cu116
-diffusers[torch]
 transformers
 accelerate

@@ -8,6 +8,7 @@ joblib
 numpy
 pandas
 pydantic
+requests
 rich>=11.2.0
 scikit-learn
 typer

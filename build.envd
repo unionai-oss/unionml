@@ -3,8 +3,8 @@
 
 def basic():
     install.cuda(version="11.6.2")
-    install.python(version)
-    install.python_packages(requirements="requirements.txt")
+    install.python()
+    install.python_packages(requirements="requirements-modelz.txt")
 
 
 def build():
@@ -15,6 +15,6 @@ def build():
 
 def serving():
     basic()
-    io.copy("main.py", "/")
-    run(["python /main.py --dry-run"])
-    config.entrypoint(["python", "/main.py", "--timeout", "30000"])
+    io.copy("modelz_server.py", ".")
+    run(["python modelz_server.py --dry-run"])
+    config.entrypoint(["python", "modelz_server.py", "--timeout", "30000"])

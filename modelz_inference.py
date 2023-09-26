@@ -1,7 +1,6 @@
 import modelz
 
-api_key = "mzi-f1e7034393e5e5b3e0927f6c3c2ac58b"
-client = modelz.ModelzClient(key=api_key, deployment="modelz-test3-stablediffusion-73kbi10qro7qhuzi")
-resp = client.inference(params="a horse in a green field", serde="msgpack")
-print(resp.resp.content)
-resp.save_to_file("inference.jpg")
+api_key = "mzi-921b803eb4931c569153b46dc8356a1a"
+client = modelz.ModelzClient(key=api_key, deployment="modelz-test0-deployment-sd-a4mgodx2a4bqangp")
+resp = client.inference(params="painting of Napoleon Bonaparte riding a horse", serde="msgpack")
+resp.save_to_file("inference3.jpg")
