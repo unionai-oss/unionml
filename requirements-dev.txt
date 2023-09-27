@@ -16,4 +16,3 @@ tensorflow>=2.13.0
 torch
 types-requests
 uvicorn
-jupytext
