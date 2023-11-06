@@ -2,4 +2,4 @@ unionml
 fastapi
 pandas
 requests
-sklearn
+scikit-learn
