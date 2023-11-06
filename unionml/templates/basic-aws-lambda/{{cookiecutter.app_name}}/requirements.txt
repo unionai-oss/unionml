@@ -1,5 +1,5 @@
 unionml
-sklearn
+scikit-learn
 numpy
 pandas
 fastapi

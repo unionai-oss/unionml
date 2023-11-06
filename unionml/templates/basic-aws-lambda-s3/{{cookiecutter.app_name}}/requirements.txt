@@ -1,6 +1,6 @@
 unionml
 boto3
-sklearn
+scikit-learn
 numpy
 pandas
 fastapi
